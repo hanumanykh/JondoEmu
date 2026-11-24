@@ -21,6 +21,14 @@ public sealed class ReferencePricesTests
     }
 
     [Fact]
+    public void Gathered_resources_grow_with_the_job_level()
+    {
+        Assert.InRange(ReferencePrices.FromHarvest(1), 10, 20);
+        Assert.InRange(ReferencePrices.FromHarvest(100), 2000, 3000);
+        Assert.InRange(ReferencePrices.FromHarvest(200), 6000, 7000);
+    }
+
+    [Fact]
     public void The_easiest_way_to_get_it_sets_the_price()
     {
         var both = new[] { new ReferencePrices.Source(20, 0.3, true, false), new ReferencePrices.Source(20, 0.3, false, false) };

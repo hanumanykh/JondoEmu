@@ -41,6 +41,9 @@ namespace Jondo.Unity.Server.Managers
         internal sealed record Source(int Level, double Chance, bool Boss, bool Archmonster);
 
         private static readonly Lazy<Dictionary<int, List<Source>>> Sources = new(ReadSources);
+        /// <summary>The resources a job gathers, with the lowest job level a skill gathers each at.</summary>
+        private static readonly Lazy<Dictionary<int, int>> Gathered = new(ReadGathered);
+
         private static readonly Lazy<Dictionary<int, long>> Written = new(() => ReadWritten(Paths.ContentFile(AuthoredFile)));
         private static readonly ConcurrentDictionary<int, long> _worth = new();
 
@@ -49,7 +52,8 @@ namespace Jondo.Unity.Server.Managers
         /// monster outside any quest, or crafted.
         /// </summary>
         public static bool IsTraded(int gid)
-            => Written.Value.ContainsKey(gid) || Sources.Value.ContainsKey(gid) || RecipeManager.TryGetByResult(gid, out _);
+            => Written.Value.ContainsKey(gid) || Sources.Value.ContainsKey(gid) || Gathered.Value.ContainsKey(gid)
+               || RecipeManager.TryGetByResult(gid, out _);
 
         /// <summary>The worth of one of an item.</summary>
         public static long Of(int gid) => Of(gid, 0);
@@ -66,8 +70,12 @@ namespace Jondo.Unity.Server.Managers
         private static long Reckon(int gid, int depth)
         {
             long npc = Math.Max(1, Bots.Outfitter.BasePrice(gid));
-            if (Sources.Value.TryGetValue(gid, out var sources) && sources.Count > 0)
-                return Math.Max(npc, FromDrops(sources));
+            bool dropped = Sources.Value.TryGetValue(gid, out var sources) && sources.Count > 0;
+            bool gathered = Gathered.Value.TryGetValue(gid, out int jobLevel);
+            // The easiest way to get it sets the price: off a monster, or off a tree, a vein, a field.
+            if (dropped && gathered) return Math.Max(npc, Math.Min(FromDrops(sources!), FromHarvest(jobLevel)));
+            if (dropped) return Math.Max(npc, FromDrops(sources!));
+            if (gathered) return Math.Max(npc, FromHarvest(jobLevel));
             if (depth < 3 && RecipeManager.TryGetByResult(gid, out var recipe))
                 return Math.Max(npc, recipe.Ingredients.Sum(i => Of(i.ItemId, depth + 1) * i.Quantity) * 105 / 100);
             // A piece of equipment no recipe and no monster gives (a shop's, a quest's, a chest's)
@@ -77,6 +85,35 @@ namespace Jondo.Unity.Server.Managers
             if (template != null && Bots.Outfitter.SlotsOf(template.Type).Count > 0)
                 return Math.Max(2 * npc, EquipmentFloor(template.Level));
             return 2 * npc;
+        }
+
+        /// <summary>
+        /// A gathered resource's worth, from the job level its skill needs: 10 + 3 x level^1.45 --
+        /// a dozen kamas at level 1, about 1,100 at 60, 2,400 at 100, 6,600 at 200.
+        /// </summary>
+        internal static long FromHarvest(int jobLevel) => 10 + (long)(3 * Math.Pow(Math.Max(1, jobLevel), 1.45));
+
+        private static Dictionary<int, int> ReadGathered()
+        {
+            var gathered = new Dictionary<int, int>();
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT GatheredResourceItem, LevelMin FROM Skills WHERE GatheredResourceItem > 0;";
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    int gid = reader.GetInt32(0), level = reader.IsDBNull(1) ? 1 : reader.GetInt32(1);
+                    gathered[gid] = gathered.TryGetValue(gid, out int known) ? Math.Min(known, level) : level;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Marketplaces] The gathered resources could not be read: {ex.Message}");
+            }
+            return gathered;
         }
 
         internal static long EquipmentFloor(int level) => (long)(25 * Math.Pow(Math.Max(1, level), 1.7));
