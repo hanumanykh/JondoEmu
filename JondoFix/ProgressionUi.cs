@@ -14,7 +14,9 @@ namespace JondoFix
     /// <summary>
     /// The «Progression» window of the Stasis rules: the level-up don offered now as three or four
     /// cards, its reroll and the refonte; the research tree paid with Éclats; the Ascension and
-    /// the Evolution with what they give and a confirmation. F9 opens and closes it, and it opens
+    /// the Evolution with what they give and a confirmation; the Système's missions (chapter mission
+    /// and side tracks, their progress bars, GO and Récupérer: /api/stasis/missions, /go, /claim,
+    /// asked when the «Missions» tab opens). F9 opens and closes it, and it opens
     /// by itself when the server has an offer waiting.
     /// </summary>
     /// <remarks>
@@ -37,7 +39,7 @@ namespace JondoFix
     /// F11 the staff console's.
     /// </para>
     /// </remarks>
-    public static class ProgressionUi
+    public static partial class ProgressionUi
     {
         private const float Width = 980f, Height = 700f;
         private const float PollEvery = 8f;
@@ -138,6 +140,13 @@ namespace JondoFix
                 tabs.Add(Button("Dons", true, () => ShowTab("dons")));
                 tabs.Add(Button("Recherche", false, () => ShowTab("recherche")));
                 tabs.Add(Button("Ascension et Évolution", false, () => ShowTab("ascension")));
+                tabs.Add(Button("Sanctuaire", false, () => ShowTab("sanctuaire")));
+                tabs.Add(Button("Missions", false, () => ShowTab("missions")));
+                tabs.Add(Button("Pension", false, () => ShowTab("pension")));
+                tabs.Add(Button("Cartes", false, () => ShowTab("cartes")));
+                // The farming and endgame tabs (/api/stasis/panel, ShowPanel): each is the server's commands' own answer.
+                tabs.style.flexWrap = new StyleEnum<Wrap>(Wrap.Wrap);
+                foreach (var (key, label) in PanelTabs) tabs.Add(Button(label, false, () => ShowTab(key)));
                 window.Add(tabs);
 
                 var scroll = new ScrollView(ScrollViewMode.Vertical);
@@ -185,7 +194,13 @@ namespace JondoFix
         {
             _tab = tab;
             _confirm = "";
+            if (tab == "sanctuaire") _hubAsked = false;
             if (_state is JsonElement state) Show(state);
+            // The missions are their own route: asked each time the tab is opened, so the
+            // progress shown is the server's of now, not that of the last visit.
+            if (tab == "missions") AskMissions("stasis/missions", new Dictionary<string, object>());
+            if (tab == "pension" || tab == "cartes") AskPension("pension/state", new Dictionary<string, object>());
+            if (IsPanelTab(tab)) AskPanel("stasis/panel", new Dictionary<string, object> { ["tab"] = tab });
         }
 
         private static void Refresh() => Ask("stasis/state", new Dictionary<string, object>(), Show, quiet: true);
@@ -207,6 +222,11 @@ namespace JondoFix
             {
                 case "recherche": ShowResearch(root); break;
                 case "ascension": ShowRebirths(root); break;
+                case "sanctuaire": ShowHub(); break;
+                case "missions": ShowMissions(); break;
+                case "pension": ShowPension(); break;
+                case "cartes": ShowCards(); break;
+                case var panel when IsPanelTab(panel): ShowPanel(); break;
                 default: ShowOffer(root); break;
             }
         }
@@ -217,6 +237,8 @@ namespace JondoFix
                           $"{Int(root, "ascensions")} Ascension(s)" + (root.GetProperty("evolved").GetBoolean() ? " · évolué" : "");
             int catchUp = Int(root, "catchUp");
             if (catchUp > 1) text += $" · rattrapage x{catchUp}";
+            // The Orbes held: Jondo Coins on a coin server (older servers send no "coins").
+            if (root.TryGetProperty("coins", out _)) text += $" · {Long(root, "coins")} {Text(root, "coinLabel")}";
             var label = AdminItemsUi.Label(text, true);
             label.style.marginTop = new StyleLength(10f);
             label.style.marginBottom = new StyleLength(10f);
@@ -245,7 +267,7 @@ namespace JondoFix
             if (offer.GetProperty("canReroll").GetBoolean())
             {
                 long cost = Long(offer, "rerollCost");
-                _page.Add(Button(cost > 0 ? $"Relancer l'offre ({cost} kamas)" : "Relancer l'offre (gratuit)", false,
+                _page.Add(Button(cost > 0 ? $"Relancer l'offre ({cost} {(root.TryGetProperty("coinLabel", out _) ? Text(root, "coinLabel") : "kamas")})" : "Relancer l'offre (gratuit)", false,
                     () => Ask("stasis/reroll", new Dictionary<string, object>(), Show)));
             }
             else _page.Add(Hint(offer.GetProperty("rerolled").GetBoolean() ? "Offre déjà relancée." : "Cette offre ne se relance pas."));
@@ -350,6 +372,90 @@ namespace JondoFix
             _page.Add(row);
         }
 
+        // ─── The Sanctuary tab (server: ControlApiHub.cs, CommandHandler.Hub.cs) ─────────────
+
+        private static JsonElement? _hub;
+        private static bool _hubAsked;
+
+        /// <summary>Runs one hub command (or none: the state alone) and redraws from the answer.</summary>
+        private static void Hub(string command, string args)
+        {
+            _hubAsked = true;
+            Ask("stasis/hub", new Dictionary<string, object> { ["command"] = command, ["args"] = args }, r =>
+            {
+                _hub = r;
+                if (_state is JsonElement s) Show(s);
+                string text = Text(r, "text");
+                if (text.Length > 0) Say(text.Length > 160 ? text.Substring(0, 157) + "..." : text);
+            });
+        }
+
+        private static void ShowHub()
+        {
+            if (!_hubAsked) Hub("", "");
+            if (_hub == null)
+            {
+                _page.Add(Hint("Chargement du Sanctuaire..."));
+                return;
+            }
+            JsonElement hub = _hub.Value;
+            string currency = Text(hub, "currency");
+            _page.Add(Title(Text(hub, "sanctuary") + " — " + Long(hub, "orbes").ToString(CultureInfo.InvariantCulture) + " " + currency));
+            var row = AdminItemsUi.Row();
+            row.style.flexWrap = new StyleEnum<Wrap>(Wrap.Wrap);
+            bool inside = hub.TryGetProperty("inSanctuary", out var i) && i.ValueKind == JsonValueKind.True;
+            bool back = hub.TryGetProperty("canReturn", out var c) && c.ValueKind == JsonValueKind.True;
+            if (!inside) row.Add(Button("Aller au Sanctuaire", true, () => Hub(".sanctuaire", "")));
+            else if (back) row.Add(Button("Retour", true, () => Hub(".retour", "")));
+            row.Add(Button("Catalogue", false, () => Hub(".marchand", "catalogue")));
+            row.Add(Button("Consommables", false, () => Hub(".marchand", "consommables")));
+            row.Add(Button("Devis", false, () => Hub(".devis", "")));
+            row.Add(Button("Actualiser", false, () => Hub("", "")));
+            _page.Add(row);
+            string text = Text(hub, "text");
+            if (text.Length > 0) _page.Add(Hint(text));
+
+            _page.Add(Title("Conseillé"));
+            if (!inside) _page.Add(Hint("Les achats se font au Sanctuaire ; les clés de donjon partout (.marchand cle <donjon>)."));
+            foreach (var piece in hub.GetProperty("recommended").EnumerateArray())
+            {
+                string gid = Int(piece, "gid").ToString(CultureInfo.InvariantCulture);
+                _page.Add(Line(Text(piece, "name") + " — niv. " + Int(piece, "level") + " — " + Long(piece, "price") + " " + currency,
+                               Button("Acheter", false, () => Hub(".marchand", "acheter " + gid))));
+            }
+            if (inside) _page.Add(Button("Acheter tout le conseillé", true, () => Hub(".marchand", "acheter conseil")));
+
+            _page.Add(Title("Fabrication Stasis (S1 jet parfait)"));
+            _page.Add(Hint("Objet de base non stasifié + ressources + essence de gardien + " + currency + ". Hors combat."));
+            bool any = false;
+            foreach (var recipe in hub.GetProperty("recipes").EnumerateArray())
+            {
+                any = true;
+                string arg = Int(recipe, "gid").ToString(CultureInfo.InvariantCulture) + (Int(recipe, "tier") >= 2 ? " S2" : "");
+                bool ready = recipe.TryGetProperty("ready", out var r) && r.ValueKind == JsonValueKind.True;
+                string label = Text(recipe, "name") + " — niv. " + Int(recipe, "level") + " — " + Long(recipe, "cost") + " " + currency +
+                               (ready ? "" : " — " + Int(recipe, "missing") + " manque(s)");
+                _page.Add(Line(label, ready ? Button("Fabriquer", true, () => Hub(".fabriquer", arg))
+                                            : Button("Devis", false, () => Hub(".devis", arg))));
+            }
+            if (!any) _page.Add(Hint("Aucune recette en vue : il faut l'objet de base non stasifié ou ses ingrédients."));
+        }
+
+        private static VisualElement Line(string text, VisualElement button)
+        {
+            var line = AdminItemsUi.Row();
+            line.style.alignItems = new StyleEnum<Align>(Align.Center);
+            line.style.marginBottom = new StyleLength(6f);
+            line.style.paddingLeft = new StyleLength(8f);
+            line.style.backgroundColor = new StyleColor(AdminItemsUi.RowPlain);
+            var label = AdminItemsUi.Label(text);
+            label.style.flexGrow = new StyleFloat(1f);
+            label.style.flexShrink = new StyleFloat(1f);
+            line.Add(label);
+            line.Add(button);
+            return line;
+        }
+
         private static void ShowResearch(JsonElement root)
         {
             _page.Add(Title("Recherche"));
@@ -419,6 +525,176 @@ namespace JondoFix
                     });
                 }));
                 row.Add(Button("Annuler", false, () => { _confirm = ""; if (_state is JsonElement s) Show(s); }));
+            }
+            _page.Add(row);
+        }
+
+        // ─── Missions (the Système) ──────────────────────────────────────────────────────
+
+        private static JsonElement? _missions;
+
+        /// <summary>
+        /// A missions route (/api/stasis/missions, /go, /claim): the list answer is the Système
+        /// itself, an action's is { said, missions }. Either way the tab is redrawn from it.
+        /// </summary>
+        private static void AskMissions(string route, Dictionary<string, object> body)
+            => Ask(route, body, root =>
+            {
+                if (root.TryGetProperty("missions", out var inner) && inner.ValueKind == JsonValueKind.Object)
+                {
+                    _missions = inner.Clone();
+                    Say(Text(root, "said"));
+                }
+                else _missions = root;
+                if (_tab == "missions" && _state is JsonElement s) Show(s);
+            }, quiet: route == "stasis/missions");
+
+        private static void ShowMissions()
+        {
+            if (_missions is not JsonElement m)
+            {
+                _page.Add(Hint("Chargement des missions…"));
+                return;
+            }
+            _page.Add(Title("Le Système"));
+            _page.Add(Hint($"{Int(m, "chaptersDone")}/{Int(m, "chapters")} chapitres terminés · {Long(m, "orbes")} {Text(m, "orbeLabel")} · " +
+                           $"nouvelles pistes tous les {Int(m, "trackEvery")} niveaux (prochain lot au niveau {Int(m, "nextBatch")})."));
+
+            if (m.TryGetProperty("chapter", out var chapter) && chapter.ValueKind == JsonValueKind.Object)
+            {
+                _page.Add(Title("Mission de chapitre"));
+                MissionBox(chapter, true);
+            }
+            else _page.Add(Hint("Tous les chapitres sont terminés."));
+
+            _page.Add(Title("Pistes"));
+            bool any = false;
+            if (m.TryGetProperty("tracks", out var tracks) && tracks.ValueKind == JsonValueKind.Array)
+                foreach (var track in tracks.EnumerateArray())
+                {
+                    any = true;
+                    MissionBox(track, false);
+                }
+            if (!any) _page.Add(Hint("Aucune piste pour l'instant."));
+
+            var row = AdminItemsUi.Row();
+            row.Add(Button("Tout récupérer", false, () => AskMissions("stasis/missions/claim", new Dictionary<string, object> { ["slot"] = "" })));
+            row.Add(Button("Actualiser", false, () => AskMissions("stasis/missions", new Dictionary<string, object>())));
+            _page.Add(row);
+        }
+
+        /// <summary>One mission: where it comes from, its title, a bar of its progress, GO and Récupérer.</summary>
+        private static void MissionBox(JsonElement mission, bool chapter)
+        {
+            var box = new VisualElement();
+            box.style.marginBottom = new StyleLength(12f);
+            box.style.paddingLeft = new StyleLength(12f);
+            box.style.paddingRight = new StyleLength(12f);
+            box.style.paddingTop = new StyleLength(8f);
+            box.style.paddingBottom = new StyleLength(8f);
+            box.style.backgroundColor = new StyleColor(chapter ? new UnityEngine.Color(1f, 0.8f, 0.35f, 0.10f) : new UnityEngine.Color(1f, 1f, 1f, 0.07f));
+
+            string slot = Text(mission, "slot");
+            int step = Int(mission, "step"), steps = Int(mission, "steps");
+            string head = Text(mission, "source") + (step > 0 && steps > 0 ? $" — {step}/{steps}" : "") +
+                          (mission.TryGetProperty("last", out var last) && last.ValueKind == JsonValueKind.True ? " (dernière : bonus !)" : "");
+            box.Add(AdminItemsUi.Label(head, true));
+            string description = Text(mission, "description");
+            if (description.Length > 0) box.Add(Hint(description));
+
+            if (mission.TryGetProperty("done", out var done) && done.ValueKind == JsonValueKind.True)
+            {
+                box.Add(Hint("Piste terminée : la suivante arrive avec le prochain lot."));
+                _page.Add(box);
+                return;
+            }
+            box.Add(AdminItemsUi.Label(Text(mission, "title")));
+
+            long progress = Long(mission, "progress"), need = Math.Max(1, Long(mission, "need"));
+            float ratio = Math.Clamp(progress / (float)need, 0f, 1f);
+            var bar = new VisualElement();
+            bar.style.height = new StyleLength(10f);
+            bar.style.marginTop = new StyleLength(6f);
+            bar.style.marginBottom = new StyleLength(4f);
+            bar.style.backgroundColor = new StyleColor(new UnityEngine.Color(0f, 0f, 0f, 0.4f));
+            var fill = new VisualElement();
+            fill.style.height = new StyleLength(10f);
+            fill.style.width = new StyleLength(new Length(ratio * 100f, LengthUnit.Percent));
+            fill.style.backgroundColor = new StyleColor(new UnityEngine.Color(0.45f, 0.85f, 0.45f, 1f));
+            bar.Add(fill);
+            box.Add(bar);
+            box.Add(AdminItemsUi.Label($"{progress.ToString("N0", CultureInfo.InvariantCulture)} / {need.ToString("N0", CultureInfo.InvariantCulture)}"));
+
+            var row = AdminItemsUi.Row();
+            row.style.marginTop = new StyleLength(6f);
+            bool complete = mission.TryGetProperty("complete", out var c) && c.ValueKind == JsonValueKind.True;
+            if (complete)
+                row.Add(Button("Récupérer", true, () => AskMissions("stasis/missions/claim", new Dictionary<string, object> { ["slot"] = slot })));
+            if (mission.TryGetProperty("canGo", out var go) && go.ValueKind == JsonValueKind.True)
+                row.Add(Button("GO", !complete, () => AskMissions("stasis/missions/go", new Dictionary<string, object> { ["slot"] = slot })));
+            box.Add(row);
+            _page.Add(box);
+        }
+
+        // ─── The farming and endgame tabs ────────────────────────────────────────────────
+
+        /// <summary>The tabs served by /api/stasis/panel: key and button label.</summary>
+        private static readonly (string Key, string Label)[] PanelTabs =
+        {
+            ("jauge", "Jauge"), ("comptoir", "Comptoir"), ("maree", "Marées"),
+            ("paliers", "Paliers"), ("event", "Événements"), ("fissure", "Fissure"),
+        };
+
+        private static JsonElement? _panel;
+
+        private static bool IsPanelTab(string tab) => Array.Exists(PanelTabs, t => t.Key == tab);
+
+        /// <summary>A tab asked, or one of its buttons pressed: the answer is the tab again, drawn if still shown.</summary>
+        private static void AskPanel(string route, Dictionary<string, object> body)
+        {
+            string asked = _tab;
+            Ask(route, body, root =>
+            {
+                if (Text(root, "tab") != asked) return;
+                _panel = root;
+                if (_tab == asked && _state is JsonElement state) Show(state);
+                var said = new List<string>();
+                if (root.TryGetProperty("said", out var s) && s.ValueKind == JsonValueKind.Array)
+                    foreach (var line in s.EnumerateArray()) said.Add(line.GetString() ?? "");
+                if (said.Count > 0) Say(string.Join(" ", said));
+            });
+        }
+
+        /// <summary>A tab: the Jondo Coins held, what the server's commands answer, and the tab's buttons.</summary>
+        private static void ShowPanel()
+        {
+            if (!(_panel is JsonElement panel) || Text(panel, "tab") != _tab)
+            {
+                _page.Add(Hint("Chargement…"));
+                return;
+            }
+            _page.Add(Title(Text(panel, "title")));
+            _page.Add(Hint($"{Long(panel, "coins")} {Text(panel, "coinLabel")} en poche."));
+            if (panel.TryGetProperty("lines", out var lines) && lines.ValueKind == JsonValueKind.Array)
+                foreach (var line in lines.EnumerateArray())
+                {
+                    var label = AdminItemsUi.Label(line.GetString() ?? "");
+                    label.style.marginBottom = new StyleLength(8f);
+                    label.style.whiteSpace = new StyleEnum<WhiteSpace>(WhiteSpace.Normal);
+                    _page.Add(label);
+                }
+            if (!panel.TryGetProperty("actions", out var actions) || actions.ValueKind != JsonValueKind.Array) return;
+            var row = AdminItemsUi.Row();
+            row.style.flexWrap = new StyleEnum<Wrap>(Wrap.Wrap);
+            row.style.marginTop = new StyleLength(10f);
+            string tab = _tab;
+            foreach (var action in actions.EnumerateArray())
+            {
+                string command = Text(action, "command"), args = Text(action, "args");
+                row.Add(Button(Text(action, "label"), false, () => AskPanel("stasis/act", new Dictionary<string, object>
+                {
+                    ["tab"] = tab, ["command"] = command, ["args"] = args,
+                })));
             }
             _page.Add(row);
         }

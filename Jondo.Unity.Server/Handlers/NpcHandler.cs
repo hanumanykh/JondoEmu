@@ -130,6 +130,8 @@ namespace Jondo.Unity.Server.Handlers
 
             if (action == Npcs.Talk)
             {
+                // The Sanctuary's Merchant, Raffineur and counter answer with their command's text (CommandHandler.Hub.cs).
+                if (await CommandHandler.SanctuaryTalkAsync(session, npc.NpcId, mapId)) return;
                 await OpenDialogAsync(session, npc, mapId);
                 return;
             }

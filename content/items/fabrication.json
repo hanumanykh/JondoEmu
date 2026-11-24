@@ -1,0 +1,28 @@
+{
+  "_comment": [
+    "Stasis fabrication (spec §6, Managers/Stasis/Fabrication.cs, «.fabriquer» / «.devis»).",
+    "A recipe makes the piece at S1 and at its perfect roll from: the plain (non-stasified) piece,",
+    "the piece's own game recipe scaled by ingredientFactor (or, for a piece no recipe makes, the",
+    "essence x formulaEssenceFactor), the guardian essence of its level band, and the service cost",
+    "max(costMinimum, costPerLevel x level) in kamas-calibrated Orbes (paid in Jondo Coins in coin mode).",
+    "Legendary Fissure recipes: pieces of legendary.fromLevel+ asked «S2» give S2, need Fissure",
+    "fragments (17274, the Abîme's) and cost x costFactor. The gauge does not lower the cost.",
+    "Overrides win over the generated recipe: { result, tier, ingredients:[{item,quantity}], cost, noEssence }.",
+    "Essences: one real resource per level band, dropped by a dungeon boss of that band (MonsterTemplates drops)."
+  ],
+  "enabled": true,
+  "ingredientFactor": 1.0,
+  "formulaEssenceFactor": 2,
+  "costPerLevel": 60,
+  "costMinimum": 500,
+  "essenceFromLevel": 1,
+  "essences": [
+    { "minLevel": 1,   "maxLevel": 50,   "item": 27368, "quantity": 1, "why": "Robo para tontos, Refugio Silvestre's boss (7197)" },
+    { "minLevel": 51,  "maxLevel": 100,  "item": 9388,  "quantity": 1, "why": "Hoja de blop real, the four Royal Blops (1184-1187)" },
+    { "minLevel": 101, "maxLevel": 150,  "item": 13165, "quantity": 1, "why": "Plumón del Maestro Cuerbok (289)" },
+    { "minLevel": 151, "maxLevel": 199,  "item": 13168, "quantity": 1, "why": "Etmoides de Minotot (827)" },
+    { "minLevel": 200, "maxLevel": 9999, "item": 13923, "quantity": 2, "why": "Bigote de Klim, Sala Privada de Klim (3384)" }
+  ],
+  "legendary": { "fromLevel": 190, "tier": 2, "fragment": 17274, "fragmentQuantity": 5, "costFactor": 4 },
+  "overrides": []
+}

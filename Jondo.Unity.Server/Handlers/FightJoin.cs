@@ -690,7 +690,7 @@ namespace Jondo.Unity.Server.Handlers
             var none = (new List<Fighter>(), new List<Fighter>());
             if (group == null || !group.Modular || !fight.Reglas.EnfrenteHayMonstruos) return none;
 
-            var members = MobSpawnManager.MembersFor(group, fight.PeopleIn(FightInstance.Azules));
+            var members = MobSpawnManager.MembersFor(group, DungeonRules.FightersFor(fight, fight.PeopleIn(FightInstance.Azules)));
             lock (fight)
             {
                 return fight.ReplaceMonsters(members.Count,

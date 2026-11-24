@@ -86,7 +86,11 @@ namespace Jondo.Unity.Server.Managers
         {
             if (characterId <= 0) return new Dictionary<int, long>();
             var profile = ProgressionStore.Of(characterId);
-            lock (profile.Gate) return BonusesOf(profile, ProgressionContent.Current);
+            Dictionary<int, long> total;
+            lock (profile.Gate) total = BonusesOf(profile, ProgressionContent.Current);
+            // The monster cards' complete families, the account's (MonsterCards): one more source, same shape.
+            foreach (var (id, value) in MonsterCards.BonusesOfCharacter(characterId)) total[id] = total.GetValueOrDefault(id) + value;
+            return total;
         }
 
         internal static Dictionary<int, long> BonusesOf(ProgressionProfile profile, ProgressionContent content)

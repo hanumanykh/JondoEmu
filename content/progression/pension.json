@@ -1,0 +1,56 @@
+{
+  // La Pension du compte (docs/stasis-gameplay-spec.md §15) : incubation, salle d'étude,
+  // accouplement, caisse d'œufs. Les prix «orbes» sont en kamas-équivalent, convertis en
+  // Jondo Coins par OrbePrice ; les options payées en ogrines sur Stasis coûtent ici des jetons Event.
+  "incubation": {
+    "startSlots": 2,
+    "level100Slots": 1,
+    "level100": 100,
+    "buyableSlots": 2,
+    "slotTokens": 30,
+    "maxSlots": 8
+  },
+  // Accélération : 20 ogrines = -15 min sur Stasis.
+  "speedUp": { "minutes": 15, "tokens": 2 },
+  // Durées d'incubation en minutes. Œuf de monture : base + par génération au-delà de la 1re, plafonnée.
+  "hatchMinutes": { "Starter": 5, "Commun": 10, "Rare": 30, "Legendaire": 60 },
+  "mountHatchBase": 5,
+  "mountHatchPerGeneration": 6,
+  "mountHatchMax": 60,
+  "study": {
+    "places": 3,
+    "percent": 5,
+    "lowLevelMultiplier": 2,
+    "equippedBonusPercent": 25,
+    // Facteurs d'échelle de l'XP de combat vers l'XP de l'animal (familier : table 0-100 ; monture : 1-200).
+    "petFactor": 1.0,
+    "mountFactor": 1.0
+  },
+  "crate": {
+    "priceOrbes": 50000,
+    "dropChance": 0.01,
+    "mountChance": 0.70,
+    // Part de légendaires parmi les œufs mystère (le reste est rare).
+    "legendaryShare": 0.25
+  },
+  "rarityUpChance": 0.05,
+  "maxGeneration": 10,
+  // Portées par génération (gén. 1-3 : 3, 4-7 : 2, 8-9 : 1, 10 : stérile).
+  "litters": { "1": 3, "2": 3, "3": 3, "4": 2, "5": 2, "6": 2, "7": 2, "8": 1, "9": 1, "10": 0 },
+  // Coût d'accouplement en orbes, par génération des parents (publiés : 7 à 10 ; le reste interpolé).
+  "breedOrbes": { "1": 500, "2": 800, "3": 1200, "4": 1800, "5": 2500, "6": 3200, "7": 4000, "8": 5500, "9": 7500, "10": 10000 },
+  "species": { "1": "Dragodinde", "2": "Muldo", "3": "Volkorne" },
+  // Dons «Pension» : niv. 20 un œuf de familier Starter, niv. 50 et 60 un œuf de monture gén. 1.
+  "gifts": [
+    { "level": 20, "kind": "familier", "rarity": "Starter" },
+    { "level": 50, "kind": "monture" },
+    { "level": 60, "kind": "monture" }
+  ],
+  // Les familiers du client tirés à l'éclosion, par rareté (objets réels, croissance Pets).
+  "pets": {
+    "Starter": [ 2074, 2075, 2076, 2077 ],
+    "Commun": [ 1728, 1748, 7414, 7415, 7522, 7524, 7704, 7705, 7706, 7707, 7708, 7709, 7710, 7711, 7712, 7713, 7714, 8155, 6978, 10985 ],
+    "Rare": [ 7519, 9624, 10802, 8561, 9620, 9623, 9617, 10106, 10107, 10544, 10863, 11011, 11012, 11765, 12177, 13099, 15110, 16122, 17511, 31862 ],
+    "Legendaire": [ 12541, 12963, 13465, 13603, 18088, 19044, 19286, 19291, 25292, 25293, 29430, 29431, 29432, 29433, 29434, 29435, 29456 ]
+  }
+}

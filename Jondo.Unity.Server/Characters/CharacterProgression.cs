@@ -58,6 +58,8 @@ internal static class CharacterProgression
         if (points > 0) state.CharacterRemainingPoints += points;
         state.CharacterLevel = newLevel;
         Managers.Dons.OnLevelsGained(state, oldLevel, newLevel);
+        // The Système: a new batch of tracks every ten levels, level missions read again.
+        Managers.Missions.OnLevelsGained(state.CharacterId, newLevel);
         return new(experience, oldLevel, newLevel, points);
     }
 }

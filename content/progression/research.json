@@ -1,5 +1,5 @@
 {
-  "_comment": "Research tree paid with Éclats (Managers/Stasis/Ascension.cs reads this). A character's ranks are permanent: an Ascension and an Evolution keep them. costs[i] is the price of rank i+1, so maxRank is the length of costs. kind: catchUp (+perRank to the experience multiplier after an Ascension, on top of ascension.json catchUpBase), cards (+perRank card in every offer but the class passives), freeRerolls (+perRank free reroll each Ascension cycle), repicks (+perRank characteristic re-pick each cycle), caracAmount (+perRank to the characteristic card), eclats (+perRank percent of Éclats earned by an Ascension), stat (+perRank of the named characteristic, always on).",
+  "_comment": "Research tree paid with Éclats (Managers/Stasis/Ascension.cs reads this). A character's ranks are permanent: an Ascension and an Evolution keep them. costs[i] is the price of rank i+1, so maxRank is the length of costs. kind: catchUp (+perRank to the experience multiplier after an Ascension, on top of ascension.json catchUpBase), cards (+perRank card in every offer but the class passives), freeRerolls (+perRank free reroll each Ascension cycle), repicks (+perRank characteristic re-pick each cycle), caracAmount (+perRank to the characteristic card), eclats (+perRank percent of Éclats earned by an Ascension), stat (+perRank of the named characteristic, always on), missionXp (+perRank percent to the experience of the Système's missions, Managers/Stasis/Missions.cs).",
   "research": [
     { "id": "rattrapage", "name": "Rattrapage", "description": "+1 au multiplicateur d'expérience de rattrapage (x2 de base, x9 au rang 7).", "kind": "catchUp", "perRank": 1, "costs": [40, 80, 140, 220, 320, 450, 600] },
     { "id": "quatrieme_carte", "name": "Quatrième carte", "description": "Une carte de plus à chaque offre de don.", "kind": "cards", "perRank": 1, "costs": [500] },
@@ -8,6 +8,7 @@
     { "id": "fortune", "name": "Fortune", "description": "+10 Prospection permanente par rang.", "kind": "stat", "stat": "prospection", "perRank": 10, "costs": [50, 100, 150, 200, 300] },
     { "id": "tempo", "name": "Tempo", "description": "+150 Initiative permanente par rang.", "kind": "stat", "stat": "initiative", "perRank": 150, "costs": [50, 100, 150, 200, 300] },
     { "id": "polyvalence", "name": "Polyvalence", "description": "+1 à la carte « Caractéristique au choix » par rang.", "kind": "caracAmount", "perRank": 1, "costs": [200, 450] },
-    { "id": "moisson", "name": "Moisson", "description": "+10 % d'Éclats gagnés à chaque Ascension par rang.", "kind": "eclats", "perRank": 10, "costs": [80, 160, 320] }
+    { "id": "moisson", "name": "Moisson", "description": "+10 % d'Éclats gagnés à chaque Ascension par rang.", "kind": "eclats", "perRank": 10, "costs": [80, 160, 320] },
+    { "id": "memoire_route", "name": "Mémoire de la Route", "description": "L'expérience des missions du Système est doublée.", "kind": "missionXp", "perRank": 100, "costs": [40] }
   ]
 }

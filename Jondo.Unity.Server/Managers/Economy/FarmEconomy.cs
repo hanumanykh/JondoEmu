@@ -83,11 +83,26 @@ namespace Jondo.Unity.Server.Managers.Economy
         /// </summary>
         public static int ExtraExperiencePercent(FightInstance fight, long characterId, int level)
         {
+            // The dungeon search's +25 % / +50 % in its group's dungeon (Managers.DungeonRules), on top.
+            int search = DungeonRules.SearchBonusPercent(fight, characterId);
             int subArea = Zones.SubAreaOf(fight.RoleplayMapId);
-            if (Tides.BoostsExperience(subArea, level)) return Farm.Current.Tides.ExperiencePercent;
+            if (Tides.BoostsExperience(subArea, level)) return search + Farm.Current.Tides.ExperiencePercent;
             if (Farm.Current.Counter.Enabled && ZoneCounter.IsActive(FarmProfiles.Of(characterId), subArea, ZoneCounter.Study, Farm.Clock()))
-                return Farm.Current.Counter.StudyExperiencePercent;
-            return 0;
+                return search + Farm.Current.Counter.StudyExperiencePercent;
+            return search;
+        }
+
+        /// <summary>
+        /// Prospecting added to the winner's own for his loot roll: the counter's Recrue, the ghost
+        /// ally «à 100 PP» who drops for him -- done as his prospecting raised by the ally's 100
+        /// while the buff runs in the subarea (ZoneCounter's remarks say why no fighter comes in).
+        /// </summary>
+        public static int ExtraProspecting(FightInstance fight, long characterId)
+        {
+            if (!Farm.Current.Counter.Enabled || Dreams.IsDreamMap(fight.RoleplayMapId)) return 0;
+            int subArea = Zones.SubAreaOf(fight.RoleplayMapId);
+            return ZoneCounter.IsActive(FarmProfiles.Of(characterId), subArea, ZoneCounter.Recruit, Farm.Clock())
+                ? Farm.Current.Counter.RecruitProspecting : 0;
         }
 
         /// <summary>What is added to the drop bonus: +400 % with an archmonster in the group, +100 % under Densité.</summary>
@@ -99,7 +114,7 @@ namespace Jondo.Unity.Server.Managers.Economy
             int subArea = Zones.SubAreaOf(fight.RoleplayMapId);
             if (Farm.Current.Counter.Enabled && ZoneCounter.IsActive(FarmProfiles.Of(characterId), subArea, ZoneCounter.Density, Farm.Clock()))
                 extra += Farm.Current.Counter.DensityDropPercent;
-            return extra;
+            return extra + DungeonRules.SearchBonusPercent(fight, characterId);
         }
 
         /// <summary>

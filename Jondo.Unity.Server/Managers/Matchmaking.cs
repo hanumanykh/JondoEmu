@@ -271,6 +271,12 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>How many it was made of: full while it still has as many.</summary>
             public int Size { get; init; }
 
+            /// <summary>
+            /// Whether the whole group came as one party (a single search): the Stasis «groupe
+            /// préformé», whose bonus is the smaller one (Managers.DungeonRules.SearchBonusPercent).
+            /// </summary>
+            public bool Preformed { get; init; }
+
             /// <summary>Where each one was when taken in: where giving up, or being put out, sends him back.</summary>
             public Dictionary<long, (long MapId, int CellId)> CameFrom { get; init; } = new();
 
@@ -284,13 +290,15 @@ namespace Jondo.Unity.Server.Managers
         public enum Ballot { Started, Counted, Cooldown, Refused }
 
         /// <summary>A group made: its party, its dungeon and where its players came from.</summary>
-        public static Group Made(int partyId, int dungeonId, IReadOnlyDictionary<long, (long MapId, int CellId)> cameFrom)
+        public static Group Made(int partyId, int dungeonId, IReadOnlyDictionary<long, (long MapId, int CellId)> cameFrom,
+                                 bool preformed = false)
         {
             var group = new Group
             {
                 PartyId = partyId,
                 DungeonId = dungeonId,
                 Size = cameFrom.Count,
+                Preformed = preformed,
                 CameFrom = new Dictionary<long, (long, int)>(cameFrom),
             };
             lock (_lock) _groups[partyId] = group;

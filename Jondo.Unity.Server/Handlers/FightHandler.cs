@@ -200,7 +200,7 @@ namespace Jondo.Unity.Server.Handlers
             fight.WinMarks = winMarks;
 
             // All of an ordinary group; of a dungeon room's, the first clamp(players, 4, 8).
-            int players = fight.Azul.Count(f => !f.IsMonster);
+            int players = Managers.DungeonRules.FightersFor(fight, fight.Azul.Count(f => !f.IsMonster));   // the leader's «salle complète»
             foreach (var member in MobSpawnManager.MembersFor(mobGroup, players))
             {
                 long monFighterId = monsterSeqId--;
@@ -13299,6 +13299,10 @@ namespace Jondo.Unity.Server.Handlers
             if (xpGained > 0 || kamas > 0 || loot.Count > 0) DatabaseManager.SaveCurrentCharacter();
             // The zone gauge takes the fight's monsters, and pays its target when full (Managers.Economy).
             if (won && suyo != null) await Managers.Economy.FarmEconomy.AfterWonFightAsync(stream, fight);
+            // The Pension: study room experience, worn animal bonus, egg crate and card pack drops (CommandHandler.Pension.cs).
+            if (won && suyo != null) await CommandHandler.AfterWonFightPensionAsync(stream, fight, xpGained);
+            // The Système's missions: the fight, its monsters, its Orbes, a dungeon finished (CommandHandler.Missions.cs).
+            if (won && suyo != null) await CommandHandler.MissionsAfterFightAsync(session, fight, kamas, loot);
 
             var spoils = new Network.FightProtocol.Spoils { Kamas = kamas };
             foreach (var kv in loot) spoils.Items.Add((kv.Value, kv.Key));
@@ -14503,7 +14507,7 @@ namespace Jondo.Unity.Server.Handlers
             // An open anomaly's zone: its 120 %, on the rows prospecting raises.
             int zoneBonus = AnomalyHandler.ZoneBonusAt(fight.RoleplayMapId);
             // His prospecting, which the client's tooltip applies to the monster's own table.
-            double prospecting = DropMultiplier(ProspectingNow());
+            double prospecting = DropMultiplier(ProspectingNow() + Managers.Economy.FarmEconomy.ExtraProspecting(fight, GameState.CharacterId));   // + the counter's Recrue
             // The server's drop bonus, with an archmonster's +400 % and the counter's Densité (Managers.Economy).
             int dropBonus = ServerSettings.Current.DropBonusPercent
                           + Managers.Economy.FarmEconomy.ExtraDropPercent(fight, GameState.CharacterId);

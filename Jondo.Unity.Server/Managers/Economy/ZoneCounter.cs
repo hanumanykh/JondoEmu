@@ -19,10 +19,11 @@ namespace Jondo.Unity.Server.Managers.Economy
     /// </list>
     /// </para>
     /// <para>
-    /// Recrue, the ghost ally who drops for the player at 100 prospecting, is not done: it needs a
-    /// second loot roll per fight with its own prospecting and a line for it on the end screen --
-    /// a fight-loot change for a buff that is, by the spec's own design, a cheaper Densité. Densité
-    /// covers its use.
+    /// Recrue, the ghost ally «à 100 PP» who drops for the player: no fighter comes into the fight
+    /// (a played ally would be the player's to move each turn, and the companion's slot is the
+    /// worn companion's, FightCompanions.cs); the player's own loot roll takes the ally's 100
+    /// prospecting on top of his while it runs (FarmEconomy.ExtraProspecting). Cheaper than
+    /// Densité (RecruitFactor) and exclusive with it, as the spec says.
     /// </para>
     /// <para>
     /// Prices go by the zone's level (<see cref="Zones.Zone.Level"/>): Densité 10 x level^1.5 --
@@ -32,9 +33,9 @@ namespace Jondo.Unity.Server.Managers.Economy
     /// </remarks>
     public static class ZoneCounter
     {
-        public const string Density = "densite", Study = "etude", Gauge = "jauge";
+        public const string Density = "densite", Study = "etude", Gauge = "jauge", Recruit = "recrue";
 
-        public static readonly IReadOnlyList<string> All = new[] { Density, Study, Gauge };
+        public static readonly IReadOnlyList<string> All = new[] { Density, Recruit, Study, Gauge };
 
         /// <summary>«Densité», «étude», «Jauge»… as typed, accents and case aside; null when it is no buff.</summary>
         public static string? Parse(string word)
@@ -46,6 +47,7 @@ namespace Jondo.Unity.Server.Managers.Economy
                 "densite" or "density" or "drop" => Density,
                 "etude" or "study" or "xp" => Study,
                 "jauge" or "gauge" => Gauge,
+                "recrue" or "recruit" or "allie" or "fantome" => Recruit,
                 _ => null,
             };
         }
@@ -55,6 +57,7 @@ namespace Jondo.Unity.Server.Managers.Economy
             Density => "Densité",
             Study => "Étude",
             Gauge => "Jauge",
+            Recruit => "Recrue",
             _ => buff,
         };
 
@@ -63,6 +66,7 @@ namespace Jondo.Unity.Server.Managers.Economy
             Density => $"+{Farm.Current.Counter.DensityDropPercent} % de drop",
             Study => $"+{Farm.Current.Counter.StudyExperiencePercent} % d'XP",
             Gauge => "monstres comptés double dans la jauge",
+            Recruit => $"un allié fantôme à {Farm.Current.Counter.RecruitProspecting} PP drope pour vous",
             _ => "",
         };
 
@@ -75,10 +79,19 @@ namespace Jondo.Unity.Server.Managers.Economy
             {
                 Study => density * s.StudyFactor,
                 Gauge => density * s.GaugeFactor,
+                Recruit => density * s.RecruitFactor,
                 _ => density,
             };
             return Math.Max(1, (long)Math.Round(price));
         }
+
+        /// <summary>The buff a buff may not run beside (Densité and Recrue, §2), or null.</summary>
+        public static string? ExclusiveWith(string buff) => buff switch
+        {
+            Density => Recruit,
+            Recruit => Density,
+            _ => null,
+        };
 
         /// <summary>Whether a buff is running for this character in this subarea.</summary>
         public static bool IsActive(FarmProfile profile, int subAreaId, string buff, DateTime now)

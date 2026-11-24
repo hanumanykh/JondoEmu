@@ -766,6 +766,7 @@ namespace JondoFix
             // The Stasis «Progression» window (dons, research, Ascension): F9, and by itself on an offer.
             try { ProgressionUi.Tick(); }
             catch (Exception ex) { LoggerInstance.Warning($"[JondoFix] Progression window: {ex.Message}"); }
+            try { MovementSpeed.Tick(LoggerInstance); } catch { }   // Stasis +25 % walk out of combat (MovementSpeed.cs)
 
             // The administrator's item window: its key, and what the server answered it.
             if (IsJondoAdministrator)

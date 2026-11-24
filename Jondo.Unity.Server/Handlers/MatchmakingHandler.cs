@@ -380,7 +380,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 var party = await PartyHandler.FormAsync(members);
                 if (completing != null) Matchmaking.Joined(party.Id, cameFrom);
-                else Matchmaking.Made(party.Id, match.DungeonId, cameFrom);
+                else Matchmaking.Made(party.Id, match.DungeonId, cameFrom, preformed: match.Seekers.Count == 1);
                 Console.WriteLine($"[Matchmaking] Dungeon {dungeon?.Name ?? match.DungeonId.ToString()} for " +
                                   string.Join(", ", members) + (completing != null ? $", completing party {party.Id}" : "") + ".");
                 foreach (long member in members.Where(m => !match.AlreadyIn(m)))

@@ -38,6 +38,11 @@ namespace Jondo.Unity.Server.Managers
     /// ordinary monster it is the rare version of, so the group keeps its size and its level.
     ///
     /// The wanted monsters are not archmonsters: they are <see cref="WantedMonsters"/>.
+    ///
+    /// TRAINING ZONES (farm.json, Archmonsters.TrainingSubAreas: Astrub and Madrestam, spec §4 and
+    /// §22): there an archmonster is not unique. It stays in any group that holds it (still one
+    /// per group), without taking its server-wide place, and a beaten one is back in the zone 2 to
+    /// 5 minutes later: the next group that comes out there after that brings one.
     /// </summary>
     public static class Archimonsters
     {
@@ -53,6 +58,23 @@ namespace Jondo.Unity.Server.Managers
         {
             var s = Economy.Farm.Current.Archmonsters;
             int min = Math.Max(1, s.RespawnMinMinutes), max = Math.Max(min, s.RespawnMaxMinutes);
+            return TimeSpan.FromMinutes(Random.Shared.Next(min, max + 1));
+        }
+
+        /// <summary>Training subarea -> when its next archmonster may come out.</summary>
+        private static readonly Dictionary<int, DateTime> _trainingBackAt = new Dictionary<int, DateTime>();
+
+        /// <summary>Whether a subarea is a training zone (farm.json).</summary>
+        public static bool IsTrainingZone(int subAreaId)
+            => subAreaId > 0 && Economy.Farm.Current.Archmonsters.TrainingSubAreas.Contains(subAreaId);
+
+        private static bool IsTrainingMap(long mapId) => IsTrainingZone(MapManager.GetMapInfo(mapId)?.SubAreaId ?? 0);
+
+        /// <summary>A training zone's time away: uniform between its minimum and maximum, in minutes.</summary>
+        internal static TimeSpan TrainingAwayTime()
+        {
+            var s = Economy.Farm.Current.Archmonsters;
+            int min = Math.Max(1, s.TrainingRespawnMinMinutes), max = Math.Max(min, s.TrainingRespawnMaxMinutes);
             return TimeSpan.FromMinutes(Random.Shared.Next(min, max + 1));
         }
 
@@ -79,6 +101,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 _ordinary.Clear();
                 _pool.Clear();
+                _trainingBackAt.Clear();
 
                 // Who is the rare version of whom.
                 foreach (var pair in templates)
@@ -112,11 +135,19 @@ namespace Jondo.Unity.Server.Managers
             lock (_gate)
             {
                 int kept = 0;
+                // A training zone: the first archmonster of the group stays, unique or not.
+                bool training = IsTrainingMap(mapId);
 
                 for (int i = 0; i < ids.Count; i++)
                 {
                     int rare = ids[i];
                     if (!_ordinary.TryGetValue(rare, out int ordinary)) continue;
+
+                    if (kept == 0 && training)
+                    {
+                        kept = rare;
+                        continue;
+                    }
 
                     if (kept == 0 && _pool.MayStand(mapId, groupId, rare, draw))
                     {
@@ -138,7 +169,17 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static void Release(long mapId, IEnumerable<int> members)
         {
-            lock (_gate) _pool.Release(mapId, members);
+            lock (_gate)
+            {
+                var list = members as ICollection<int> ?? new List<int>(members);
+                int subArea = MapManager.GetMapInfo(mapId)?.SubAreaId ?? 0;
+                if (IsTrainingZone(subArea))
+                {
+                    foreach (int id in list)
+                        if (_ordinary.ContainsKey(id)) { _trainingBackAt[subArea] = RareMonsterPool.Clock() + TrainingAwayTime(); break; }
+                }
+                _pool.Release(mapId, list);
+            }
         }
 
         /// <summary>
@@ -150,6 +191,22 @@ namespace Jondo.Unity.Server.Managers
         {
             lock (_gate)
             {
+                if (IsTrainingZone(subAreaId))
+                {
+                    // A training zone: one back as soon as its few minutes are over, unique or not.
+                    if (_trainingBackAt.TryGetValue(subAreaId, out var at) && at > RareMonsterPool.Clock()) return;
+                    foreach (var pair in _ordinary)
+                    {
+                        if (!_pool.BelongsTo(pair.Key, subAreaId)) continue;
+                        int j = ids.IndexOf(pair.Value);
+                        if (j < 0) continue;
+                        ids[j] = pair.Key;
+                        // One out: the next waits for an archmonster of the zone to be beaten.
+                        _trainingBackAt[subAreaId] = DateTime.MaxValue;
+                        return;
+                    }
+                    return;
+                }
                 foreach (var pair in _ordinary)
                 {
                     if (!_pool.IsUp(pair.Key) || !_pool.BelongsTo(pair.Key, subAreaId)) continue;

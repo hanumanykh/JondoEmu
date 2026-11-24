@@ -7011,6 +7011,34 @@
       "cell": 118,
       "orientation": 3,
       "why": "Hector Kwismas on Kwismas Island's shore [-34,-83], where his boat lands: always there, so a player left on the island when the event closes can still sail back to Madrestam (his line 3255)."
+    },
+    {
+      "map": 211292160,
+      "npc": 660,
+      "cell": 303,
+      "orientation": 1,
+      "why": "Sanctuary (content/world/sanctuary.json, Forbidden Inn Great Hall): the Stasis Merchant («.marchand»)."
+    },
+    {
+      "map": 211292160,
+      "npc": 663,
+      "cell": 331,
+      "orientation": 1,
+      "why": "Sanctuary (content/world/sanctuary.json, Forbidden Inn Great Hall): the Raffineur («.raffiner», «.fusion»)."
+    },
+    {
+      "map": 211292160,
+      "npc": 671,
+      "cell": 357,
+      "orientation": 1,
+      "why": "Sanctuary (content/world/sanctuary.json, Forbidden Inn Great Hall): the zone counter («.comptoir»)."
+    },
+    {
+      "map": 211292160,
+      "npc": 6394,
+      "cell": 289,
+      "orientation": 1,
+      "why": "Sanctuary (content/world/sanctuary.json, Forbidden Inn Great Hall): a banker (Bonta's template): the bank at the Sanctuary, spec §21."
     }
   ]
 }

@@ -254,6 +254,9 @@ namespace Jondo.Unity.Server.Handlers
                     freeRerolls = Dons.RerollsLeft(profile, content),
                     repicks = Dons.RepicksLeft(profile, content),
                     kamas = state.Kamas,
+                    // The Orbes held -- Jondo Coins in coin mode -- for the window's summary line.
+                    coins = OrbesHeld(),
+                    coinLabel = OrbeLabel,
                     offer = offer == null ? null : new
                     {
                         level = offer.Level,
@@ -262,7 +265,7 @@ namespace Jondo.Unity.Server.Handlers
                         kindLabel = Dons.KindLabel(offer.Kind),
                         rerolled = offer.Rerolled,
                         canReroll = !offer.Rerolled && offer.Kind != Dons.KindPassive,
-                        rerollCost = Dons.RerollsLeft(profile, content) > 0 ? 0 : Dons.RerollCost(Dons.RealLevel(offer.Level), content),
+                        rerollCost = Dons.RerollsLeft(profile, content) > 0 ? 0 : OrbePrice(Dons.RerollCost(Dons.RealLevel(offer.Level), content)),
                         cards = offer.Cards.Select((card, i) =>
                         {
                             var (name, description) = Dons.Describe(card, profile, content);

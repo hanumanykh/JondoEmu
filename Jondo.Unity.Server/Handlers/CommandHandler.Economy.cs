@@ -125,7 +125,7 @@ namespace Jondo.Unity.Server.Handlers
                 var offers = ZoneCounter.All.Select(b =>
                 {
                     var left = ZoneCounter.Remaining(profile, subArea, b, now);
-                    return $"{ZoneCounter.Label(b)} ({ZoneCounter.Effect(b)}) : {ZoneCounter.Price(b, zone.Level):N0} kamas" +
+                    return $"{ZoneCounter.Label(b)} ({ZoneCounter.Effect(b)}) : {OrbePrice(ZoneCounter.Price(b, zone.Level)):N0} {OrbeLabel}" +
                            (left > TimeSpan.Zero ? $" — actif encore {FormatSpan(left)}" : "");
                 });
                 await NotifyAsync(stream, $"Comptoir de {Tides.SafeName(subArea)} (niv. {zone.Level}), {Farm.Current.Counter.DurationMinutes} min dans cette zone : " +
@@ -152,6 +152,12 @@ namespace Jondo.Unity.Server.Handlers
             if (buff == ZoneCounter.Gauge && Tides.IsTideZone(subArea))
             {
                 await NotifyAsync(stream, "La Marée double déjà la jauge ici : le buff Jauge est refusé.", channel, accountId);
+                return;
+            }
+            if (ZoneCounter.ExclusiveWith(buff) is { } other && ZoneCounter.IsActive(profile, subArea, other, now))
+            {
+                await NotifyAsync(stream, $"{ZoneCounter.Label(buff)} et {ZoneCounter.Label(other)} ne se cumulent pas : {ZoneCounter.Label(other)} est actif ici.",
+                                  channel, accountId);
                 return;
             }
             if (buff == ZoneCounter.Gauge && zone.Equipment.Count == 0)

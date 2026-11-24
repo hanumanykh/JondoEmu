@@ -182,6 +182,7 @@ public sealed class FarmEconomyTests : IDisposable
         Assert.Equal(500, ZoneCounter.Price(ZoneCounter.Density, 1));
         Assert.Equal(ZoneCounter.Density, ZoneCounter.Parse("Densité"));
         Assert.Equal(ZoneCounter.Study, ZoneCounter.Parse("ÉTUDE"));
-        Assert.Null(ZoneCounter.Parse("recrue"));
+        Assert.Equal(ZoneCounter.Recruit, ZoneCounter.Parse("recrue"));
+        Assert.Null(ZoneCounter.Parse("inconnu"));
     }
 }

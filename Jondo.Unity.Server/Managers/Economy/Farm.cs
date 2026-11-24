@@ -46,6 +46,9 @@ namespace Jondo.Unity.Server.Managers.Economy
             public double GaugeFactor { get; set; } = 2;
             public int DensityDropPercent { get; set; } = 100;
             public int StudyExperiencePercent { get; set; } = 50;
+            /// <summary>Recrue: the ghost ally's prospecting, added to the player's loot roll, and its price against Densité's.</summary>
+            public int RecruitProspecting { get; set; } = 100;
+            public double RecruitFactor { get; set; } = 0.6;
         }
 
         internal sealed class TideBand
@@ -78,6 +81,14 @@ namespace Jondo.Unity.Server.Managers.Economy
             public int DropPercent { get; set; } = 400;
             public int RespawnMinMinutes { get; set; } = 60;
             public int RespawnMaxMinutes { get; set; } = 180;
+            /// <summary>
+            /// The training zones (§4, §22: Astrub and Madrestam): subareas where an archmonster is
+            /// not unique -- each group that comes out may bring one -- and is back a few minutes
+            /// after being beaten. Never a Caisse d'œufs there (none is dropped by this server).
+            /// </summary>
+            public List<int> TrainingSubAreas { get; set; } = new();
+            public int TrainingRespawnMinMinutes { get; set; } = 2;
+            public int TrainingRespawnMaxMinutes { get; set; } = 5;
         }
 
         internal sealed class Settings

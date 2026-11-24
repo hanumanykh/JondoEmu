@@ -21,7 +21,10 @@
     "StudyFactor": 0.75,
     "GaugeFactor": 2,
     "DensityDropPercent": 100,
-    "StudyExperiencePercent": 50
+    "StudyExperiencePercent": 50,
+    // Recrue: a ghost ally at RecruitProspecting PP drops for the player (his loot roll gets +100 PP); price = Densité x RecruitFactor; exclusive with Densité.
+    "RecruitProspecting": 100,
+    "RecruitFactor": 0.6
   },
   "Tides": {
     "Enabled": true,
@@ -39,6 +42,11 @@
   "Archmonsters": {
     "DropPercent": 400,
     "RespawnMinMinutes": 60,
-    "RespawnMaxMinutes": 180
+    "RespawnMaxMinutes": 180,
+    // Training zones (spec §4/§22): archmonsters not unique and back in a few minutes.
+    // Astrub (area 18): 30 Tainela, 95 city, 96 quarry, 97 forest, 98 fields, 99 underground, 100 sewers, 102 cemetery, 173 meadows, 335 coves; Madrestam: 1 port.
+    "TrainingSubAreas": [ 1, 30, 95, 96, 97, 98, 99, 100, 102, 173, 335 ],
+    "TrainingRespawnMinMinutes": 2,
+    "TrainingRespawnMaxMinutes": 5
   }
 }

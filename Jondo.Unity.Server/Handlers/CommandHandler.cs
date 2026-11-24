@@ -116,12 +116,28 @@ namespace Jondo.Unity.Server.Handlers
                 // The farming loop (CommandHandler.Economy.cs).
                 [".jauge"] = "usage.jauge",
                 [".comptoir"] = "usage.comptoir",
+                // The Pension and the monster cards (CommandHandler.Pension.cs).
+                [".pension"] = "usage.pension",
+                [".caisse"] = "usage.caisse",
+                [".cartes"] = "usage.cartes",
                 [".maree"] = "usage.maree",
                 // The tiers and the dungeons, the players' (CommandHandler.Tiers.cs).
                 [".paliers"] = "usage.paliers",
                 [".donjons"] = "usage.donjons",
                 [".cle"] = "usage.cle",
                 [".hardcore"] = "usage.hardcore",
+                // The Sanctuary, its Merchant and Stasis fabrication (CommandHandler.Hub.cs).
+                [".sanctuaire"] = "usage.sanctuaire",
+                [".retour"] = "usage.retour",
+                [".marchand"] = "usage.marchand",
+                [".fabriquer"] = "usage.fabriquer",
+                [".devis"] = "usage.devis",
+                // The leader's dungeon options (CommandHandler.Misc.cs).
+                [".donjon"] = "usage.donjon",
+                // The Système's missions, the players' (CommandHandler.Missions.cs).
+                [".missions"] = "usage.missions",
+                [".go"] = "usage.go",
+                [".recuperer"] = "usage.recuperer",
             };
 
         /// <summary>
@@ -165,11 +181,23 @@ namespace Jondo.Unity.Server.Handlers
                 [".fissure"] = Roles.Jugador,
                 [".jauge"] = Roles.Jugador,
                 [".comptoir"] = Roles.Jugador,
+                [".pension"] = Roles.Jugador,
+                [".caisse"] = Roles.Jugador,
+                [".cartes"] = Roles.Jugador,
                 [".maree"] = Roles.Jugador,
                 [".paliers"] = Roles.Jugador,
                 [".donjons"] = Roles.Jugador,
                 [".cle"] = Roles.Jugador,
                 [".hardcore"] = Roles.Jugador,
+                [".sanctuaire"] = Roles.Jugador,
+                [".retour"] = Roles.Jugador,
+                [".marchand"] = Roles.Jugador,
+                [".fabriquer"] = Roles.Jugador,
+                [".devis"] = Roles.Jugador,
+                [".donjon"] = Roles.Jugador,
+                [".missions"] = Roles.Jugador,
+                [".go"] = Roles.Jugador,
+                [".recuperer"] = Roles.Jugador,
 
                 // Information and moving about, to go and help somebody: a moderator's.
                 [".who"] = Roles.Moderador,
@@ -373,11 +401,23 @@ namespace Jondo.Unity.Server.Handlers
                 case ".fissure": await FissureAsync(stream, rest, channel, accountId); break;
                 case ".jauge": await GaugeAsync(stream, rest, channel, accountId); break;
                 case ".comptoir": await CounterAsync(stream, rest, channel, accountId); break;
+                case ".pension": await PensionChatAsync(stream, rest, channel, accountId); break;
+                case ".caisse": await CrateChatAsync(stream, rest, channel, accountId); break;
+                case ".cartes": await CardsChatAsync(stream, rest, channel, accountId); break;
                 case ".maree": await TideAsync(stream, channel, accountId); break;
                 case ".paliers":
                 case ".donjons":
                 case ".cle":
                 case ".hardcore": await TiersCommandAsync(stream, command, rest, channel, accountId); break;
+                case ".sanctuaire":
+                case ".retour":
+                case ".marchand":
+                case ".fabriquer":
+                case ".devis": await HubCommandAsync(stream, command, rest, channel, accountId); break;
+                case ".donjon": await DungeonOptionsAsync(stream, rest, channel, accountId); break;
+                case ".missions":
+                case ".go":
+                case ".recuperer": await MissionsCommandAsync(stream, command, rest, channel, accountId); break;
                 default: await AdminAsync(command, stream, rest, channel, accountId); break;
             }
         }
@@ -1402,6 +1442,8 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task NotifyAsync(NetworkStream stream, string text, int channel, long accountId)
         {
+            // Asked from the F9 window (CommandHandler.Misc.cs, PanelAsync): the text goes to it, not to the chat.
+            if (_panelCapture.Value is { } captured) { lock (captured) captured.Add(text); return; }
             await NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildNotice(text)));
         }

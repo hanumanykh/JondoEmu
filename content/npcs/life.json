@@ -65,6 +65,9 @@
         "Quelle belle journée pour une balade en ville !",
         "Vous n'auriez pas vu passer un tofu égaré ?"
       ]
-    }
+    },
+    {"npc": 660, "map": 211292160, "radius": 0, "name": "Marchand de Stasis", "lines": ["Du stuff non stasifié, jets entre moyen et max ! Demandez « .marchand conseil ».", "Les clés de donjon aussi, même à distance : « .marchand cle »."]},
+    {"npc": 663, "map": 211292160, "radius": 0, "name": "Raffineur", "lines": ["Un objet stasifié en trop ? Je le rachète : « .raffiner ».", "Trois objets identiques ? La fusion vous attend : « .fusion »."]},
+    {"npc": 671, "map": 211292160, "radius": 0, "name": "Comptoir de zone", "lines": ["Densité, Recrue, Étude, Jauge : trente minutes de farm boosté.", "La fabrication Stasis ? « .devis » vous dit ce qui manque."]}
   ]
 }

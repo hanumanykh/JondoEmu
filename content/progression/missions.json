@@ -1,0 +1,759 @@
+{
+  "_comment": "The Système's missions (Managers/Stasis/Missions.cs, spec §10 and §22). Chapters follow each other by level band; their missions name a kind and numbers, and the zone, monster, dungeon or achievement is drawn from the game's data near the character's level when the mission starts (target 0), then kept. kinds: fights (won fights in a zone), kills (monsters of one kind), orbes (Orbes earned in fights; count in kamas, turned into Jondo Coins), level (level to reach; 0 = band top), dungeon (finish a dungeon of the band), achievement (an exploration achievement of the band), hatch (eggs hatched at the Pension; skipped while the Pension is off). Titles: optional, with {count} {zone} {monster} {dungeon} {achievement} {level} {orbes}. rewardKamas/finalKamas and trackBonusKamasPerLevel are kamas paid as Orbes; xp shares are of the experience between the character's level and the next.",
+  "trackEvery": 10,
+  "tracksShown": 2,
+  "trackBonusKamasPerLevel": 150,
+  "chapters": [
+    {
+      "id": "chapitre1",
+      "title": "Chapitre 1 — Les premiers pas",
+      "description": "Le Système vous guide hors d'Astrub : vos premiers combats, vos premiers Orbes, votre premier donjon.",
+      "minLevel": 1,
+      "maxLevel": 20,
+      "rewardKamas": 2000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 20000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 3
+        },
+        {
+          "kind": "kills",
+          "count": 8
+        },
+        {
+          "kind": "orbes",
+          "count": 1500
+        },
+        {
+          "kind": "level",
+          "level": 10
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 5
+        },
+        {
+          "kind": "level",
+          "level": 20
+        }
+      ]
+    },
+    {
+      "id": "chapitre2",
+      "title": "Chapitre 2 — L'appel des plaines",
+      "description": "Les plaines et les forêts d'Amakna s'ouvrent à vous : prouvez votre valeur zone après zone.",
+      "minLevel": 20,
+      "maxLevel": 40,
+      "rewardKamas": 6000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 60000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 3
+        },
+        {
+          "kind": "kills",
+          "count": 10
+        },
+        {
+          "kind": "orbes",
+          "count": 4500
+        },
+        {
+          "kind": "level",
+          "level": 30
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 5
+        },
+        {
+          "kind": "level",
+          "level": 40
+        }
+      ]
+    },
+    {
+      "id": "chapitre3",
+      "title": "Chapitre 3 — Au-delà des remparts",
+      "description": "Bonta, Brâkmar et leurs environs : les monstres se font coriaces, les donjons aussi.",
+      "minLevel": 40,
+      "maxLevel": 60,
+      "rewardKamas": 10000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 100000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 3
+        },
+        {
+          "kind": "kills",
+          "count": 12
+        },
+        {
+          "kind": "orbes",
+          "count": 7500
+        },
+        {
+          "kind": "level",
+          "level": 50
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "hatch",
+          "count": 1
+        },
+        {
+          "kind": "level",
+          "level": 60
+        }
+      ]
+    },
+    {
+      "id": "chapitre4",
+      "title": "Chapitre 4 — Les terres sauvages",
+      "description": "Marécages, landes et cimes : le Système vous pousse vers des contrées moins hospitalières.",
+      "minLevel": 60,
+      "maxLevel": 80,
+      "rewardKamas": 14000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 140000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 4
+        },
+        {
+          "kind": "kills",
+          "count": 14
+        },
+        {
+          "kind": "orbes",
+          "count": 10500
+        },
+        {
+          "kind": "level",
+          "level": 70
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "hatch",
+          "count": 1
+        },
+        {
+          "kind": "level",
+          "level": 80
+        }
+      ]
+    },
+    {
+      "id": "chapitre5",
+      "title": "Chapitre 5 — Le souffle de l'aventure",
+      "description": "Îles, canyons et forêts profondes : à mi-chemin du niveau 100, la route s'élargit.",
+      "minLevel": 80,
+      "maxLevel": 100,
+      "rewardKamas": 18000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 180000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 4
+        },
+        {
+          "kind": "kills",
+          "count": 16
+        },
+        {
+          "kind": "orbes",
+          "count": 13500
+        },
+        {
+          "kind": "level",
+          "level": 90
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 6
+        },
+        {
+          "kind": "level",
+          "level": 100
+        }
+      ]
+    },
+    {
+      "id": "chapitre6",
+      "title": "Chapitre 6 — Le cœur du Monde des Douze",
+      "description": "Les grandes zones du milieu de l'aventure, et des boss qui ne pardonnent plus.",
+      "minLevel": 100,
+      "maxLevel": 120,
+      "rewardKamas": 22000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 220000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 4
+        },
+        {
+          "kind": "kills",
+          "count": 18
+        },
+        {
+          "kind": "orbes",
+          "count": 16500
+        },
+        {
+          "kind": "level",
+          "level": 110
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "hatch",
+          "count": 1
+        },
+        {
+          "kind": "level",
+          "level": 120
+        }
+      ]
+    },
+    {
+      "id": "chapitre7",
+      "title": "Chapitre 7 — Les contrées oubliées",
+      "description": "Ruines, tourbières et territoires reculés : la Stasis y affleure.",
+      "minLevel": 120,
+      "maxLevel": 140,
+      "rewardKamas": 26000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 260000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 5
+        },
+        {
+          "kind": "kills",
+          "count": 20
+        },
+        {
+          "kind": "orbes",
+          "count": 19500
+        },
+        {
+          "kind": "level",
+          "level": 130
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 7
+        },
+        {
+          "kind": "level",
+          "level": 140
+        }
+      ]
+    },
+    {
+      "id": "chapitre8",
+      "title": "Chapitre 8 — Les sommets",
+      "description": "Frigost et les hautes terres vous attendent : préparez-vous au froid.",
+      "minLevel": 140,
+      "maxLevel": 160,
+      "rewardKamas": 30000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 300000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 5
+        },
+        {
+          "kind": "kills",
+          "count": 22
+        },
+        {
+          "kind": "orbes",
+          "count": 22500
+        },
+        {
+          "kind": "level",
+          "level": 150
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 7
+        },
+        {
+          "kind": "level",
+          "level": 160
+        }
+      ]
+    },
+    {
+      "id": "chapitre9",
+      "title": "Chapitre 9 — Les confins",
+      "description": "Les zones les plus hostiles avant l'ultime ligne droite.",
+      "minLevel": 160,
+      "maxLevel": 180,
+      "rewardKamas": 34000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 340000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 5
+        },
+        {
+          "kind": "kills",
+          "count": 24
+        },
+        {
+          "kind": "orbes",
+          "count": 25500
+        },
+        {
+          "kind": "level",
+          "level": 170
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "hatch",
+          "count": 1
+        },
+        {
+          "kind": "level",
+          "level": 180
+        }
+      ]
+    },
+    {
+      "id": "chapitre10",
+      "title": "Chapitre 10 — Vers le niveau 200",
+      "description": "Le dernier chapitre ordinaire : les donjons de légende et le niveau 200.",
+      "minLevel": 180,
+      "maxLevel": 200,
+      "rewardKamas": 38000,
+      "rewardXpShare": 0.15,
+      "finalKamas": 380000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 6
+        },
+        {
+          "kind": "kills",
+          "count": 26
+        },
+        {
+          "kind": "orbes",
+          "count": 28500
+        },
+        {
+          "kind": "level",
+          "level": 190
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 8
+        },
+        {
+          "kind": "level",
+          "level": 200
+        }
+      ]
+    },
+    {
+      "id": "chapitre11",
+      "title": "Chapitre 11 — Palier 200 — L'éveil de la Stasis",
+      "description": "Au-delà du niveau 200, chaque palier se mérite : donjons et zones de très haut niveau.",
+      "minLevel": 200,
+      "maxLevel": 225,
+      "rewardKamas": 42400,
+      "rewardXpShare": 0.15,
+      "finalKamas": 424000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 6
+        },
+        {
+          "kind": "kills",
+          "count": 28
+        },
+        {
+          "kind": "orbes",
+          "count": 31800
+        },
+        {
+          "kind": "level",
+          "level": 212
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 8
+        },
+        {
+          "kind": "level",
+          "level": 225
+        }
+      ]
+    },
+    {
+      "id": "chapitre12",
+      "title": "Chapitre 12 — Palier 225 — La marée montante",
+      "description": "La Stasis gagne du terrain : affrontez-la au cœur des zones du palier 225.",
+      "minLevel": 225,
+      "maxLevel": 250,
+      "rewardKamas": 47400,
+      "rewardXpShare": 0.15,
+      "finalKamas": 474000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 6
+        },
+        {
+          "kind": "kills",
+          "count": 30
+        },
+        {
+          "kind": "orbes",
+          "count": 35550
+        },
+        {
+          "kind": "level",
+          "level": 237
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 8
+        },
+        {
+          "kind": "level",
+          "level": 250
+        }
+      ]
+    },
+    {
+      "id": "chapitre13",
+      "title": "Chapitre 13 — Palier 250 — Les fractures",
+      "description": "Les fractures se multiplient : le Système vous envoie là où elles sont les plus profondes.",
+      "minLevel": 250,
+      "maxLevel": 275,
+      "rewardKamas": 52400,
+      "rewardXpShare": 0.15,
+      "finalKamas": 524000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 7
+        },
+        {
+          "kind": "kills",
+          "count": 32
+        },
+        {
+          "kind": "orbes",
+          "count": 39300
+        },
+        {
+          "kind": "level",
+          "level": 262
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 9
+        },
+        {
+          "kind": "level",
+          "level": 275
+        }
+      ]
+    },
+    {
+      "id": "chapitre14",
+      "title": "Chapitre 14 — Palier 275 — Le seuil de l'Évolution",
+      "description": "Le dernier palier avant le niveau 300 et l'Évolution.",
+      "minLevel": 275,
+      "maxLevel": 300,
+      "rewardKamas": 57400,
+      "rewardXpShare": 0.15,
+      "finalKamas": 574000,
+      "finalXpShare": 0.75,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 7
+        },
+        {
+          "kind": "kills",
+          "count": 34
+        },
+        {
+          "kind": "orbes",
+          "count": 43050
+        },
+        {
+          "kind": "level",
+          "level": 287
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 9
+        },
+        {
+          "kind": "level",
+          "level": 300
+        }
+      ]
+    }
+  ],
+  "tracks": [
+    {
+      "id": "chasseur",
+      "title": "Piste du chasseur",
+      "xpShare": 0.08,
+      "missions": [
+        {
+          "kind": "kills",
+          "count": 10
+        },
+        {
+          "kind": "kills",
+          "count": 15
+        },
+        {
+          "kind": "fights",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": "explorateur",
+      "title": "Piste de l'explorateur",
+      "xpShare": 0.08,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 3
+        },
+        {
+          "kind": "achievement"
+        },
+        {
+          "kind": "fights",
+          "count": 3
+        },
+        {
+          "kind": "fights",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "tresorier",
+      "title": "Piste du trésorier",
+      "xpShare": 0.07,
+      "missions": [
+        {
+          "kind": "orbes",
+          "count": 500
+        },
+        {
+          "kind": "fights",
+          "count": 5
+        },
+        {
+          "kind": "orbes",
+          "count": 1500
+        }
+      ]
+    },
+    {
+      "id": "profondeurs",
+      "title": "Piste des profondeurs",
+      "minLevel": 10,
+      "xpShare": 0.1,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 4
+        },
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "kills",
+          "count": 12
+        },
+        {
+          "kind": "dungeon"
+        }
+      ]
+    },
+    {
+      "id": "veteran",
+      "title": "Piste du vétéran",
+      "xpShare": 0.09,
+      "missions": [
+        {
+          "kind": "fights",
+          "count": 6
+        },
+        {
+          "kind": "kills",
+          "count": 20
+        },
+        {
+          "kind": "orbes",
+          "count": 1000
+        },
+        {
+          "kind": "fights",
+          "count": 8
+        },
+        {
+          "kind": "kills",
+          "count": 25
+        }
+      ]
+    },
+    {
+      "id": "eleveur",
+      "title": "Piste de l'éleveur",
+      "minLevel": 20,
+      "xpShare": 0.08,
+      "missions": [
+        {
+          "kind": "hatch",
+          "count": 1
+        },
+        {
+          "kind": "fights",
+          "count": 5
+        },
+        {
+          "kind": "hatch",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "conquerant",
+      "title": "Piste du conquérant",
+      "minLevel": 30,
+      "xpShare": 0.1,
+      "missions": [
+        {
+          "kind": "dungeon"
+        },
+        {
+          "kind": "fights",
+          "count": 6
+        },
+        {
+          "kind": "dungeon"
+        }
+      ]
+    }
+  ]
+}

@@ -96,6 +96,17 @@ namespace Jondo.Unity.Server.Network
                     case Prefijo + "stasis/research": return ConSesion(cuerpo, cuenta => ProgressionResearch(cuerpo, cuenta));
                     case Prefijo + "stasis/ascend": return ConSesion(cuerpo, cuenta => ProgressionAscend(cuerpo, cuenta));
                     case Prefijo + "stasis/evolve": return ConSesion(cuerpo, cuenta => ProgressionEvolve(cuerpo, cuenta));
+                    case Prefijo + "stasis/hub": return ConSesion(cuerpo, cuenta => Hub(cuerpo, cuenta));
+                    // The same window's gauge, counter, tides, tiers, events and Fissure tabs: ControlApiPanel.cs.
+                    case Prefijo + "stasis/panel": return ConSesion(cuerpo, cuenta => Panel(cuerpo, cuenta));
+                    case Prefijo + "stasis/act": return ConSesion(cuerpo, cuenta => PanelAct(cuerpo, cuenta));
+                    case Prefijo + "stasis/speed": return ConSesion(cuerpo, WalkSpeed);
+                    case Prefijo + "pension/state": return ConSesion(cuerpo, PensionState);
+                    case Prefijo + "pension/do": return ConSesion(cuerpo, cuenta => PensionDo(cuerpo, cuenta));
+                    // The Système's missions, the same window's «Missions» tab: ControlApiMissions.cs.
+                    case Prefijo + "stasis/missions": return ConSesion(cuerpo, MissionsState);
+                    case Prefijo + "stasis/missions/go": return ConSesion(cuerpo, cuenta => MissionsGo(cuerpo, cuenta));
+                    case Prefijo + "stasis/missions/claim": return ConSesion(cuerpo, cuenta => MissionsClaim(cuerpo, cuenta));
                     case Prefijo + "heroes/list": return ConSesion(cuerpo, HeroesList);
                     case Prefijo + "heroes/connect": return ConSesion(cuerpo, cuenta => HeroesConnect(cuerpo, cuenta));
                     case Prefijo + "heroes/disconnect": return ConSesion(cuerpo, cuenta => HeroesDisconnect(cuerpo, cuenta));

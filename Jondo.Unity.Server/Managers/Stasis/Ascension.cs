@@ -129,6 +129,8 @@ namespace Jondo.Unity.Server.Managers
             profile.RerollsUsed = 0;
             profile.RepicksUsed = 0;
             ResetCharacteristics(state, 1);
+            // «Missions de route» are part of what an Ascension resets (spec §9).
+            Missions.ResetRoute(profile.CharacterId);
             return new RebirthOutcome(from, 1, eclats, 0);
         }
 
