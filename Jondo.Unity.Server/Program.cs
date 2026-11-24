@@ -1,4 +1,4 @@
-using Jondo.Unity.Launcher;
+﻿using Jondo.Unity.Launcher;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -359,9 +359,22 @@ namespace Jondo.Unity.Server
                 },
                 null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
+            // The marketplaces kept full and moving in the bots' names (MarketMaker).
+            int marketTicking = 0;
+            using var market = new System.Threading.Timer(
+                _ =>
+                {
+                    if (Interlocked.Exchange(ref marketTicking, 1) != 0) return;
+                    try { Managers.MarketMaker.TickAsync().GetAwaiter().GetResult(); }
+                    catch (Exception ex) { Console.WriteLine($"[Market] {ex.Message}"); }
+                    finally { Interlocked.Exchange(ref marketTicking, 0); }
+                },
+                null, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1));
+
             _ready = true;
 
             await _shutdown.Task;
+            await market.DisposeAsync();
             await npcLife.DisposeAsync();
             await monsterWalks.DisposeAsync();
             await launchCleanup.DisposeAsync();

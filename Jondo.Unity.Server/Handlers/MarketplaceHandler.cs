@@ -373,7 +373,7 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>The price of a sold lot into its seller's bank, and a word to him if he is here.</summary>
-        private static async Task PaySellerAsync(MarketplaceListings.Listing listing)
+        internal static async Task PaySellerAsync(MarketplaceListings.Listing listing)
         {
             if (!await Bank.AddKamasAsync(listing.SellerAccountId, listing.Price))
             {
@@ -597,7 +597,7 @@ namespace Jondo.Unity.Server.Handlers
         /// An offer changed: whoever follows its item in that marketplace is told -- kgv when it is
         /// gone, kfi when it is new, and kgp with its prices otherwise and after a kfi (E 256-257).
         /// </summary>
-        private static async Task OfferChangedAsync(Marketplaces.House house, MarketplaceListings.OfferView offer, bool added)
+        internal static async Task OfferChangedAsync(Marketplaces.House house, MarketplaceListings.OfferView offer, bool added)
         {
             foreach (var session in SessionRegistry.InWorld())
             {

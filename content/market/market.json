@@ -1,0 +1,38 @@
+{
+  "_comment": [
+    "The marketplaces kept full and moving in the simulated players' names (Managers.MarketMaker),",
+    "a tick a minute, while the simulated players are on (config SimulatedPlayers).",
+    "",
+    "  enabled           false: the marketplaces are left to the bots walking to the counters",
+    "  itemsPerHouse     how many different items each marketplace should have on sale",
+    "  listPerTick       the most items put on sale in one marketplace a minute while it fills",
+    "  botLotMinutes     a bot's lot is bought, on average, after this many minutes",
+    "  playerLotMinutes  YOUR lot at a fair price is bought, on average, after this many minutes",
+    "                    (twice as fast under 80% of its worth)",
+    "  fairPercent       the dearest your lot may be, against its worth, and still be bought",
+    "",
+    "Worths: Managers.ReferencePrices, and content/market/reference_prices.json by hand.",
+    "",
+    "  houses            marketplaces kept: resources 1261, consumables 1263, equipment 1262, runes",
+    "                    1264, creatures 1265. One book for the whole world: Bonta's, Brakmar's and",
+    "                    Astrub's counters of a kind are the same marketplace, so all are filled.",
+    "  exoPercent        % of equipment put on sale that is an exo: +1 AP (x25 price), +1 MP (x12)",
+    "                    or +1 range (x6) its template does not give",
+    "  perfectPercent    % of equipment put on sale with every characteristic at its best (x2)"
+  ],
+  "enabled": true,
+  "itemsPerHouse": 500,
+  "listPerTick": 60,
+  "botLotMinutes": 90,
+  "playerLotMinutes": 4,
+  "fairPercent": 130,
+  "houses": [
+    1261,
+    1263,
+    1262,
+    1264,
+    1265
+  ],
+  "exoPercent": 3,
+  "perfectPercent": 5
+}

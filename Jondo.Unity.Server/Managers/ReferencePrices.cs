@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -20,7 +20,7 @@ namespace Jondo.Unity.Server.Managers
     /// reckoned from how hard a thing is to get. A resource from its droppers: the level of the
     /// lowest monster that drops it and its best chance of falling, a boss's resource
     /// (a dungeon's) six times dearer and an archmonster's twelve. Something crafted: what its
-    /// ingredients are worth, and a little more. Anything else (sold by NPCs, a quest's): its NPC
+    /// ingredients are worth and 5% more -- near what crafting it costs. Anything else (sold by NPCs, a quest's): its NPC
     /// price twice over, as before.
     /// </para>
     /// <para>
@@ -44,6 +44,13 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Lazy<Dictionary<int, long>> Written = new(() => ReadWritten(Paths.ContentFile(AuthoredFile)));
         private static readonly ConcurrentDictionary<int, long> _worth = new();
 
+        /// <summary>
+        /// Whether an item is something a marketplace deals in: written by hand, dropped by a
+        /// monster outside any quest, or crafted.
+        /// </summary>
+        public static bool IsTraded(int gid)
+            => Written.Value.ContainsKey(gid) || Sources.Value.ContainsKey(gid) || RecipeManager.TryGetByResult(gid, out _);
+
         /// <summary>The worth of one of an item.</summary>
         public static long Of(int gid) => Of(gid, 0);
 
@@ -62,9 +69,17 @@ namespace Jondo.Unity.Server.Managers
             if (Sources.Value.TryGetValue(gid, out var sources) && sources.Count > 0)
                 return Math.Max(npc, FromDrops(sources));
             if (depth < 3 && RecipeManager.TryGetByResult(gid, out var recipe))
-                return Math.Max(npc, recipe.Ingredients.Sum(i => Of(i.ItemId, depth + 1) * i.Quantity) * 115 / 100);
+                return Math.Max(npc, recipe.Ingredients.Sum(i => Of(i.ItemId, depth + 1) * i.Quantity) * 105 / 100);
+            // A piece of equipment no recipe and no monster gives (a shop's, a quest's, a chest's)
+            // is still worth what its level is: never less than 25 x level^1.7 -- 26 000 kamas at
+            // level 60, 200 000 at level 200 -- rather than its NPC price.
+            var template = Forgemagic.TemplateOf(gid);
+            if (template != null && Bots.Outfitter.SlotsOf(template.Type).Count > 0)
+                return Math.Max(2 * npc, EquipmentFloor(template.Level));
             return 2 * npc;
         }
+
+        internal static long EquipmentFloor(int level) => (long)(25 * Math.Pow(Math.Max(1, level), 1.7));
 
         /// <summary>
         /// A dropped resource's worth: 2 x level^1.25 / chance^0.8, from the easiest way to get it;
