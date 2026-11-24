@@ -221,6 +221,7 @@ namespace Jondo.Unity.Server.Bots
                 DatabaseManager.SetLevelOffline(_characterId, level);
                 Console.WriteLine($"[Bots] {_name} is born at level {level}.");
             }
+            LeaveTheTutorial();
             JoinTheWar(level);
             RaiseTradesOffline(_characterId, level);
 
@@ -239,6 +240,24 @@ namespace Jondo.Unity.Server.Bots
             await SpendCapitalAsync();
             await WingsAsync();
             return true;
+        }
+
+        /// <summary>
+        /// A character is born in the guided tutorial, whose rooms are islands: no border leads out
+        /// of them and the passages are quest steps a bot does not take. A bot born there (or saved
+        /// there by an earlier version) never found a bench, a counter or a way out. It is put at
+        /// the zaap of Astrub, where the tutorial ends, before it enters the world.
+        /// </summary>
+        private void LeaveTheTutorial()
+        {
+            long map = DatabaseManager.MapOfOffline(_characterId);
+            if (map <= 0) return;
+            long tutorial = Handlers.CharacterCreationHandler.TutorialMap;
+            if (map != tutorial && DatabaseManager.SubAreaOfMap(map) != DatabaseManager.SubAreaOfMap(tutorial)) return;
+            long home = Handlers.CharacterCreationHandler.StartingMap;
+            DatabaseManager.SetPlaceOffline(_characterId, home,
+                MapManager.GetNearestWalkableCell(home, Handlers.TeleportHandler.MapCentre));
+            Console.WriteLine($"[Bots] {_name} leaves the tutorial map {map} for {home}.");
         }
 
         /// <summary>
