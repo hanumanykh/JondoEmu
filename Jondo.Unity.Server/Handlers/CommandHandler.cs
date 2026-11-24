@@ -525,8 +525,9 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task<LevelChange> SetLevelAsync(NetworkStream stream, int wanted)
         {
 
-            // The ceiling is set by the client's experience table, which goes up to 1889. Without it
-            // loaded there is no experience floor to set and it does not go past 200.
+            // The ceiling is the experience table's -- the client's 1889, extended in code and clamped
+            // to the server's MaxCharacterLevel. Without it loaded there is no experience floor to
+            // set and it does not go past 200.
             int ceiling = ExperienceTable.IsLoaded ? ExperienceTable.MaxLevel : MaxNormalLevel;
             int newLevel = Math.Clamp(wanted, 1, ceiling);
 
@@ -554,9 +555,9 @@ namespace Jondo.Unity.Server.Handlers
                 GameState.Experience = ExperienceTable.LevelFloor(newLevel);
             }
 
-            // Capital follows the shared progression rule. Above 200 it freezes: Omega levels give no
-            // points.
-            int capital = CharacteristicRules.TotalCapitalForLevel(Math.Min(newLevel, MaxNormalLevel));
+            // Capital follows the shared progression rule, Omega points included, so a character
+            // put at 2000 by command holds what one that fought there would.
+            int capital = CharacteristicRules.TotalCapitalForLevel(newLevel);
             GameState.CharacterRemainingPoints = Math.Max(0, capital - SpentCapital());
 
             DatabaseManager.SaveCurrentCharacter();

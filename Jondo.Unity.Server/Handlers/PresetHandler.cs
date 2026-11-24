@@ -297,7 +297,10 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>Whether a distribution costs no more than the level's capital.</summary>
         internal static bool Fits(IReadOnlyDictionary<int, int> points, int level, int breed = 1)
         {
-            if (points.Any(pair => pair.Value < 0 || !PresetProtocol.Primaries.Contains(pair.Key))) return false;
+            // The same per-characteristic cap the sheet applies (CharacteristicsHandler), so a build
+            // cannot carry past it what spending directly would refuse.
+            int most = CharacteristicRules.MaxBaseCharacteristic;
+            if (points.Any(pair => pair.Value < 0 || pair.Value > most || !PresetProtocol.Primaries.Contains(pair.Key))) return false;
             int Of(int stat) => points.TryGetValue(stat, out int value) ? value : 0;
             long cost = CharacteristicRules.ComputeDistributionCost(
                 Of(Stat.Strength), Of(Stat.Intelligence),

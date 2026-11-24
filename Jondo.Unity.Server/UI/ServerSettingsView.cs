@@ -68,6 +68,9 @@ internal sealed class ServerSettingsView : UserControl
         var characters = Card("Characters",
             Number("MaxAp", null, s.MaxActionPoints, 0, 30, 1, "", v => s.MaxActionPoints = (int)v),
             Number("MaxMp", "CapHint", s.MaxMovementPoints, 0, 20, 1, "", v => s.MaxMovementPoints = (int)v),
+            Number("MaxLevel", null, s.MaxCharacterLevel, 200, ExperienceTable.HardestLevelCap, 10, "", v => s.MaxCharacterLevel = (int)v),
+            Number("OmegaPoints", null, s.OmegaPointsPerLevel, 0, 100, 1, "", v => s.OmegaPointsPerLevel = (int)v),
+            Number("MaxBaseStat", "LevelHint", s.MaxBaseCharacteristic, 0, 100_000, 100, "", v => s.MaxBaseCharacteristic = (int)v),
             Toggle("NoEnergy", "NoEnergyHint", s.NoEnergyLoss, v => s.NoEnergyLoss = v));
         var startingBonuses = Card("StartingBonuses",
             Number("StartingKamas", "StartingKamasHint", s.StartingKamas, 0, 1_000_000_000L, 1, "", v => s.StartingKamas = (long)v),

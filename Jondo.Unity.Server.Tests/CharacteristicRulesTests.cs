@@ -13,10 +13,12 @@ public sealed class CharacteristicRulesTests
     [InlineData(2, 60, 5)]
     [InlineData(199, 1045, 990)]
     [InlineData(200, 1050, 995)]
-    [InlineData(201, 1050, 995)]
-    [InlineData(354, 1050, 995)]
-    [InlineData(int.MaxValue, 1050, 995)]
-    public void Shared_life_and_capital_rules_stop_at_the_normal_level_cap(int level, int life, int capital)
+    // Past 200 life stays frozen; the capital grows by the default OmegaPointsPerLevel (1) per
+    // Omega level, up to the default MaxCharacterLevel (300): 995 + 100 at the cap.
+    [InlineData(201, 1050, 996)]
+    [InlineData(354, 1050, 1095)]
+    [InlineData(int.MaxValue, 1050, 1095)]
+    public void Shared_life_rule_stops_at_200_and_capital_adds_omega_points(int level, int life, int capital)
     {
         Assert.Equal(life, CharacteristicRules.BaseLifeForLevel(level));
         Assert.Equal(capital, CharacteristicRules.TotalCapitalForLevel(level));

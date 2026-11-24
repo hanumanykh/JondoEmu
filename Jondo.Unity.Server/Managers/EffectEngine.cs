@@ -718,7 +718,7 @@ namespace Jondo.Unity.Server.Managers
             // them at zero), times the percentage, never past all of it. It is one subtraction,
             // not a percentage of a percentage: four steps of 10% leave 60%, not 66%.
             int lost = Math.Min(Math.Min(lejos, Math.Max(0, efecto.TopeDeCaida)) * efecto.PasoDeCaida, 100);
-            return Math.Max(0, (int)Math.Round(dano * (100 - lost) / 100.0));
+            return Math.Max(0, Jondo.Unity.World.Fights.DamageCalculator.RoundedPercent(dano, 100 - lost));
         }
 
         /// <summary>
@@ -863,7 +863,7 @@ namespace Jondo.Unity.Server.Managers
                 // the client's preview of the crash does not read 158 (hal.bncs, ham.irz).
                 int pushPercent = pusher.Otra(DanoDeEmpujePorCiento) + pusher.Buffs.De(DanoDeEmpujePorCiento, round);
                 if (pushPercent != 0 && damage > 0)
-                    damage = Math.Max(0, (int)Math.Round(damage * (100 + pushPercent) / 100.0));
+                    damage = Math.Max(0, Jondo.Unity.World.Fights.DamageCalculator.RoundedPercent(damage, 100 + pushPercent));
 
                 // And if what stopped him was another fighter, that one pays half, and each one
                 // standing right behind him half of that again, up to as many as the cells. Walls
@@ -6419,13 +6419,13 @@ namespace Jondo.Unity.Server.Managers
             // hechizos proyectados por portales aumentan" (Portal's own text). INFERRED as the
             // same percent, PortalNetwork.BonusPercent.
             if (combat != null && combat.PortalBonusPercent != 0)
-                points = Math.Max(0, (int)Math.Round(points * (100 + combat.PortalBonusPercent) / 100.0));
+                points = Math.Max(0, Jondo.Unity.World.Fights.DamageCalculator.RoundedPercent(points, 100 + combat.PortalBonusPercent));
 
             // The healer's final heals in percent, the client's DealtHealMultiplier (143) -- a
             // dream's "Aumenta un 20% las curas finales ocasionadas" -- last, as the damage's own.
             int healMultiplier = 100 + caster.Otra(DealtHealMultiplier) + caster.Buffs.De(DealtHealMultiplier, round);
             if (healMultiplier != 100)
-                points = Math.Max(0, (int)Math.Round(points * healMultiplier / 100.0));
+                points = Math.Max(0, Jondo.Unity.World.Fights.DamageCalculator.RoundedPercent(points, healMultiplier));
 
             if (effect.Delay > 0)
             {

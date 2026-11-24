@@ -20,9 +20,9 @@ namespace Jondo.Unity.Tests.Sessions
         [Theory]
         [InlineData(1, 55, 0)]
         [InlineData(200, 1050, 995)]
-        [InlineData(201, 1050, 995)]
-        [InlineData(354, 1050, 995)]
-        [InlineData(1000, 1050, 995)]
+        [InlineData(201, 1050, 996)]
+        [InlineData(354, 1050, 1095)]
+        [InlineData(1000, 1050, 1095)]
         public void Life_and_points_stop_at_level_200(int level, int life, int capital)
         {
             Assert.Equal(life, CharacteristicRules.BaseLifeForLevel(level));

@@ -23,13 +23,11 @@ namespace Jondo.Unity.Server.Managers
     /// the Pandala route capture, 109 in the rat-hunt one. After a fight it travels empty, which is
     /// how the fight code sends it.
     ///
-    /// A level-up gives five characteristic points a level up to 200, as a fight does. Omega
-    /// levels move the level on and give nothing, because what they give is not measured.
+    /// A level-up gives what <see cref="CharacteristicRules.PointsForLevelUp"/> says, as a fight
+    /// does: five points a level up to 200, then the server's OmegaPointsPerLevel per Omega level.
     /// </remarks>
     public static class CharacterRewards
     {
-        private const int MaxLevelWithPoints = CharacteristicRules.MaxLevelWithStats;
-
         /// <summary>Hands over kamas and says so. Returns false when there was nothing to give.</summary>
         public static async Task<bool> GiveKamasAsync(NetworkStream stream, long kamas)
         {
@@ -63,16 +61,12 @@ namespace Jondo.Unity.Server.Managers
             var state = session.State;
             if (limited) experience = ExperienceLimit.ApplyFor(state.CharacterId, experience);
             if (experience <= 0) return false;
-            state.Experience += experience;
+            var gain = CharacterProgression.AddExperience(state, experience);
+            int newLevel = gain.NewLevel;
 
             bool up = false;
-            int newLevel = ExperienceTable.LevelForXp(state.Experience);
-            if (newLevel > state.CharacterLevel)
+            if (gain.LeveledUp)
             {
-                int points = Math.Max(0, Math.Min(newLevel, MaxLevelWithPoints)
-                                         - Math.Min(state.CharacterLevel, MaxLevelWithPoints));
-                if (points > 0) state.CharacterRemainingPoints += points * 5;
-                state.CharacterLevel = newLevel;
                 up = true;
 
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,

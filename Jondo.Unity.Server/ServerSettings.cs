@@ -31,6 +31,34 @@ namespace Jondo.Unity.Server
         /// <summary>The most movement points a character can have; 0 means no cap (the official one is 6).</summary>
         public int MaxMovementPoints { get; set; }
 
+        /// <summary>
+        /// The highest level a character can reach. Default 300 (200 + Omega 100), the cap of the
+        /// server this one follows. The client's experience table already reaches 1889, so up to
+        /// there the official curve is used as is; only a cap set past 1889 makes
+        /// <see cref="ExperienceTable"/> extend it with a flat step. Every level handed out is
+        /// clamped to this value.
+        /// The client needs nothing for it: a level over 200 travels as a plain varint and the client
+        /// draws it as "200 + Omega N" by itself. Values under 200 are treated as 200, because the
+        /// normal progression is not something a setting should be able to cut short.
+        /// </summary>
+        public int MaxCharacterLevel { get; set; } = 300;
+
+        /// <summary>
+        /// Characteristic points given for each level gained past 200 (each Omega level). The
+        /// official game gives none that we have measured; a server going to 2000 wants some reward
+        /// for the climb. 0 restores the old behaviour exactly. Counted in the total capital of a
+        /// level too (<see cref="CharacteristicRules.TotalCapitalForLevel"/>), so a reset gives them back.
+        /// </summary>
+        public int OmegaPointsPerLevel { get; set; } = 1;
+
+        /// <summary>
+        /// The most a single base characteristic can be raised with capital points. Only bites above
+        /// what a level-200 character could ever buy (995 points at one point per characteristic),
+        /// so it changes nothing for normal characters; it is there so thousands of Omega points
+        /// cannot be poured into one characteristic. 0 means no cap.
+        /// </summary>
+        public int MaxBaseCharacteristic { get; set; } = 3000;
+
         /// <summary>Extra experience for everybody, in percent: what fights, quests and rewards give.</summary>
         public int ExperienceBonusPercent { get; set; }
         

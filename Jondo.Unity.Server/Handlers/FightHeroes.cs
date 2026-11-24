@@ -177,16 +177,12 @@ namespace Jondo.Unity.Server.Handlers
             }
         }
 
-        /// <summary>A hero's experience, and the levels it brings: five points each up to 200, as a player's.</summary>
+        /// <summary>A hero's experience, and the levels it brings: the same points a player's do (<see cref="CharacteristicRules.PointsForLevelUp"/>).</summary>
         private static void GiveHeroExperience(long xp)
         {
-            GameState.Experience += xp;
-            int newLevel = ExperienceTable.LevelForXp(GameState.Experience);
-            if (newLevel <= GameState.CharacterLevel) return;
-            int upToTwoHundred = Math.Max(0, Math.Min(newLevel, MaxLevelWithPoints) - Math.Min(GameState.CharacterLevel, MaxLevelWithPoints));
-            GameState.CharacterRemainingPoints += upToTwoHundred * 5;
-            Program.LogDebug($"[Heroes] {GameState.CharacterName} levels up: {GameState.CharacterLevel} -> {newLevel}.");
-            GameState.CharacterLevel = newLevel;
+            var gain = CharacterProgression.AddExperience(Network.SessionContext.State, xp);
+            if (!gain.LeveledUp) return;
+            Program.LogDebug($"[Heroes] {GameState.CharacterName} levels up: {gain.OldLevel} -> {gain.NewLevel}.");
         }
     }
 }

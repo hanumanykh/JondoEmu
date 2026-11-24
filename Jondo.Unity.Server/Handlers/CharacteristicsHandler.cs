@@ -34,6 +34,14 @@ internal sealed class CharacteristicsHandler(Action<GameSession> save, Character
         bool valid = targets.All(target => target.Capital >= 0) && asked <= capital;
         for (int i = 0; valid && i < targets.Length; i++)
             valid = BreedStatCost.TryBuy(state.Breed, targets[i].Name, targets[i].Capital, out values[i]);
+        // A characteristic can be raised only so far (ServerSettings.MaxBaseCharacteristic), so the
+        // Omega capital of a level 2000 cannot all land in one characteristic. The cap never sits
+        // under what a level-200 character could reach, so normal characters see no difference.
+        // Refused whole, like any other bad distribution, rather than clipped: the client sends a
+        // target total and a partial purchase would leave its preview and the sheet disagreeing.
+        int most = CharacteristicRules.MaxBaseCharacteristic;
+        for (int i = 0; valid && i < values.Length; i++)
+            valid = values[i] <= most;
 
         if (valid)
         {

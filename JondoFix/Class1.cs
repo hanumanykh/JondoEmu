@@ -426,6 +426,7 @@ namespace JondoFix
             StaffConsole.HookAdminMenu(LoggerInstance);
             LoadItemNames();
             LoadVendorNames();
+            OmegaLevels.Init(LoggerInstance, DataFile(Path.Combine("datos", "character_xp.json")));
             UseLocalRedirect = IsEmulatorActive();
             IsJondoAdministrator = UseLocalRedirect &&
                 int.TryParse(Environment.GetEnvironmentVariable("JONDO_ACCOUNT_ROLE"), out int role) &&

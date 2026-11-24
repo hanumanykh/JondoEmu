@@ -11011,7 +11011,7 @@ namespace Jondo.Unity.Server.Handlers
             if (fight.PortalBonusPercent != 0 && damage > 0)
             {
                 int antesDelPortal = damage;
-                damage = Math.Max(0, (int)Math.Round(damage * (100 + fight.PortalBonusPercent) / 100.0));
+                damage = Math.Max(0, Jondo.Unity.World.Fights.DamageCalculator.RoundedPercent(damage, 100 + fight.PortalBonusPercent));
                 Program.LogDebug($"[Portal] +{fight.PortalBonusPercent}% through the portals: {antesDelPortal} to {damage}.");
             }
 
@@ -11043,7 +11043,7 @@ namespace Jondo.Unity.Server.Handlers
             if (combo != 0)
             {
                 int antesDelCombo = damage;
-                damage = Math.Max(0, (int)Math.Round(damage * (100 + combo) / 100.0));
+                damage = Math.Max(0, Jondo.Unity.World.Fights.DamageCalculator.RoundedPercent(damage, 100 + combo));
                 Program.LogDebug($"[Combo] {caster.Id} is at level " +
                                  $"{Managers.Combo.LevelOf(caster)}, +{combo}%: " +
                                  $"{antesDelCombo} becomes {damage}.");
@@ -11054,7 +11054,7 @@ namespace Jondo.Unity.Server.Handlers
             if (caster.DamageDealtPercent != 100 && damage > 0)
             {
                 int antesDelPorcentaje = damage;
-                damage = Math.Max(0, (int)Math.Round(damage * caster.DamageDealtPercent / 100.0));
+                damage = Math.Max(0, Jondo.Unity.World.Fights.DamageCalculator.RoundedPercent(damage, caster.DamageDealtPercent));
                 Program.LogDebug($"[Fight] {caster.Id} deals {caster.DamageDealtPercent}% damage: " +
                                  $"{antesDelPorcentaje} becomes {damage}.");
             }
@@ -13240,20 +13240,18 @@ namespace Jondo.Unity.Server.Handlers
 
             if (xpGained > 0)
             {
-                GameState.Experience += xpGained;
-                int newLevel = ExperienceTable.LevelForXp(GameState.Experience);
-                if (newLevel > GameState.CharacterLevel)
+                var gain = CharacterProgression.AddExperience(SessionContext.State, xpGained);
+                int newLevel = gain.NewLevel;
+                if (gain.LeveledUp)
                 {
-                    // Five characteristic points per level, as in TotalCapitalForLevel, but only up to 200.
-                    // From there up the table keeps counting -- 201 is Omega 1, and the capture's 354 is a
-                    // 200 with Omega 154 -- and what each Omega gives is not measured, so the level goes up
-                    // and nothing is handed out. Rather than make it up, nothing.
-                    int upToTwoHundred = Math.Max(0, Math.Min(newLevel, MaxLevelWithPoints)
-                                                     - Math.Min(GameState.CharacterLevel, MaxLevelWithPoints));
-                    if (upToTwoHundred > 0) GameState.CharacterRemainingPoints += upToTwoHundred * 5;
-                    Program.LogDebug($"[Fight] Level up! {GameState.CharacterLevel} -> {newLevel} " +
-                                     $"(+{upToTwoHundred * 5} points).");
-                    GameState.CharacterLevel = newLevel;
+                    // Five characteristic points per level up to 200; past it the table keeps counting
+                    // -- 201 is Omega 1, the capture's 354 is a 200 with Omega 154 -- and each Omega
+                    // level gives the server's OmegaPointsPerLevel (the official amount is not
+                    // measured). The shared helper is the difference of TotalCapitalForLevel, so the
+                    // points handed out here always add up to what a reset gives back.
+                    // Added, levelled and paid in CharacterProgression.AddExperience.
+                    Program.LogDebug($"[Fight] Level up! {gain.OldLevel} -> {newLevel} " +
+                                     $"(+{gain.PointsGiven} points).");
 
                     // And the window, which is what the player expects to see on levelling up.
                     await WriteFrameAsync(stream,
@@ -13582,12 +13580,6 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>What casting something costs when it is not known: a spell's ordinary cost.</summary>
         private const int DefaultCastCost = 3;
-
-        /// <summary>
-        /// The last level that hands out characteristic points. The client's table goes up to 1889,
-        /// but from 201 on that is Omega: the capture's 354 is a level 200 with Omega 154.
-        /// </summary>
-        private const int MaxLevelWithPoints = CharacteristicRules.MaxLevelWithStats;
 
         /// <summary>What a spell costs and what limits it, all from the same row.</summary>
         public readonly record struct LimitesDelHechizo(
