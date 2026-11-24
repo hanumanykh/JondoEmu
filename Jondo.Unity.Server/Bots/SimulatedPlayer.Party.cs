@@ -104,6 +104,7 @@ namespace Jondo.Unity.Server.Bots
 
             _lostSteps = 0;
             if (_dice.Next(100) < 4) await SayAsync(ChatChannels.Party, LineOf("party", session));
+            else if (_dice.Next(100) < 3) await EmoteAsync(Sit);
             else if (_dice.Next(100) < 40) await WanderAsync(session, stop);
             return true;
         }

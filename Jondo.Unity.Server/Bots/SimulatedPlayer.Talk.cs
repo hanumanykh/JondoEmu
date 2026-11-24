@@ -131,12 +131,14 @@ namespace Jondo.Unity.Server.Bots
                     if (_dice.Next(100) < 35 && MayTalkOn(map))
                     {
                         await SayAsync(ChatChannels.General, LineOf("greet", session, stranger.State.CharacterName));
+                        await EmoteAsync(_dice.Next(2) == 0 ? Wave : Hello);
                         return;
                     }
                 }
                 if (fought && _dice.Next(100) < 30 && MayTalkOn(map))
                 {
                     await SayAsync(ChatChannels.General, LineOf("fight", session));
+                    await EmoteAsync(_dice.Next(2) == 0 ? Dance : Laugh);
                     return;
                 }
                 if (DateTime.UtcNow - _lastSaid > OwnPause && _dice.Next(100) < 12 && MayTalkOn(map))

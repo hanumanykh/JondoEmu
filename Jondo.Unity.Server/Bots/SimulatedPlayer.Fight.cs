@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -94,13 +94,31 @@ namespace Jondo.Unity.Server.Bots
         /// way the server plays a JondoBot's -- walked and cast through the socket, a placing step
         /// at the end, and the turn passed.
         /// </summary>
+        /// <summary>
+        /// What the fight turned down -- a summon or a bomb over its limit -- and on which round: it
+        /// is not planned again for the next <see cref="RefusedRounds"/> rounds of that fight,
+        /// rather than tried, refused and waited for again each turn. Only what it tries changes,
+        /// never how a turn is weighed.
+        /// </summary>
+        private readonly Dictionary<(long Fight, int Spell), int> _refusedOn = new();
+        private const int RefusedRounds = 2;
+
+        /// <summary>
+        /// How long its turn takes, against its own pace: half in a real player's party, who waits
+        /// for every bot's turn; its own fights keep the pace of somebody thinking.
+        /// </summary>
+        private int Paced(int milliseconds) => InParty ? milliseconds / 2 : milliseconds;
+
         private async Task PlayAsync(FightInstance fight, long who)
         {
-            await Task.Delay(_dice.Next(800, 1800));
+            await Task.Delay(Paced(_dice.Next(800, 1800)));
             List<MonsterTactics.Action>? plan = null;
             int next = 0;
-            // What the fight turned down this turn -- a summon over the limit -- is not tried again in it.
-            var refused = new HashSet<int>();
+            // What the fight turned down lately -- a summon over the limit -- is not tried again yet.
+            var refused = new HashSet<int>(_refusedOn
+                .Where(r => r.Key.Fight == fight.FightId && fight.RoundNumber - r.Value < RefusedRounds)
+                .Select(r => r.Key.Spell));
+            foreach (var old in _refusedOn.Keys.Where(k => k.Fight != fight.FightId).ToList()) _refusedOn.Remove(old);
 
             for (int step = 0; step < MostStepsPerTurn && StillPlaying(fight, who); step++)
             {
@@ -136,6 +154,7 @@ namespace Jondo.Unity.Server.Bots
                 if (!await CastInFightAsync(fight, fighter, action.Spell.Id, action.TargetCell))
                 {
                     refused.Add(action.Spell.Id);
+                    _refusedOn[(fight.FightId, action.Spell.Id)] = fight.RoundNumber;
                     plan = null;
                 }
             }
@@ -178,7 +197,7 @@ namespace Jondo.Unity.Server.Bots
             await SendAsync(Op.Jrw, Pb.New().Var(1, arena).Packed(2, Corners(path)).Build());
             for (int waited = 0; waited < 40 && fighter.CellId != target && StillPlaying(fight, fighter.Id); waited++)
                 await Task.Delay(100);
-            await Task.Delay(path.Count * 250);
+            await Task.Delay(Paced(path.Count * 250));
             return fighter.CellId == target;
         }
 
@@ -189,7 +208,7 @@ namespace Jondo.Unity.Server.Bots
             await SendAsync(Op.Jwh, Pb.New().Var(1, cell).Var(4, spell).Build());
             for (int waited = 0; waited < 30 && fighter.CurrentAP == ap && StillPlaying(fight, fighter.Id); waited++)
                 await Task.Delay(100);
-            await Task.Delay(_dice.Next(600, 1200));
+            await Task.Delay(Paced(_dice.Next(600, 1200)));
             return fighter.CurrentAP != ap;
         }
 

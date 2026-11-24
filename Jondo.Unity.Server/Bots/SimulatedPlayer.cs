@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -395,6 +395,14 @@ namespace Jondo.Unity.Server.Bots
                 case Op.Hqc:
                     // A duel offered to it: always yes.
                     if (Var(payload, 2) == _characterId) _ = Task.Run(() => AcceptDuelAsync((int)Var(payload, 3)));
+                    break;
+                case Op.Kth:
+                    // A whisper: from a real player, an answer (SimulatedPlayer.Social).
+                    _ = Task.Run(() => WhisperedAsync(payload));
+                    break;
+                case Op.Kti:
+                    // A line on its map: if a real player names it, an answer.
+                    _ = Task.Run(() => HeardAsync(payload));
                     break;
                 case Op.Ijz:
                     // A party invitation: from a real player, yes (SimulatedPlayer.Party).

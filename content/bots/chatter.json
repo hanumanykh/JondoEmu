@@ -13,7 +13,13 @@
     "  left     party channel, before it leaves the world or the party",
     "",
     "Placeholders: {player} a real player's name, {level} the bot's level, {zone} the subarea it",
-    "stands in, {leader} the party's leader."
+    "stands in, {leader} the party's leader.",
+    "",
+    "  whisper_hello  answer to a whisper that greets it ({player} who whispered)",
+    "  whisper_party  answer to a whisper about a party, a dungeon, help",
+    "  whisper_trade  answer to a whisper about buying, selling, prices",
+    "  whisper        answer to any other whisper",
+    "  mention        answer on the map when a real player names it in the general channel"
   ],
   "map": [
     "Quelqu'un sait où on trouve des ressources par ici ?",
@@ -79,5 +85,39 @@
     "Je dois y aller, merci pour le groupe !",
     "Bon, je déco. À plus !",
     "C'était cool, à la prochaine !"
+  ],
+  "whisper_hello": [
+    "Salut {player} ! Ça va ?",
+    "Yo {player} :)",
+    "Coucou ! Tu fais quoi de beau ?",
+    "Hey {player}, bien ou bien ?"
+  ],
+  "whisper_party": [
+    "Avec plaisir, invite-moi en groupe !",
+    "Ok, je suis chaud. Envoie l'invit {player}.",
+    "Je peux t'aider, invite-moi !",
+    "Carrément, lance la recherche de groupe ou invite-moi directement."
+  ],
+  "whisper_trade": [
+    "J'ai mis mes trucs à l'HDV, jette un œil !",
+    "Je vends surtout à l'HDV d'Astrub, c'est plus simple.",
+    "Regarde à l'HDV, mes prix sont corrects !",
+    "Pas trop le temps de marchander, mais passe à l'HDV."
+  ],
+  "whisper": [
+    "Haha oui !",
+    "Je vois, je vois.",
+    "Ah ouais ? Pas mal.",
+    "Désolé, je farm là, je te réponds vite.",
+    "Mdr",
+    "Trop bien !",
+    "Je sais pas trop, à toi de voir {player}."
+  ],
+  "mention": [
+    "Oui {player} ?",
+    "Quoi ? Qui m'appelle ?",
+    "C'est moi ! Tu veux quoi ?",
+    "Présent !",
+    "Hmm ? Je t'écoute {player}."
   ]
 }
