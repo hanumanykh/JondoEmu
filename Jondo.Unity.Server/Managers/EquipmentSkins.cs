@@ -140,6 +140,8 @@ namespace Jondo.Unity.Server.Managers
         public static int SkinOf(int templateId)
         {
             EnsureLoaded();
+            // A custom item is worn with the skin its file gives it (CustomItems).
+            if (CustomItems.TryGet(templateId, out var custom) && custom.Skin > 0) return custom.Skin;
             return _skins.TryGetValue(templateId, out int skin) ? skin : 0;
         }
     }

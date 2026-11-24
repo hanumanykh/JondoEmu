@@ -3263,6 +3263,9 @@ namespace Jondo.Unity.Server
             // level (Managers.Rides): its template carries them at level 200.
             if (Managers.Rides.IsRide(gid)) return Managers.Forgemagic.Serialize(Managers.Rides.Fresh(gid, Random.Shared));
 
+            // A custom item is born with the effects its file writes (Managers.CustomItems).
+            if (Managers.CustomItems.TryGet(gid, out var custom) && custom.Json != null) return custom.Json;
+
             try
             {
                 var leer = connection.CreateCommand();

@@ -259,6 +259,9 @@ namespace Jondo.Unity.Server.Managers
             // A pet comes into the world at level 0, and grows (Pets).
             if (Pets.IsPet(template.Gid)) return Pets.Fresh(template.Gid);
 
+            // A custom item rolls nothing: it is born with the effects its file writes (CustomItems).
+            if (CustomItems.TryGet(template.Gid, out var custom) && custom.Effects != null) return custom.Effects.ToList();
+
             var effects = new List<Equipment.ItemEffect>();
             foreach (var line in template.Lines)
             {

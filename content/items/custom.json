@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "Custom items (Managers.CustomItems). The client only draws the items it knows, so a custom",
+    "item is made over one of them: it keeps the base's NAME, ICON, TYPE and LEVEL, and gets",
+    "the effects and the worn look written here. Read when the server starts.",
+    "",
+    "  base     the item it is made over (its id, as in the F10 window or .item)",
+    "  skinOf   worn with the look of this other item (or  skin: a skin id directly)",
+    "  effects  the characteristics every new one is born with, fixed, no roll. Leave it out",
+    "           to keep the base's own rolls. Names: vitalite, sagesse, force, intelligence,",
+    "           chance, agilite, puissance, pa, pm, po, dommages, soins, initiative,",
+    "           prospection, invocations, critique, tacle, fuite, pods -- or an effect id.",
+    "           A negative value is a malus.",
+    "",
+    "Every way an item is made gives the custom one: .item, the F10 window, drops, crafts,",
+    "shops. Items made before keep their old effects. Remove a row to undo it."
+  ],
+  "items": [
+    {
+      "base": 2474,
+      "note": "Chapeau de l'aventurier (niveau 9), avec l'apparence de la Couronne de Tofu Royal",
+      "skinOf": 7921,
+      "effects": { "vitalite": 60, "agilite": 25, "sagesse": 10, "prospection": 15, "pm": 1 }
+    }
+  ]
+}
