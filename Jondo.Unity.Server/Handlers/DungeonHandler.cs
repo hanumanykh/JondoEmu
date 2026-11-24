@@ -127,6 +127,8 @@ namespace Jondo.Unity.Server.Handlers
             if (reply == 0 || options.Key != reply) return false;
             var dungeon = DungeonManager.AtEntrance(mapId, npcId);
             if (dungeon == null || dungeon.FirstRoom == 0 || dungeon.Required.Count == 0) return false;
+            // The week's free entry opens without the key (Stasis): the reply leads somewhere.
+            if (Managers.Tiers.FreeEntryOpens(dungeon, SessionContext.State.CharacterId, DateTime.Now)) return false;
 
             return dungeon.Required.All(r => FindInBag(r.Item, r.Count) == 0);
         }
@@ -217,6 +219,12 @@ namespace Jondo.Unity.Server.Handlers
                 await Managers.Quests.OnKeyHandedOverAsync(SessionContext.Current, state.OpenDialogueNpcId, item);
             }
 
+            if (method == EntryMethod.Key && uid == 0 && dungeon.Required.Count > 0)
+            {
+                // In without a key: the week's free entry (Stasis, see TryTakeTheKey).
+                DungeonKeyring.SpendFreeEntry(state.CharacterId, dungeon.Id, DateTime.Now);
+                Console.WriteLine($"[Dungeon] {dungeon.Name}: free weekly entry used.");
+            }
             if (method == EntryMethod.Keyring)
             {
                 // One free entry per dungeon per week, and the week turns over on Tuesday. See
@@ -372,7 +380,8 @@ namespace Jondo.Unity.Server.Handlers
                 if (!await ItemUseHandler.SpendOneAsync(SessionContext.Current, uid)) return false;
                 Console.WriteLine($"[Dungeon] {dungeon.Name}: one unit of item {item} is spent by the search.");
             }
-            if (method == EntryMethod.Keyring) DungeonKeyring.SpendFreeEntry(state.CharacterId, dungeon.Id, DateTime.Now);
+            if (method == EntryMethod.Keyring || (!companion && uid == 0 && dungeon.Required.Count > 0))
+                DungeonKeyring.SpendFreeEntry(state.CharacterId, dungeon.Id, DateTime.Now);
             if (!await SpendForHeroesAsync(stream, dungeon, heroWays, DateTime.Now)) return false;
 
             long to = room != 0 && dungeon.Rooms.Contains(room) ? room : dungeon.FirstRoom;
@@ -587,6 +596,10 @@ namespace Jondo.Unity.Server.Handlers
                 return dungeon.OnKeyring && freeEntry && TryTheKeyring(out item);
 
             if (dungeon.Required.Count == 0) return true;
+
+            // Stasis: the week's free entry of this dungeon opens before any key is spent, keyring
+            // or not (Managers/Stasis/Tiers.cs). uid stays zero; the caller writes the entry down.
+            if (Managers.Tiers.FreeEntryOpens(dungeon, SessionContext.State.CharacterId, DateTime.Now)) return true;
 
             foreach (var (wanted, count) in dungeon.Required)
             {

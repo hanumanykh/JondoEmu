@@ -232,6 +232,10 @@ namespace Jondo.Unity.Server.Handlers
             Managers.GuildRaidPrincesa.OnFightCreated(fight);
             Managers.GuildRaidSanctuary.OnFightCreated(fight);
             Managers.Gargandias.OnFightCreated(fight);
+            // The Stasis events' runes and Time Attack clock, and a Fissure wave's level and formation bonus.
+            Managers.StasisEvents.OnFightCreated(playerFighter.Id, fight);
+            // An evolved leader's hardcore dungeon room: life x3, damage x2.25 (Managers/Stasis/Tiers.cs).
+            Managers.Tiers.OnFightCreated(fight, GameState.CharacterId);
 
             // A tax collector or a prism attacked: the fight learns whose it is, and its fighter
             // what it is.
@@ -912,6 +916,10 @@ namespace Jondo.Unity.Server.Handlers
                 // And his level-bound effects at the dreamer's level: summons, push damage, shields.
                 playerFighter.ScaledLevel = Managers.Dreams.DreamerLevel(dream);
             }
+
+            // His spell dons (SpellDons): on his class's spells, so not while he fights as a monster.
+            if (playerFighter.IncarnatedMonster == 0)
+                Managers.SpellDons.ApplyTo(playerFighter, GameState.CharacterId);
 
             // The attitudes his items give him: the six dofus and the trophies each give a
             // "spell" through their effect 1175, and those are the ones that do things at the start
@@ -3635,7 +3643,7 @@ namespace Jondo.Unity.Server.Handlers
                                                                 Fighter who, IEnumerable<int> spells)
         {
             var aspects = who.EverySpell.Where(m => m.Value != 0).Select(m => m.Key).ToList();
-            if (aspects.Count == 0) return;
+            if (aspects.Count == 0 && who.OwnSpellModifiers.Count == 0) return;
             var list = spells.Where(s => s != 0).Distinct().ToList();
             foreach (var aspect in aspects)
             {
@@ -3646,6 +3654,17 @@ namespace Jondo.Unity.Server.Handlers
                         who.Id, wire.Kind, spell,
                         Managers.SpellModifiers.Total(who, spell, aspect, fight.RoundNumber), wire.Action)));
                 }
+            }
+            // Then what one spell carries alone (his spell dons, Fighter.OwnSpellModifiers), after
+            // the every-spell ones so those keep the captured order; an aspect already sent above
+            // went out with this spell's share in its total.
+            foreach (var ((spell, aspect), value) in who.OwnSpellModifiers)
+            {
+                if (value == 0 || aspects.Contains(aspect) || !list.Contains(spell)) continue;
+                if (Managers.SpellModifiers.OnTheWire(aspect) is not { } wire) continue;
+                await send(ConnectionProtocol.Push(Op.Hnd, Network.FightProtocol.BuildSpellModifier(
+                    who.Id, wire.Kind, spell,
+                    Managers.SpellModifiers.Total(who, spell, aspect, fight.RoundNumber), wire.Action)));
             }
         }
 
@@ -5990,6 +6009,13 @@ namespace Jondo.Unity.Server.Handlers
             await ChallengeWatcher.MidSpecialForbiddenSpellCastAsync(stream, fight, caster, spell);
             int intervalo = Managers.SpellModifiers.CastInterval(caster, spell, limites.Intervalo, fight.RoundNumber);
             if (intervalo > 0) caster.Recarga[spell] = intervalo;
+            // A spell don's "-1 tour de relance" (SpellDons) has no hnd to tell the client, which
+            // would keep the spell greyed for the level's whole wait: the caster is sent his
+            // cooldowns as the server counts them, as the cooldown effects tell their bearer.
+            if (intervalo != limites.Intervalo && !caster.IsMonster && !caster.IsBot
+                && caster.OwnSpellModifiers.ContainsKey((spell, Jondo.Unity.World.Fights.SpellAspect.CastIntervalDown)))
+                await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxc,
+                    Network.FightProtocol.BuildCooldowns(caster.Id, RecargasDe(caster))));
             // Each ally whose wait it set is told, as the cooldown effects tell their bearer (jxc).
             foreach (var ally in ApplyGlobalCooldown(fight, caster, spell, limites.GlobalCooldown, intervalo))
             {
@@ -11059,6 +11085,9 @@ namespace Jondo.Unity.Server.Handlers
                                  $"{antesDelPorcentaje} becomes {damage}.");
             }
 
+            // And his spell dons' "+X % dégâts" on THIS spell (SpellDons), the same kind of last multiplier.
+            damage = Managers.SpellDons.WithDamage(caster, spell, damage);
+
             // THE KINDS OF THIS BLOW, for the rows that name one: "D" any, "DM"/"DCAC" from
             // next door, "DR" from further away, "DTB"/"DTE" a turn's poison.
             bool deCerca = Jondo.Unity.World.Maps.MapGeometry.Distance(caster.CellId, target.CellId) <= 1;
@@ -13173,6 +13202,9 @@ namespace Jondo.Unity.Server.Handlers
             // And the alterations a beaten monster leaves: the feathers of Lord Crow's library.
             await Managers.FightWinAlterations.FightEndedAsync(stream, fight, won);
 
+            // And the Stasis events' scores (Time Attack, Poutch) and the Fissure's wave won or lost.
+            await Managers.StasisEvents.FightEndedAsync(session, fight, won);
+
             // And this is where it is applied. On the wire it does NOT travel broken down: the
             // percentage only exists inside the placement's ldd, and the final figure arrives with
             // the bonus already added. The 68 jyg of the captures were reviewed and there is no slot
@@ -13188,8 +13220,10 @@ namespace Jondo.Unity.Server.Handlers
                 : new List<Fighter>();
             // The experience is only ever the planned share: a defeat pays none.
             long xpGained = 0;
-            long kamas = won ? ServerSettings.WithBonus(ConElExtra(quePagan.Sum(m => 10L + (m.Level * 5L)), extraDeRetos),
-                                                        ServerSettings.Current.KamasBonusPercent) : 0;
+            // The Orbes (Managers.Economy.Orbes), when the fight was not planned for all its winners.
+            long kamas = won && quePagan.Count > 0
+                ? ConElExtra(Managers.Economy.FarmEconomy.KamasFor(fight, SessionContext.State.CharacterLevel), extraDeRetos)
+                : 0;
             var caidos = new List<PlayerItem>();
             Dictionary<int, int> loot;
 
@@ -13263,6 +13297,8 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (kamas > 0) GameState.Kamas += kamas;
             if (xpGained > 0 || kamas > 0 || loot.Count > 0) DatabaseManager.SaveCurrentCharacter();
+            // The zone gauge takes the fight's monsters, and pays its target when full (Managers.Economy).
+            if (won && suyo != null) await Managers.Economy.FarmEconomy.AfterWonFightAsync(stream, fight);
 
             var spoils = new Network.FightProtocol.Spoils { Kamas = kamas };
             foreach (var kv in loot) spoils.Items.Add((kv.Value, kv.Key));
@@ -13456,7 +13492,11 @@ namespace Jondo.Unity.Server.Handlers
 
             long dungeonEntrance = 0;
             if (fight.Reglas.AvanzaDeSala && (won || defeat != null))
+            {
+                // A tier dungeon's boss beaten counts for the paliers (Managers/Stasis/Tiers.cs).
+                Managers.Tiers.OnFightEnded(fight, GameState.CharacterId, won);
                 dungeonEntrance = DungeonHandler.RecordFightProgress(GameState.CharacterId, fight.RoleplayMapId, won);
+            }
 
             // A loser returns to the dungeon entrance or the saved Zaap. LeaveFight has restored
             // the combat's roleplay map, so set the destination here before sending the new map.
@@ -14464,6 +14504,9 @@ namespace Jondo.Unity.Server.Handlers
             int zoneBonus = AnomalyHandler.ZoneBonusAt(fight.RoleplayMapId);
             // His prospecting, which the client's tooltip applies to the monster's own table.
             double prospecting = DropMultiplier(ProspectingNow());
+            // The server's drop bonus, with an archmonster's +400 % and the counter's Densité (Managers.Economy).
+            int dropBonus = ServerSettings.Current.DropBonusPercent
+                          + Managers.Economy.FarmEconomy.ExtraDropPercent(fight, GameState.CharacterId);
             // The anomaly fragments: where the fight is and the side's elixir (Managers.AnomalyLoot).
             var (inAnomalyRoom, inAnomalyZone) = Managers.AnomalyLoot.WhereFought(fight.RoleplayMapId);
             int sideElixir = inAnomalyRoom || inAnomalyZone ? Managers.AnomalyLoot.SideElixir(fight, GameState.CharacterId) : 0;
@@ -14515,7 +14558,7 @@ namespace Jondo.Unity.Server.Handlers
                     double probabilidad = extra > 0
                         ? Math.Min(100.0, chance * (100.0 + extra) / 100.0)
                         : chance;
-                    probabilidad = ServerSettings.ChanceWithBonus(WithAlmanax(probabilidad), ServerSettings.Current.DropBonusPercent);
+                    probabilidad = ServerSettings.ChanceWithBonus(WithAlmanax(probabilidad), dropBonus);
                     if (TirarPorcentaje() >= probabilidad) continue;
                     loot.TryGetValue(drop.ObjectId, out int q);
                     loot[drop.ObjectId] = q + 1;
@@ -14535,7 +14578,7 @@ namespace Jondo.Unity.Server.Handlers
                     double probabilidad = extra > 0
                         ? Math.Min(100.0, drop.PercentDrop * (100.0 + extra) / 100.0)
                         : drop.PercentDrop;
-                    probabilidad = ServerSettings.ChanceWithBonus(WithAlmanax(probabilidad), ServerSettings.Current.DropBonusPercent);
+                    probabilidad = ServerSettings.ChanceWithBonus(WithAlmanax(probabilidad), dropBonus);
                     if (TirarPorcentaje() >= probabilidad) continue;
                     loot.TryGetValue(drop.ObjectId, out int q);
                     loot[drop.ObjectId] = q + 1;
@@ -14560,7 +14603,7 @@ namespace Jondo.Unity.Server.Handlers
                     double probabilidad = extra > 0
                         ? Math.Min(100.0, drop.Percent * (100.0 + extra) / 100.0)
                         : drop.Percent;
-                    probabilidad = ServerSettings.ChanceWithBonus(WithAlmanax(probabilidad), ServerSettings.Current.DropBonusPercent);
+                    probabilidad = ServerSettings.ChanceWithBonus(WithAlmanax(probabilidad), dropBonus);
                     if (TirarPorcentaje() >= probabilidad) continue;
                     loot.TryGetValue(drop.Item, out int q);
                     loot[drop.Item] = q + 1;
@@ -14573,7 +14616,7 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     double chance = ServerSettings.Current.RandomLootChancePercent;
                     if (extra > 0) chance = Math.Min(100.0, chance * (100.0 + extra) / 100.0);
-                    chance = ServerSettings.ChanceWithBonus(WithAlmanax(chance), ServerSettings.Current.DropBonusPercent);
+                    chance = ServerSettings.ChanceWithBonus(WithAlmanax(chance), dropBonus);
                     foreach (var drop in Managers.RandomLoot.Roll(monster.Level, chance, Random.Shared))
                     {
                         loot.TryGetValue(drop.Gid, out int q);
@@ -14589,6 +14632,9 @@ namespace Jondo.Unity.Server.Handlers
                 int more = Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.HunterMeat, Managers.Almanax.Where.Obtaining(item));
                 if (more > 0) loot[item] = Managers.Almanax.Raised(loot[item], more, Random.Shared);
             }
+
+            // No dungeon key drops, and a hardcore dungeon fight drops twice (Managers/Stasis/Tiers.cs).
+            Managers.Tiers.AdjustLoot(fight, loot);
 
             return loot;
         }

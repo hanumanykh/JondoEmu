@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -242,14 +242,18 @@ namespace Jondo.Unity.Server.Handlers
                     offer = offer == null ? null : new
                     {
                         level = offer.Level,
+                        shownLevel = Dons.RealLevel(offer.Level),
                         kind = offer.Kind,
                         kindLabel = Dons.KindLabel(offer.Kind),
                         rerolled = offer.Rerolled,
                         canReroll = !offer.Rerolled && offer.Kind != Dons.KindPassive,
-                        rerollCost = Dons.RerollsLeft(profile, content) > 0 ? 0 : Dons.RerollCost(offer.Level, content),
+                        rerollCost = Dons.RerollsLeft(profile, content) > 0 ? 0 : Dons.RerollCost(Dons.RealLevel(offer.Level), content),
                         cards = offer.Cards.Select((card, i) =>
                         {
                             var (name, description) = Dons.Describe(card, profile, content);
+                            // A spell don card carries its spell and its effect apart, for the
+                            // window to draw them as a spell card rather than as a line of text.
+                            var spellDon = SpellDons.DefinitionOf(card, content)?.Don;
                             return new
                             {
                                 index = i + 1,
@@ -257,8 +261,22 @@ namespace Jondo.Unity.Server.Handlers
                                 name,
                                 description,
                                 characteristic = string.Equals(card, content.Dons.CharacteristicCard.Id, StringComparison.OrdinalIgnoreCase),
+                                spell = spellDon?.Spell ?? 0,
+                                spellName = spellDon?.SpellName ?? "",
+                                effect = spellDon == null ? "" : SpellDons.EffectText(spellDon, spellDon.Value),
+                                rank = spellDon == null ? 0 : Dons.RankOf(profile, spellDon.Id),
+                                maxRank = spellDon?.MaxRank ?? 0,
                             };
                         }).ToList(),
+                    },
+                    spellPoints = new
+                    {
+                        spent = SpellDons.PointsSpent(profile, content),
+                        max = content.SpellDons.MaxPoints,
+                        families = SpellDons.PointsPerFamily(profile, content).Count,
+                        maxFamilies = SpellDons.FamiliesAllowed(state.CharacterLevel, content),
+                        perFamily = SpellDons.PointsPerFamilyAllowed(state.CharacterLevel, content),
+                        owned = OwnedSpellDons(profile, content).Select(o => new { spellName = o.Don.SpellName, effect = o.Effect, rank = o.Rank, maxRank = o.Don.MaxRank }).ToList(),
                     },
                     characteristics = content.Dons.CharacteristicCard.Stats
                         .Select(s => new { key = s, label = Dons.StatLabels.GetValueOrDefault(s, s) }).ToList(),
@@ -303,13 +321,17 @@ namespace Jondo.Unity.Server.Handlers
             {
                 text.Append($"Progression : niveau {state.CharacterLevel} (record {profile.BestLevel}), {profile.Eclats} Éclats, " +
                             $"{profile.Ascensions} Ascension(s){(profile.Evolved ? ", évolué" : "")}. ");
+                var owned = OwnedSpellDons(profile, content);
+                if (owned.Count > 0)
+                    text.Append($"Dons de sorts ({SpellDons.PointsSpent(profile, content)}/{content.SpellDons.MaxPoints} points) : " +
+                                string.Join(", ", owned.Select(o => $"{o.Don.SpellName} {o.Effect}")) + ". ");
                 var offer = profile.Pending.FirstOrDefault();
                 if (offer == null)
                 {
                     text.Append("Aucune offre de don en attente.");
                     return text.ToString();
                 }
-                text.Append($"{profile.Pending.Count} offre(s) en attente. {Dons.KindLabel(offer.Kind)} du niveau {offer.Level} :");
+                text.Append($"{profile.Pending.Count} offre(s) en attente. {Dons.KindLabel(offer.Kind)} du niveau {Dons.RealLevel(offer.Level)} :");
                 for (int i = 0; i < offer.Cards.Count; i++)
                 {
                     var (name, description) = Dons.Describe(offer.Cards[i], profile, content);
@@ -317,11 +339,18 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 string reroll = offer.Rerolled || offer.Kind == Dons.KindPassive ? "relance indisponible"
                     : Dons.RerollsLeft(profile, content) > 0 ? "relance gratuite disponible"
-                    : $"relance : {Dons.RerollCost(offer.Level, content)} kamas";
+                    : $"relance : {Dons.RerollCost(Dons.RealLevel(offer.Level), content)} kamas";
                 text.Append($"\n.don <n> [caractéristique] pour choisir, .don relance ({reroll}), .don refonte <de> <vers> ({Dons.RepicksLeft(profile, content)} restante(s)).");
             }
             return text.ToString();
         }
+
+        /// <summary>The spell dons a character has, each with its rank and its whole effect («+10 % de dégâts»).</summary>
+        private static List<(SpellDonDefinition Don, int Rank, string Effect)> OwnedSpellDons(ProgressionProfile profile, ProgressionContent content)
+            => profile.Dons.Select(d => SpellDons.DefinitionOf(d.Card, content)?.Don).Where(d => d != null).Select(d => d!)
+                   .DistinctBy(d => d.Id)
+                   .Select(d => { int rank = Dons.RankOf(profile, d.Id); return (d, rank, SpellDons.EffectText(d, d.Value * rank)); })
+                   .ToList();
 
         private static async Task<string> DonCommandAsync(GameSession session, string rest)
         {
@@ -374,7 +403,7 @@ namespace Jondo.Unity.Server.Handlers
             lock (profile.Gate)
             {
                 string? why = Ascension.CannotEvolve(profile, session.State.CharacterLevel, ProgressionContent.Current);
-                string head = $"L'Évolution (niveau {a.EvolutionLevel}, {a.EvolutionEclats} Éclats, donjons de palier {a.EvolutionLevel} en hardcore) " +
+                string head = $"L'Évolution (niveau {a.EvolutionLevel}, {a.EvolutionEclats} Éclats, donjons de palier {a.EvolutionLevel}) " +
                               $"vous ramène définitivement au niveau {a.EvolutionReturnLevel}, évolué, en gardant vos dons jusqu'au niveau {a.EvolutionKeepDonsUpTo}. ";
                 return why != null ? head + "Impossible pour l'instant : " + Dons.RefusalText(why) : head + "Tapez .evolution confirmer pour la faire.";
             }

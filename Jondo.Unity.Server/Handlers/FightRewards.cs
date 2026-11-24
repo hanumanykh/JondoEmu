@@ -169,12 +169,9 @@ namespace Jondo.Unity.Server.Handlers
                     Almanax.ForFight(fight.RoleplayMapId, paying.Select(m => m.MonsterId), Array.Empty<int>(), inDungeon))) / 100;
             long xpBase = paying.Sum(m => (long)m.XpReward);
             long xpAlone = ServerSettings.WithBonus(ConElExtra(xpBase, extra), ServerSettings.Current.ExperienceBonusPercent);
-            long kamasAlone = ServerSettings.WithBonus(ConElExtra(paying.Sum(m => 10L + (m.Level * 5L)), extra),
-                                                       ServerSettings.Current.KamasBonusPercent);
             int strongest = paying.Count == 0 ? 0 : paying.Max(m => m.Level);
             int monsterLevels = paying.Sum(m => m.Level);
             bool shared = !Dreams.IsDreamMap(fight.RoleplayMapId);
-            var prospectings = winners.Select(w => ProspectingOf(w.Session)).ToList();
 
             var plan = new Dictionary<long, Reward>();
             for (int i = 0; i < winners.Count; i++)
@@ -202,7 +199,10 @@ namespace Jondo.Unity.Server.Handlers
                     xp = CombatExperience.WithCharacterBonus(xp, CombatExperience.CharacterBonusPercent);
                     if (CombatExperience.FightsUnderOwnPrism(fighter.Id, fight.RoleplayMapId))
                         xp = CombatExperience.WithCharacterBonus(xp, CombatExperience.AlliancePrismBonusPercent);
-                    xp = ServerSettings.WithBonus(ConElExtra(xp, extra), ServerSettings.Current.ExperienceBonusPercent);
+                    // The tide's +250 % or the counter's Étude, added to the server's rate (300 % → 550 %).
+                    int rate = ServerSettings.Current.ExperienceBonusPercent
+                             + Managers.Economy.FarmEconomy.ExtraExperiencePercent(fight, fighter.Id, session.State.CharacterLevel);
+                    xp = ServerSettings.WithBonus(ConElExtra(xp, extra), rate);
                     using (SessionContext.Push(session)) xp = WithAlmanaxExperience(xp, paying, fight.RoleplayMapId, inDungeon);
                     // An open anomaly's zone: its 120 % (AnomalyHandler.ZoneBonusAt).
                     int zoneBonus = AnomalyHandler.ZoneBonusAt(fight.RoleplayMapId);
@@ -224,7 +224,9 @@ namespace Jondo.Unity.Server.Handlers
                 plan[fighter.Id] = new Reward
                 {
                     Xp = xp,
-                    Kamas = dream != null ? 0 : shared ? KamasShare(kamasAlone, prospectings[i], prospectings) : kamasAlone,
+                    // The Orbes (Managers.Economy.Orbes): each winner's whole share, the challenges' bonus on top.
+                    Kamas = dream != null ? 0
+                          : ConElExtra(Managers.Economy.FarmEconomy.KamasFor(fight, session.State.CharacterLevel), extra),
                     Loot = loot,
                     Perfect = perfect,
                     Own = own,

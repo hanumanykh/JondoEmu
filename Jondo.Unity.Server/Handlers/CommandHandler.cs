@@ -109,6 +109,19 @@ namespace Jondo.Unity.Server.Handlers
                 [".stasis"] = "usage.stasis",
                 [".fusion"] = "usage.fusion",
                 [".raffiner"] = "usage.raffiner",
+                // The Stasis events, their tokens and the Fissure (CommandHandler.Events.cs).
+                [".event"] = "usage.event",
+                [".jetons"] = "usage.jetons",
+                [".fissure"] = "usage.fissure",
+                // The farming loop (CommandHandler.Economy.cs).
+                [".jauge"] = "usage.jauge",
+                [".comptoir"] = "usage.comptoir",
+                [".maree"] = "usage.maree",
+                // The tiers and the dungeons, the players' (CommandHandler.Tiers.cs).
+                [".paliers"] = "usage.paliers",
+                [".donjons"] = "usage.donjons",
+                [".cle"] = "usage.cle",
+                [".hardcore"] = "usage.hardcore",
             };
 
         /// <summary>
@@ -146,6 +159,17 @@ namespace Jondo.Unity.Server.Handlers
                 [".stasis"] = Roles.Jugador,
                 [".fusion"] = Roles.Jugador,
                 [".raffiner"] = Roles.Jugador,
+                // Every player's; opening an event by hand is checked inside (CommandHandler.Events.cs).
+                [".event"] = Roles.Jugador,
+                [".jetons"] = Roles.Jugador,
+                [".fissure"] = Roles.Jugador,
+                [".jauge"] = Roles.Jugador,
+                [".comptoir"] = Roles.Jugador,
+                [".maree"] = Roles.Jugador,
+                [".paliers"] = Roles.Jugador,
+                [".donjons"] = Roles.Jugador,
+                [".cle"] = Roles.Jugador,
+                [".hardcore"] = Roles.Jugador,
 
                 // Information and moving about, to go and help somebody: a moderator's.
                 [".who"] = Roles.Moderador,
@@ -344,6 +368,16 @@ namespace Jondo.Unity.Server.Handlers
                 case ".stasis": await StasisAsync(stream, channel, accountId); break;
                 case ".fusion": await FusionAsync(stream, rest, channel, accountId); break;
                 case ".raffiner": await RaffinerAsync(stream, rest, channel, accountId); break;
+                case ".event": await EventAsync(stream, rest, channel, accountId); break;
+                case ".jetons": await JetonsAsync(stream, rest, channel, accountId); break;
+                case ".fissure": await FissureAsync(stream, rest, channel, accountId); break;
+                case ".jauge": await GaugeAsync(stream, rest, channel, accountId); break;
+                case ".comptoir": await CounterAsync(stream, rest, channel, accountId); break;
+                case ".maree": await TideAsync(stream, channel, accountId); break;
+                case ".paliers":
+                case ".donjons":
+                case ".cle":
+                case ".hardcore": await TiersCommandAsync(stream, command, rest, channel, accountId); break;
                 default: await AdminAsync(command, stream, rest, channel, accountId); break;
             }
         }

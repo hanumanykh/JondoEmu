@@ -26,6 +26,8 @@ namespace Jondo.Unity.Server.Managers
         internal DonsFile Dons { get; init; } = new();
         internal List<ResearchDefinition> Research { get; init; } = new();
         internal AscensionFile Ascension { get; init; } = new();
+        /// <summary>The spell dons of every class (spell_dons.json), see <see cref="SpellDons"/>.</summary>
+        internal SpellDonsFile SpellDons { get; init; } = new();
 
         private static ProgressionContent? _current;
         private static readonly object _loadLock = new();
@@ -71,6 +73,7 @@ namespace Jondo.Unity.Server.Managers
                 Dons = Read("dons.json", new DonsFile()),
                 Research = Read("research.json", new ResearchFile()).Research,
                 Ascension = Read("ascension.json", new AscensionFile()),
+                SpellDons = Read("spell_dons.json", new SpellDonsFile()),
             };
         }
 
@@ -106,6 +109,39 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>By breed id as text, and "default" for a breed without its own.</summary>
         public Dictionary<string, List<DonCard>> Passives { get; set; } = new();
         public List<DonCard> Accomplishments { get; set; } = new();
+    }
+
+    /// <summary>
+    /// spell_dons.json: the Stasis "points de sort", cut down to a selection -- a handful of dons per
+    /// class, each on one real spell of that class, each rank one point. The caps are the Stasis
+    /// ones: so many points in all, so many spell families (a spell and its variant share their
+    /// points), and per family no more than the level allows.
+    /// </summary>
+    internal sealed class SpellDonsFile
+    {
+        public int MaxPoints { get; set; } = 14;
+        public int MaxFamilies { get; set; } = 5;
+        /// <summary>The levels at which a new family opens: one family per level reached.</summary>
+        public List<int> FamilySlotLevels { get; set; } = new();
+        /// <summary>From which level (as text) a family may hold so many points: the highest level reached wins.</summary>
+        public Dictionary<string, int> PointsPerFamilyByLevel { get; set; } = new();
+        /// <summary>By breed id as text.</summary>
+        public Dictionary<string, List<SpellDonDefinition>> Classes { get; set; } = new();
+    }
+
+    internal sealed class SpellDonDefinition
+    {
+        public string Id { get; set; } = "";
+        public int Spell { get; set; }
+        /// <summary>The spell's French name, for the texts (the client's own data is Spanish).</summary>
+        public string SpellName { get; set; } = "";
+        /// <summary>degats, soins, critique, portee, relance, pa or lancers (<see cref="SpellDons"/>).</summary>
+        public string Kind { get; set; } = "";
+        /// <summary>Per rank: a percent for degats/soins/critique, one for the others.</summary>
+        public int Value { get; set; }
+        public int MaxRank { get; set; } = 1;
+        /// <summary>The level the spell is first learnt at: no offer of it before.</summary>
+        public int Level { get; set; } = 1;
     }
 
     internal sealed class CharacteristicCard

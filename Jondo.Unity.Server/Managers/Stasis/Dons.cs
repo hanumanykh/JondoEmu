@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Jondo.Unity.Server.Network;
@@ -8,7 +8,7 @@ namespace Jondo.Unity.Server.Managers
     /// <summary>
     /// The level-up dons, after the Stasis server's rules: every level gained up to 200 offers a
     /// few cards and the player keeps one; every fifth level an adventure don, some levels a spell
-    /// card, level 50 the class passives, and 225/250/275/300 an accomplishment. And the ONE place
+    /// don (SpellDons, a card on one of the class's spells), level 50 the class passives, and 225/250/275/300 an accomplishment. And the ONE place
     /// that says what the dons and the research add to a character: <see cref="BonusesOf(long)"/>.
     /// </summary>
     /// <remarks>
@@ -176,6 +176,13 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>Where an accomplishment's extra spell offer is kept: this plus its level.</summary>
+        internal const int SpellPointLevelOffset = 1000;
+
+        /// <summary>The level an offer belongs to, an accomplishment's spell offer included.</summary>
+        internal static int RealLevel(int offerLevel)
+            => offerLevel > SpellPointLevelOffset ? offerLevel - SpellPointLevelOffset : offerLevel;
+
         internal static int QueueOffers(ProgressionProfile profile, ProgressionContent content, int breed, int oldLevel, int newLevel)
         {
             int queued = 0;
@@ -188,6 +195,21 @@ namespace Jondo.Unity.Server.Managers
                 if (offer.Cards.Count == 0) continue;
                 profile.Pending.Add(offer);
                 queued++;
+
+                // An accomplishment (225-300) also brings a spell point, as on Stasis: ten spell
+                // levels and four accomplishments make its fourteen points. It is a second offer of
+                // its own, kept apart under SpellPointLevelOffset + level so that the rule "one
+                // offer a level" still holds for the accomplishment itself.
+                if (kind == KindAccomplishment && level > content.Dons.LastDonLevel)
+                {
+                    int key = SpellPointLevelOffset + level;
+                    if (profile.Dons.Any(d => d.Level == key) || profile.Pending.Any(o => o.Level == key)) continue;
+                    var spell = Draw(profile, content, breed, level, KindSpell);
+                    if (spell.Cards.Count == 0) continue;
+                    spell.Level = key;
+                    profile.Pending.Add(spell);
+                    queued++;
+                }
             }
             profile.Pending.Sort((a, b) => a.Level.CompareTo(b.Level));
             return queued;
@@ -242,6 +264,17 @@ namespace Jondo.Unity.Server.Managers
                     pool = d.Accomplishments.Where(c => RankOf(profile, c.Id) < Math.Max(1, c.MaxRank));
                     break;
                 case KindSpell:
+                    // The spell dons of his class (SpellDons): three of those he may still take at
+                    // this level -- a new one or the next rank of one he has -- every Stasis cap
+                    // considered. When none is left (all taken, every cap reached, or a class the
+                    // file does not list) the old spell card comes back: Dofus 3 has no spell points,
+                    // and +6 Puissance is what a spell level gave before the spell dons.
+                    var spellDons = SpellDons.Takeable(profile, content, breed, level);
+                    if (spellDons.Count > 0)
+                    {
+                        cards.AddRange(spellDons.OrderBy(_ => Random.Shared.Next()).Take(count).Select(s => s.Id));
+                        return new DonOffer { Level = level, Kind = kind, Cards = cards };
+                    }
                     cards.Add(d.SpellCard.Id);
                     cards.Add(d.CharacteristicCard.Id);
                     pool = d.Level;
@@ -281,11 +314,36 @@ namespace Jondo.Unity.Server.Managers
                 don.Stat = id;
                 don.Amount = CaracAmount(profile, content);
             }
+            var spellDon = SpellDons.DefinitionOf(card, content);
+            // Offers queue, and two spell offers drawn before either was answered may both hold a
+            // card the first answer then puts over a cap (a family at its points for the level).
+            if (spellDon is { } asked && !SpellDons.CanTake(asked.Don, profile, content, RealLevel(offer.Level)))
+                return "sort-plafond";
             profile.Pending.RemoveAt(0);
             profile.Dons.RemoveAll(d => d.Level == don.Level);
             profile.Dons.Add(don);
             kept = don;
+            if (spellDon is { } taken) RedrawStaleSpellOffers(profile, content, taken.Breed);
             return "ok";
+        }
+
+        /// <summary>
+        /// The spell offers still waiting whose cards the last answer put out of reach are drawn
+        /// again, so the player is never left with an offer of nothing he may take.
+        /// </summary>
+        internal static void RedrawStaleSpellOffers(ProgressionProfile profile, ProgressionContent content, int breed)
+        {
+            for (int i = 0; i < profile.Pending.Count; i++)
+            {
+                var waiting = profile.Pending[i];
+                if (waiting.Kind != KindSpell) continue;
+                bool stale = waiting.Cards.Any(c => SpellDons.DefinitionOf(c, content) is { } s
+                                                    && !SpellDons.CanTake(s.Don, profile, content, waiting.Level));
+                if (!stale) continue;
+                var fresh = Draw(profile, content, breed, waiting.Level, KindSpell);
+                fresh.Rerolled = waiting.Rerolled;
+                profile.Pending[i] = fresh;
+            }
         }
 
         /// <summary>A characteristic's French name as typed («Agilité», «agi», «vita»), to the file's key, or "".</summary>
@@ -324,12 +382,13 @@ namespace Jondo.Unity.Server.Managers
             bool free = RerollsLeft(profile, content) > 0;
             if (!free)
             {
-                paid = RerollCost(offer.Level, content);
+                paid = RerollCost(RealLevel(offer.Level), content);
                 if (kamas < paid) { paid = 0; return "kamas"; }
                 kamas -= paid;
             }
             else profile.RerollsUsed++;
-            var fresh = Draw(profile, content, breed, offer.Level, offer.Kind);
+            var fresh = Draw(profile, content, breed, RealLevel(offer.Level), offer.Kind);
+            fresh.Level = offer.Level;
             fresh.Rerolled = true;
             profile.Pending[0] = fresh;
             return "ok";
@@ -366,6 +425,8 @@ namespace Jondo.Unity.Server.Managers
             var carac = content.Dons.CharacteristicCard;
             if (string.Equals(cardId, carac.Id, StringComparison.OrdinalIgnoreCase))
                 return (carac.Name, string.Format(carac.Description, CaracAmount(profile, content)));
+            if (SpellDons.DefinitionOf(cardId, content) is { } spellDon)
+                return SpellDons.Describe(spellDon.Don, profile);
             var card = content.CardOf(cardId);
             if (card == null) return (cardId, "");
             string rank = card.MaxRank > 1 ? $" (rang {RankOf(profile, card.Id)}/{card.MaxRank})" : "";
@@ -386,6 +447,7 @@ namespace Jondo.Unity.Server.Managers
             "aucune-offre" => "Aucune offre de don en attente.",
             "carte-inconnue" => "Cette carte n'existe pas dans l'offre.",
             "carac-requise" => "Précisez la caractéristique : force, intelligence, chance, agilite, vitalite ou sagesse.",
+            "sort-plafond" => "Ce don de sort n'est plus possible (points, familles ou rang au maximum).",
             "deja-relancee" => "Cette offre a déjà été relancée.",
             "non-relancable" => "Les passifs de classe se choisissent tels quels : pas de relance.",
             "kamas" => "Pas assez de kamas pour relancer.",

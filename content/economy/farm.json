@@ -1,0 +1,44 @@
+{
+  // The Stasis-like farming loop (Managers/Economy): zone gauge, zone counter, tides, archmonsters.
+  "Gauge": {
+    "Enabled": true,
+    // Base threshold = Base + PerLevel * zone level; then x Steps[completions] (last step repeats).
+    "Base": 40,
+    "PerLevel": 0.6,
+    "Steps": [ 1.0, 1.5, 2.0 ],
+    "ResetHours": 72,
+    "ArchmonsterFactor": 2,
+    "TideFactor": 2,
+    "BuffFactor": 2
+  },
+  "Counter": {
+    "Enabled": true,
+    "DurationMinutes": 30,
+    // Densité price = max(Minimum, PerLevel * zone level^Exponent); Étude x StudyFactor; Jauge x GaugeFactor.
+    "PerLevel": 10,
+    "Exponent": 1.5,
+    "Minimum": 500,
+    "StudyFactor": 0.75,
+    "GaugeFactor": 2,
+    "DensityDropPercent": 100,
+    "StudyExperiencePercent": 50
+  },
+  "Tides": {
+    "Enabled": true,
+    "OnMinutes": 50,
+    "OffMinutes": 10,
+    "ExperiencePercent": 250,
+    "LevelTolerance": 20,
+    "Global": false,
+    "MinimumRoster": 3,
+    "Bands": [
+      { "Min": 1, "Max": 50 }, { "Min": 51, "Max": 100 }, { "Min": 101, "Max": 150 },
+      { "Min": 151, "Max": 200 }, { "Min": 201, "Max": 250 }, { "Min": 251, "Max": 300 }
+    ]
+  },
+  "Archmonsters": {
+    "DropPercent": 400,
+    "RespawnMinMinutes": 60,
+    "RespawnMaxMinutes": 180
+  }
+}

@@ -6168,6 +6168,8 @@ namespace Jondo.Unity.Server.Managers
                 int receivedMultiplier = sobre.Buffs.Multiplicador(ReceivedHealingPercent, ronda);
                 int points = CalculateFixedHeal(baseHeal, intelligence, flatHeals,
                                                 receivedMultiplier);
+                // The caster's spell dons' "+X % de soins" on this spell (SpellDons).
+                points = SpellDons.WithHeal(quienLanza, hechizo, points);
                 return ApplyHealing(combate, quienLanza, sobre, hechizo, grado, efecto,
                                     ronda, points);
             }

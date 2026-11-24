@@ -35,13 +35,18 @@ internal static class CharacterProgression
     /// Ascension (x2 to x9 until the best level ever reached) and the Découverte don's percent --
     /// so every source of experience gets it without each caller knowing; after the level moved,
     /// <see cref="Managers.Dons.OnLevelsGained"/> queues the dons the new levels earn. The callers'
-    /// own figures (the fight's end screen) show the experience before that multiplier.
+    /// own figures (the fight's end screen) show the experience before that multiplier. Then
+    /// <see cref="Managers.Tiers.LimitExperience"/> cuts what the tier gates (200 to 300) do not let through.
     /// </remarks>
     internal static ExperienceGain AddExperience(SessionState state, long experience)
     {
         int oldLevel = state.CharacterLevel;
         if (experience <= 0) return new(0, oldLevel, oldLevel, 0);
         experience = Managers.Dons.ScaleExperience(state, experience);
+        // The tier gates from 200 (Managers/Stasis/Tiers.cs): what is past a closed tier's floor
+        // is lost, as on Stasis, and the player is told once which dungeons remain.
+        experience = Managers.Tiers.LimitExperience(state, experience);
+        if (experience <= 0) return new(0, oldLevel, oldLevel, 0);
 
         // Saturating: a bonus on a huge gain must not wrap the total negative.
         state.Experience = experience > long.MaxValue - state.Experience ? long.MaxValue : state.Experience + experience;

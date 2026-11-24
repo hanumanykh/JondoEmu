@@ -1,0 +1,62 @@
+{
+  "_comment": [
+    "The Fissure (Managers/Events/Fissure.cs, docs/stasis-gameplay-spec.md §12): expeditions of waves,",
+    "one fight per wave, each stronger. «.fissure surface|profondeur|abime» buys the key of the band",
+    "(kamas stand for the spec's Orbes) and plants the first wave on «arenaMap»; winning plants the next.",
+    "Wave n's monsters are brought to baseLevel + (n-1) * levelPerWave (capped at maxLevel) with",
+    "Dreams.ScaleTo, and number baseMonsters + (n-1) / wavesPerExtraMonster (at most 8). «validate»:",
+    "waves needed for the expedition to count as validated (its bonus tokens); «limit»: the most waves",
+    "one key gives (0 = none). Formation bonus by the number of fighters (1 to 4), from the spec.",
+    "Every wave won adds to the character's cumulative count; a Dofus is guaranteed every",
+    "«dofus.wavesNeeded» ELIGIBLE waves (spec: waves >= 5 in Abîme; set eligibleBands/eligibleFromWave",
+    "to change it), claimed with «.fissure dofus <nom>»."
+  ],
+  "enabled": true,
+  "arenaMap": 191104002,
+  "maxFighters": 4,
+  "formation": [
+    { "fighters": 1, "ap": 4, "mp": 3, "lifePercent": 25, "damagePercent": 10 },
+    { "fighters": 2, "ap": 3, "mp": 2, "lifePercent": 15, "damagePercent": 8 },
+    { "fighters": 3, "ap": 2, "mp": 1, "lifePercent": 8, "damagePercent": 5 },
+    { "fighters": 4, "ap": 0, "mp": 0, "lifePercent": 0, "damagePercent": 0 }
+  ],
+  "bands": [
+    {
+      "id": "surface", "name": "Surface", "key": 1800, "minLevel": 150,
+      "baseLevel": 150, "levelPerWave": 5, "maxLevel": 220,
+      "baseMonsters": 2, "wavesPerExtraMonster": 2, "validate": 1, "limit": 5,
+      "kamasPerWave": 400, "tokensPerWave": 1, "validatedTokens": 3,
+      "monsters": [ 2903, 2860, 2859, 2847, 2846, 2845, 2890, 2888, 2891, 2889, 2897, 2895 ],
+      "resources": [ { "item": 17272, "quantity": 1, "percent": 25 } ]
+    },
+    {
+      "id": "profondeur", "name": "Profondeur", "key": 4650, "minLevel": 200,
+      "baseLevel": 225, "levelPerWave": 4, "maxLevel": 290,
+      "baseMonsters": 3, "wavesPerExtraMonster": 3, "validate": 3, "limit": 15,
+      "kamasPerWave": 900, "tokensPerWave": 2, "validatedTokens": 10,
+      "monsters": [ 4879, 4878, 4881, 4880, 5105, 5104, 4456, 4455, 4450, 5102, 5103 ],
+      "resources": [ { "item": 17273, "quantity": 1, "percent": 25 } ]
+    },
+    {
+      "id": "abime", "name": "Abîme", "key": 7950, "minLevel": 250,
+      "baseLevel": 275, "levelPerWave": 3, "maxLevel": 400,
+      "baseMonsters": 4, "wavesPerExtraMonster": 3, "validate": 5, "limit": 0,
+      "kamasPerWave": 1600, "tokensPerWave": 3, "validatedTokens": 20,
+      "monsters": [ 4879, 4878, 4881, 4880, 5105, 5104, 4456, 4455, 4450, 5102, 5103 ],
+      "resources": [ { "item": 17274, "quantity": 1, "percent": 30 } ]
+    }
+  ],
+  "dofus": {
+    "wavesNeeded": 1000,
+    "eligibleBands": [ "abime" ],
+    "eligibleFromWave": 5,
+    "items": [
+      { "name": "Cawotte", "item": 972 },
+      { "name": "Glaces", "item": 7043 },
+      { "name": "Émeraude", "item": 737 },
+      { "name": "Pourpre", "item": 694 },
+      { "name": "Dolmanax", "item": 13344 },
+      { "name": "Vulbis", "item": 6980 }
+    ]
+  }
+}

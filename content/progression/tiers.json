@@ -1,0 +1,40 @@
+{
+  // Paliers 200-300 (docs/stasis-gameplay-spec.md §8, §11), read by Managers/Stasis/Tiers.cs.
+  // Every Stasis dungeon has its 3.6 client counterpart (datos/dungeons.json id, Spanish client
+  // name) except «Caverne de Cire Momore», which this client does not have: its tier-300 slot is
+  // the Bastión de los Martilloseco (141), the newest real keyed dungeon not used elsewhere.
+  "gateFromLevel": 200,
+  "tiers": [
+    { "level": 200, "dungeons": [ 69, 68, 67, 70, 73, 76 ] },
+    // Mizz Frizz, Klim, Sylargh, Nileza, Merkator, Rey Nidas
+    { "level": 225, "dungeons": [ 97, 95, 98, 99, 110, 83 ] },
+    // Capitán Meno, Miauvizor (Chalœil), Kutulú, Dientinea, Rey Dazahk, Corte Tenebrosa
+    { "level": 250, "dungeons": [ 103, 106, 107, 133, 134, 114, 164 ] },
+    // Tal Kasha, Kuatropatas, Ilyzaelle, Orukam, Imagiro, Torkelonia, Venerable
+    { "level": 275, "dungeons": [ 71, 84, 117, 119, 120, 87, 118 ] },
+    // Conde Kontatrás (Harebourg), Ballena, Árbol de Muerte, Balanza, Trono de Sangre, Vórtex, Tiranía
+    { "level": 300, "dungeons": [ 108, 109, 121, 135, 136, 140, 111, 141, 165 ] }
+    // Bethel, Solar, Selocalipsis, Kabaal, Aurora Púrpura, Maleficios, Dios Kao, Martilloseco (for Cire Momore), Despedazadora
+  ],
+  // The Evolution asks for the 9 tier-300 dungeons since the last Ascension. Hardcore is only open
+  // to evolved characters, so asking for them in hardcore would make the Evolution unreachable.
+  "evolutionNeedsHardcore": false,
+  "hardcore": { "life": 3, "damage": 2.25, "drop": 2 },
+  // «Aucune clé ne drope»: every item a dungeon door asks for (the keyring excepted) is taken out
+  // of fight loot. Item ids listed in keyDropExceptions still drop.
+  "keysNeverDrop": true,
+  "keyDropExceptions": [],
+  // Key prices in kamas, by bracket of the dungeon's level (prices not published by Stasis).
+  "keyBrackets": [
+    { "min": 1,   "max": 40,  "price": 500 },
+    { "min": 41,  "max": 80,  "price": 1500 },
+    { "min": 81,  "max": 120, "price": 3000 },
+    { "min": 121, "max": 160, "price": 6000 },
+    { "min": 161, "max": 190, "price": 10000 },
+    { "min": 191, "max": 200, "price": 15000 },
+    { "min": 201, "max": 225, "price": 20000 },
+    { "min": 226, "max": 250, "price": 25000 },
+    { "min": 251, "max": 275, "price": 30000 },
+    { "min": 276, "max": 300, "price": 40000 }
+  ]
+}

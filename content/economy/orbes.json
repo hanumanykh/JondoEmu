@@ -1,0 +1,19 @@
+{
+  // Orbes de Stasis = kamas (Managers/Economy/Orbes.cs). Per beaten monster:
+  //   Flat + PerLevel * level^Exponent, a dungeon boss x BossFactor.
+  // A monster counts at most at (character level + CarryTolerance); more than OverLevelTolerance
+  // levels above the strongest monster costs OverLevelPenaltyPerLevel per level, down to OverLevelFloor.
+  // Archmonster in the group: x ArchmonsterFactor; tide zone: x TideFactor. Each winner gets a full share.
+  // Calibration (4 monsters of his level, 40 fights/h): lvl 50 ~39k/h, lvl 150 ~196k/h, lvl 200 ~300k/h.
+  "Enabled": true,
+  "Flat": 10,
+  "PerLevel": 0.66,
+  "Exponent": 1.5,
+  "BossFactor": 5,
+  "ArchmonsterFactor": 5,
+  "TideFactor": 2,
+  "CarryTolerance": 20,
+  "OverLevelTolerance": 30,
+  "OverLevelPenaltyPerLevel": 0.01,
+  "OverLevelFloor": 0.25
+}

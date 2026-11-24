@@ -25,8 +25,10 @@ namespace Jondo.Unity.Server.Managers
     ///   - and one of each per zone: if the Dark Treechnid is standing on a map of its subarea, it
     ///     is on no other map of that subarea until something kills it
     ///
-    /// Once killed, it is gone for 2 h ± 15 min, as on the official servers since 3.1. When that is
-    /// over, the next group that comes out in its zone brings it, with no draw.
+    /// Once killed, it is gone for 1 to 3 hours, as on Stasis (it was 2 h ± 15 min, the official
+    /// servers' since 3.1). When that is over, the next group that comes out in its zone brings it,
+    /// with no draw. A fight with one in the group pays x5 kamas, +400 % drop and x2 gauge
+    /// (Managers.Economy.FarmEconomy).
     ///
     /// The draw is deterministic — seeded from the group's own id — so a map looks the same after
     /// a restart as it did before. Nothing is rewritten in the database: the 38.744 groups it ships
@@ -39,9 +41,20 @@ namespace Jondo.Unity.Server.Managers
     /// </summary>
     public static class Archimonsters
     {
-        /// <summary>2 h ± 15 min away once beaten; the Almanax's day 292 triples the speed.</summary>
+        /// <summary>
+        /// 1 to 3 hours away once beaten, as on Stasis (content/economy/farm.json, Archmonsters);
+        /// the Almanax's day 292 triples the speed.
+        /// </summary>
         private static readonly RareMonsterPool _pool = new RareMonsterPool(TimeSpan.FromHours(2),
-            _ => (int)Almanax.WithBonus(Almanax.BonusType.Archmonsters, 100));
+            _ => (int)Almanax.WithBonus(Almanax.BonusType.Archmonsters, 100), AwayTime);
+
+        /// <summary>A beaten archmonster's time away: uniform between the farm settings' minimum and maximum.</summary>
+        internal static TimeSpan AwayTime()
+        {
+            var s = Economy.Farm.Current.Archmonsters;
+            int min = Math.Max(1, s.RespawnMinMinutes), max = Math.Max(min, s.RespawnMaxMinutes);
+            return TimeSpan.FromMinutes(Random.Shared.Next(min, max + 1));
+        }
 
         /// <summary>archmonster id -> the ordinary monster it is the rare version of.</summary>
         private static readonly Dictionary<int, int> _ordinary = new Dictionary<int, int>();

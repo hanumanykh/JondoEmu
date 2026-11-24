@@ -44,10 +44,17 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Killed ones, and when they may stand again.</summary>
         private readonly Dictionary<int, DateTime> _respawnAt = new Dictionary<int, DateTime>();
 
-        public RareMonsterPool(TimeSpan respawn, Func<int, int>? speedPercent = null)
+        /// <summary>
+        /// When given, how long a killed one stays away, drawn anew at each death, in place of
+        /// the respawn time ± 15 minutes: the archmonsters' 1 to 3 hours (Managers.Economy.Farm).
+        /// </summary>
+        private readonly Func<TimeSpan>? _away;
+
+        public RareMonsterPool(TimeSpan respawn, Func<int, int>? speedPercent = null, Func<TimeSpan>? away = null)
         {
             _respawn = respawn;
             _speedPercent = speedPercent;
+            _away = away;
         }
 
         private int Speed(int id) => Math.Max(100, _speedPercent?.Invoke(id) ?? 100);
@@ -118,7 +125,7 @@ namespace Jondo.Unity.Server.Managers
                 _busyMaps.Remove(mapId);
 
                 int spread = Random.Shared.Next(-RespawnSpreadMinutes, RespawnSpreadMinutes + 1);
-                var away = _respawn + TimeSpan.FromMinutes(spread);
+                var away = _away?.Invoke() ?? _respawn + TimeSpan.FromMinutes(spread);
                 _respawnAt[id] = Clock() + TimeSpan.FromTicks(away.Ticks * 100 / Speed(id));
             }
         }

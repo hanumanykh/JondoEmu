@@ -1,0 +1,68 @@
+{
+  "_comment": [
+    "The Stasis daily events (Managers/Events/StasisEvents.cs, docs/stasis-gameplay-spec.md §16).",
+    "One a day, in turn Time Attack -> Poutch -> Grande Traque, counted in days from «anchorDate» (which",
+    "is a Time Attack day). Each starts at its «hour» (server local time; «weekendHour» for Saturday and",
+    "Sunday when given), but only once a real player is in the world -- the bots do not count -- and not",
+    "later than «latestHour». An administrator starts one at once with «.event timeattack|poutch|traque».",
+    "Rewards are Jetons Event, 1st/2nd/3rd, by category: I = level up to 200, II = 201+, III = evolved.",
+    "The bots compete through a seeded ranking: «botCount» results drawn from the day, between «botMin»",
+    "and «botMax» (seconds for Time Attack -- lower is better --, damage for the Poutch, points for the Traque)."
+  ],
+  "enabled": true,
+  "anchorDate": "2026-11-24",
+  "latestHour": 23,
+  "rotation": [ "timeattack", "poutch", "traque" ],
+  "shop": [
+    { "id": "rune", "name": "Rune Do Sort cumulable (+1 % dégâts, 4 % max par objet)", "price": 250, "rune": true },
+    { "id": "rappel", "name": "Pócima de recuerdo x5", "price": 10, "item": 548, "quantity": 5 },
+    { "id": "orbe", "name": "Orbe regenerativo", "price": 40, "item": 17273, "quantity": 1 },
+    { "id": "wab", "name": "Gorro de black wab (apparence)", "price": 60, "item": 9567, "quantity": 1 },
+    { "id": "kalipsis", "name": "Gorro Kalipsis (apparence)", "price": 60, "item": 11043, "quantity": 1 },
+    { "id": "krosmaster", "name": "Gorro Krosmaster (apparence)", "price": 60, "item": 13483, "quantity": 1 }
+  ],
+  "timeattack": {
+    "name": "Time Attack",
+    "minutes": 60,
+    "hour": 18,
+    "weekendHour": 21,
+    "rewards": { "I": [ 25, 15, 10 ], "II": [ 50, 30, 20 ], "III": [ 100, 75, 50 ] },
+    "botCount": 12,
+    "botMin": 420,
+    "botMax": 1500,
+    "start": "Time Attack ouvert pour {minutes} minutes ! Entrez seul dans un donjon : le chrono part au premier combat et s'arrête à la chute du boss. Classement : .event",
+    "end": "Fin du Time Attack. Podium : {podium}"
+  },
+  "poutch": {
+    "name": "Concours Poutch",
+    "minutes": 60,
+    "hour": 17,
+    "map": 99090957,
+    "maxTurns": 3,
+    "classCoefficients": { "1": 1.25, "7": 1.25, "14": 1.25, "8": 0.8, "18": 0.8 },
+    "rewards": { "I": [ 15, 10, 5 ], "II": [ 25, 15, 10 ], "III": [ 40, 30, 20 ] },
+    "botCount": 12,
+    "botMin": 2500,
+    "botMax": 14000,
+    "start": "Concours Poutch ouvert pour {minutes} minutes ! Frappez le Poutch du kanojedo (.event aller) : vos dégâts sur 1 à 3 tours comptent. Classement : .event",
+    "end": "Fin du Concours Poutch. Podium : {podium}"
+  },
+  "traque": {
+    "name": "Grande Traque",
+    "minutes": 30,
+    "hour": 20,
+    "hidden": 5,
+    "clueEveryMinutes": 5,
+    "minSubareaLevel": 1,
+    "rewards": { "I": [ 75, 50, 25 ], "II": [ 75, 50, 25 ], "III": [ 75, 50, 25 ] },
+    "botCount": 8,
+    "botMin": 0,
+    "botMax": 3,
+    "start": "Grande Traque ! {hidden} PNJ cachés pendant {minutes} minutes. Premier indice : ils se cachent en {zone}. Rendez-vous sur leur carte pour les débusquer.",
+    "clueZone": "Indice de la Traque : un PNJ caché se trouve en {zone}.",
+    "clueCoords": "Indice de la Traque : en {zone}, cherchez vers [{x},{y}] (à {spread} cases près).",
+    "found": "{name} a débusqué un PNJ caché en {zone} [{x},{y}] !",
+    "botNews": "{name} est sur une piste...",
+    "end": "Fin de la Grande Traque. Podium : {podium}"
+  }
+}

@@ -170,12 +170,20 @@ namespace Jondo.Unity.Server
         }
 
         /// <summary>Accumulated experience the given level starts at.</summary>
+        /// <remarks>
+        /// The whole table's, whatever the server's cap: the cap stops the level a character can
+        /// REACH (<see cref="LevelForXp"/>, <see cref="MaxLevel"/>), not the floors of the levels
+        /// that exist. A character already past the cap -- an Omega 354 of the captures, or one
+        /// made before the cap was lowered -- keeps the floors of his own level in the frames
+        /// (jyg's experience lines), which the start-up check compares byte for byte with the
+        /// capture: clamped to 300, the server refused to start.
+        /// </remarks>
         public static long LevelFloor(int level)
         {
             Ensure();
-            if (_floors.Count == 0) return 0;
-            if (level <= MaxLevelUnsafe && _floors.TryGetValue(level, out long xp)) return xp;
-            return level <= 1 ? 0 : _floors[Math.Min(level, MaxLevelUnsafe)];
+            if (_floors.Count == 0 || level <= 1) return 0;
+            if (_floors.TryGetValue(level, out long xp)) return xp;
+            return _floors[Math.Min(level, _maxLevel)];
         }
 
         /// <summary>Accumulated experience at which the next level is reached.</summary>
@@ -183,9 +191,7 @@ namespace Jondo.Unity.Server
         {
             Ensure();
             if (_floors.Count == 0) return 0;
-            int next = level + 1;
-            if (next > MaxLevelUnsafe) return LevelFloor(MaxLevelUnsafe);
-            return LevelFloor(next);
+            return LevelFloor(Math.Min(level + 1, _maxLevel));
         }
 
         /// <summary>The level that a given amount of accumulated experience corresponds to.</summary>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -228,11 +228,12 @@ namespace JondoFix
             if (!root.TryGetProperty("offer", out var offer) || offer.ValueKind != JsonValueKind.Object)
             {
                 _page.Add(Hint("Aucune offre de don en attente. Chaque niveau gagné jusqu'au 200 en apporte une."));
+                ShowSpellPoints(root);
                 ShowRepick(root);
                 return;
             }
             int pending = Int(root, "pending");
-            _page.Add(Title($"{offer.GetProperty("kindLabel").GetString()} — niveau {Int(offer, "level")}" +
+            _page.Add(Title($"{offer.GetProperty("kindLabel").GetString()} — niveau {(offer.TryGetProperty("shownLevel", out _) ? Int(offer, "shownLevel") : Int(offer, "level"))}" +
                             (pending > 1 ? $" ({pending} offres en attente)" : "")));
 
             var cards = AdminItemsUi.Row();
@@ -248,7 +249,23 @@ namespace JondoFix
                     () => Ask("stasis/reroll", new Dictionary<string, object>(), Show)));
             }
             else _page.Add(Hint(offer.GetProperty("rerolled").GetBoolean() ? "Offre déjà relancée." : "Cette offre ne se relance pas."));
+            ShowSpellPoints(root);
             ShowRepick(root);
+        }
+
+        /// <summary>The spell points: how many spent, the families open, and the spell dons kept.</summary>
+        private static void ShowSpellPoints(JsonElement root)
+        {
+            if (!root.TryGetProperty("spellPoints", out var points) || points.ValueKind != JsonValueKind.Object) return;
+            _page.Add(Title($"Dons de sorts — {Int(points, "spent")}/{Int(points, "max")} points"));
+            _page.Add(Hint($"Familles de sorts : {Int(points, "families")}/{Int(points, "maxFamilies")} · " +
+                           $"au plus {Int(points, "perFamily")} point(s) par famille à ce niveau. Offerts aux niveaux de sort (10, 30, 70...)."));
+            foreach (var owned in points.GetProperty("owned").EnumerateArray())
+            {
+                int maxRank = Int(owned, "maxRank");
+                _page.Add(AdminItemsUi.Label($"• {Text(owned, "spellName")} : {Text(owned, "effect")}" +
+                                             (maxRank > 1 ? $" (rang {Int(owned, "rank")}/{maxRank})" : "")));
+            }
         }
 
         private static VisualElement Card(JsonElement root, JsonElement card)
@@ -263,7 +280,22 @@ namespace JondoFix
             box.style.paddingTop = new StyleLength(10f);
             box.style.paddingBottom = new StyleLength(10f);
             box.style.backgroundColor = new StyleColor(new UnityEngine.Color(1f, 1f, 1f, 0.07f));
-            box.Add(AdminItemsUi.Label(card.GetProperty("name").GetString(), true));
+            // A spell don card (SpellDons on the server): the spell's name as the title, the effect
+            // under it in the accent of a bonus, the rank it brings, then the sentence. Older
+            // servers send no "spell" field and the card draws as before.
+            string spellName = Text(card, "spellName");
+            if (Int(card, "spell") > 0 && spellName.Length > 0)
+            {
+                box.style.backgroundColor = new StyleColor(new UnityEngine.Color(0.35f, 0.55f, 1f, 0.12f));
+                box.Add(AdminItemsUi.Label("Sort : " + spellName, true));
+                var effect = AdminItemsUi.Label(Text(card, "effect"), true);
+                effect.style.color = new StyleColor(new UnityEngine.Color(0.55f, 0.9f, 0.55f, 1f));
+                effect.style.marginTop = new StyleLength(4f);
+                box.Add(effect);
+                int maxRank = Int(card, "maxRank");
+                if (maxRank > 1) box.Add(AdminItemsUi.Label($"Rang {Int(card, "rank") + 1}/{maxRank}"));
+            }
+            else box.Add(AdminItemsUi.Label(card.GetProperty("name").GetString(), true));
             var description = AdminItemsUi.Label(card.GetProperty("description").GetString());
             description.style.marginTop = new StyleLength(6f);
             description.style.marginBottom = new StyleLength(10f);
@@ -356,7 +388,7 @@ namespace JondoFix
 
             var evo = root.GetProperty("evolution");
             _page.Add(Title("Évolution"));
-            _page.Add(Hint($"Au niveau {Int(evo, "level")}, avec {Long(evo, "cost")} Éclats et les donjons de palier 300 faits en hardcore : " +
+            _page.Add(Hint($"Au niveau {Int(evo, "level")}, avec {Long(evo, "cost")} Éclats et les 9 donjons de palier 300 : " +
                            $"retour définitif au niveau {Int(evo, "returnLevel")}, évolué, en gardant les dons jusqu'au niveau 200. " +
                            "Un personnage évolué peut porter les objets stasifiés S3 et S4 et ne fait plus d'Ascension."));
             Rebirth(evo, "evolution", "Évoluer", "stasis/evolve");
@@ -430,6 +462,7 @@ namespace JondoFix
             }
         }
 
+        private static string Text(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
         private static int Int(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
         private static long Long(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
 

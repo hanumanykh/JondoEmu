@@ -138,9 +138,13 @@ namespace Jondo.Unity.Server.Managers
                            + caster.AllSpellsModifier(spell, SpellAspect.CastsPerTargetUp)
                 : 0;
 
-        /// <summary>The critical chance a spell's own rows add: 287.</summary>
+        /// <summary>
+        /// The critical chance a spell's own rows add: 287 -- and what the fighter carries for the
+        /// spell the whole fight (a spell don's "+5 % de coups critiques", Fighter.OwnSpellModifiers).
+        /// </summary>
         public static int Critical(Fighter caster, int spell, int round)
-            => caster.Buffs.DelHechizo(spell, SpellAspect.CriticalUp, round);
+            => caster.Buffs.DelHechizo(spell, SpellAspect.CriticalUp, round)
+               + caster.AllSpellsModifier(spell, SpellAspect.CriticalUp);
 
         /// <summary>The cast interval, less 286, the spell's and every spell's.</summary>
         public static int CastInterval(Fighter caster, int spell, int levelInterval, int round)

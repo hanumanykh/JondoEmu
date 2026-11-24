@@ -112,9 +112,33 @@ namespace Jondo.Unity.World.Fights
         /// <summary>The same for its weapon: a dream's "Armes : +1 Portée maximale" (3281) and "+1 lancer(s) par tour" (3290).</summary>
         public Dictionary<SpellAspect, int> WeaponModifiers { get; } = new Dictionary<SpellAspect, int>();
 
-        /// <summary>What <see cref="EverySpell"/> -- or for spell 0, the weapon, <see cref="WeaponModifiers"/> -- holds for an aspect.</summary>
+        /// <summary>
+        /// What ONE of its spells is modified by for the whole fight, whatever the buffs: a
+        /// character's spell dons (the server's SpellDons) -- "Pression : +5 % de coups critiques",
+        /// "Épée Divine : +1 lancer par tour". Kept apart from <see cref="EverySpell"/> because
+        /// they name a spell, and read through <see cref="AllSpellsModifier"/> so every rule that
+        /// already honours a dream's modifiers (range, AP cost, casts, interval, base damage, the
+        /// hnd the client draws from) honours these the same way, without a new path.
+        /// </summary>
+        public Dictionary<(int Spell, SpellAspect Aspect), int> OwnSpellModifiers { get; } = new Dictionary<(int, SpellAspect), int>();
+
+        /// <summary>
+        /// The percent more ONE of its spells deals, by spell (a spell don's "+10 % dégâts"),
+        /// applied with the other final multipliers of a blow. No aspect of the catalogue says
+        /// it -- 293 is base damage, a number -- so it has its own map.
+        /// </summary>
+        public Dictionary<int, int> SpellDamagePercent { get; } = new Dictionary<int, int>();
+
+        /// <summary>The same for what one of its spells heals.</summary>
+        public Dictionary<int, int> SpellHealPercent { get; } = new Dictionary<int, int>();
+
+        /// <summary>
+        /// What <see cref="EverySpell"/> -- or for spell 0, the weapon, <see cref="WeaponModifiers"/> --
+        /// holds for an aspect, plus what <see cref="OwnSpellModifiers"/> holds for that spell.
+        /// </summary>
         public int AllSpellsModifier(int spell, SpellAspect aspect)
-            => (spell == 0 ? WeaponModifiers : EverySpell).TryGetValue(aspect, out int value) ? value : 0;
+            => ((spell == 0 ? WeaponModifiers : EverySpell).TryGetValue(aspect, out int value) ? value : 0)
+               + (spell != 0 && OwnSpellModifiers.TryGetValue((spell, aspect), out int own) ? own : 0);
 
         /// <summary>
         /// Turns this fighter plays on the other side: effect 3107, "Cambia el bando del objetivo"

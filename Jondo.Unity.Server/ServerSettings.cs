@@ -59,16 +59,22 @@ namespace Jondo.Unity.Server
         /// </summary>
         public int MaxBaseCharacteristic { get; set; } = 3000;
 
-        /// <summary>Extra experience for everybody, in percent: what fights, quests and rewards give.</summary>
-        public int ExperienceBonusPercent { get; set; }
-        
+        /// <summary>
+        /// Extra experience for everybody, in percent: what fights, quests and rewards give. 200 by
+        /// default, the x3 the Stasis wiki's tide example implies («300 %» that a tide makes 550 %).
+        /// </summary>
+        public int ExperienceBonusPercent { get; set; } = 200;
+
         /// <summary>Extra job experience for everybody, in percent: what gathering, crafting and breeding give.</summary>
         public int JobExperienceBonusPercent { get; set; }
 
-        /// <summary>Extra chance of every item a monster drops, in percent.</summary>
+        /// <summary>Extra chance of every item a monster drops, in percent. None by default: the gauge, Densité and the archmonsters do it.</summary>
         public int DropBonusPercent { get; set; }
 
-        /// <summary>Extra kamas from fights, in percent.</summary>
+        /// <summary>
+        /// Extra kamas from fights, in percent, on top of the Orbes formula (Managers.Economy.Orbes),
+        /// which already sets what a fight pays: none by default.
+        /// </summary>
         public int KamasBonusPercent { get; set; }
 
         /// <summary>
@@ -164,8 +170,8 @@ namespace Jondo.Unity.Server
         /// <summary>How many scrolled stats a player starts with.</summary>
         public int StartingScrollStats { get; set; } = Handlers.CharacterCreationHandler.ScrolledStat;
 
-        /// <summary>How many kamas a player starts with.</summary>
-        public long StartingKamas { get; set; } = 1_000_000L;
+        /// <summary>How many kamas a player starts with: 5 000, a Stasis-like start where kamas are earned.</summary>
+        public long StartingKamas { get; set; } = 5_000L;
 
         /// <summary>Give each new character an Adventurer's Set.</summary>
         public bool StartingAdventurerSet { get; set; } = true;

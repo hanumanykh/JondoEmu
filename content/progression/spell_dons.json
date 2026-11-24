@@ -1,0 +1,199 @@
+// Les dons de sorts (Stasis, sélection) : 5 à 10 par classe, chacun sur un VRAI sort de la classe.
+// Généré puis relu à la main ; les noms français sont ceux du jeu autant que possible (les données
+// du client sont en espagnol : le nom espagnol suit en commentaire). Chaque rang coûte un point de sort.
+// kinds : degats (+% dégâts du sort), soins (+% soins du sort), critique (+% coups critiques du sort),
+// portee (+1 PO max), relance (-1 tour de relance), pa (-1 PA, sorts à 4 PA ou plus), lancers (+1 lancer/tour).
+{
+  "maxPoints": 14,
+  "maxFamilies": 5,
+  "familySlotLevels": [10, 30, 50, 70, 90],
+  "pointsPerFamilyByLevel": { "1": 1, "70": 2, "90": 3, "110": 4, "130": 5 },
+  "classes": {
+    // Féca
+    "1": [
+      { "id": "feca-langueur-degats", "spell": 12978, "spellName": "Langueur", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Languidez
+      { "id": "feca-typhon-degats", "spell": 12976, "spellName": "Typhon", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Tifón
+      { "id": "feca-typhon-portee", "spell": 12976, "spellName": "Typhon", "kind": "portee", "value": 1, "maxRank": 1, "level": 1 },  // Tifón
+      { "id": "feca-lethargie-critique", "spell": 12993, "spellName": "Léthargie", "kind": "critique", "value": 5, "maxRank": 3, "level": 20 },  // Letargo
+      { "id": "feca-frisson-degats", "spell": 12989, "spellName": "Frisson", "kind": "degats", "value": 5, "maxRank": 3, "level": 30 },  // Escalofrío
+      { "id": "feca-treve-relance", "spell": 12980, "spellName": "Trêve", "kind": "relance", "value": 1, "maxRank": 1, "level": 135 },  // Tregua
+      { "id": "feca-bastion-relance", "spell": 12995, "spellName": "Bastion", "kind": "relance", "value": 1, "maxRank": 1, "level": 25 },  // Bastión
+      { "id": "feca-atonie-pa", "spell": 13014, "spellName": "Atonie", "kind": "pa", "value": 1, "maxRank": 1, "level": 100 }  // Atonía
+    ],
+    // Osamodas
+    "2": [
+      { "id": "osamodas-cri-du-corbac-degats", "spell": 31110, "spellName": "Cri du Corbac", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Grito de Cuerbok
+      { "id": "osamodas-cri-du-corbac-portee", "spell": 31110, "spellName": "Cri du Corbac", "kind": "portee", "value": 1, "maxRank": 2, "level": 1 },  // Grito de Cuerbok
+      { "id": "osamodas-piquants-du-prespic-degats", "spell": 31111, "spellName": "Piquants du Prespic", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Pinchos de Prespic
+      { "id": "osamodas-crocs-du-piranya-degats", "spell": 31135, "spellName": "Crocs du Piranya", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Dientes de Piranya
+      { "id": "osamodas-crocs-du-piranya-lancers", "spell": 31135, "spellName": "Crocs du Piranya", "kind": "lancers", "value": 1, "maxRank": 1, "level": 1 },  // Dientes de Piranya
+      { "id": "osamodas-cri-de-l-ours-critique", "spell": 31132, "spellName": "Cri de l'Ours", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Grito del Oso
+      { "id": "osamodas-crocs-du-milubo-pa", "spell": 31113, "spellName": "Crocs du Milubo", "kind": "pa", "value": 1, "maxRank": 1, "level": 95 },  // Colmillos de Milubo
+      { "id": "osamodas-souffle-draconique-degats", "spell": 31122, "spellName": "Souffle Draconique", "kind": "degats", "value": 5, "maxRank": 3, "level": 45 }  // Soplido Dracónico
+    ],
+    // Enutrof
+    "3": [
+      { "id": "enutrof-lancer-de-pieces-degats", "spell": 13338, "spellName": "Lancer de Pièces", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Lanzamiento de Monedas
+      { "id": "enutrof-lancer-de-pieces-critique", "spell": 13338, "spellName": "Lancer de Pièces", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Lanzamiento de Monedas
+      { "id": "enutrof-pelle-fantomatique-degats", "spell": 13336, "spellName": "Pelle Fantomatique", "kind": "degats", "value": 5, "maxRank": 3, "level": 55 },  // Pala Fantomática
+      { "id": "enutrof-force-de-l-age-degats", "spell": 13340, "spellName": "Force de l'Âge", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Fuerza de la Edad
+      { "id": "enutrof-monnaie-sonnante-relance", "spell": 13353, "spellName": "Monnaie Sonnante", "kind": "relance", "value": 1, "maxRank": 1, "level": 95 },  // Moneda sonante
+      { "id": "enutrof-banqueroute-pa", "spell": 14278, "spellName": "Banqueroute", "kind": "pa", "value": 1, "maxRank": 1, "level": 60 }  // Bancarrota
+    ],
+    // Sram
+    "4": [
+      { "id": "sram-cruaute-degats", "spell": 12919, "spellName": "Cruauté", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Crueldad
+      { "id": "sram-cruaute-critique", "spell": 12919, "spellName": "Cruauté", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Crueldad
+      { "id": "sram-arsenic-degats", "spell": 12907, "spellName": "Arsenic", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Arsénico
+      { "id": "sram-extorsion-portee", "spell": 12938, "spellName": "Extorsion", "kind": "portee", "value": 1, "maxRank": 1, "level": 40 },  // Extorsión
+      { "id": "sram-arnaque-degats", "spell": 12911, "spellName": "Arnaque", "kind": "degats", "value": 5, "maxRank": 3, "level": 45 },  // Estafa
+      { "id": "sram-injection-toxique-relance", "spell": 12940, "spellName": "Injection Toxique", "kind": "relance", "value": 1, "maxRank": 1, "level": 165 },  // Inyección Tóxica
+      { "id": "sram-attaque-mortelle-pa", "spell": 12917, "spellName": "Attaque Mortelle", "kind": "pa", "value": 1, "maxRank": 1, "level": 160 }  // Ataque Mortal
+    ],
+    // Xélor
+    "5": [
+      { "id": "xelor-frappe-de-xelor-degats", "spell": 13252, "spellName": "Frappe de Xélor", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Golpe de Xelor
+      { "id": "xelor-gelure-degats", "spell": 13245, "spellName": "Gelure", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Congelación
+      { "id": "xelor-souvenir-critique", "spell": 13281, "spellName": "Souvenir", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Recuerdo
+      { "id": "xelor-perturbation-degats", "spell": 13288, "spellName": "Perturbation", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Perturbación
+      { "id": "xelor-rayon-obscur-pa", "spell": 13253, "spellName": "Rayon Obscur", "kind": "pa", "value": 1, "maxRank": 1, "level": 30 },  // Rayo Oscuro
+      { "id": "xelor-fletrissement-portee", "spell": 13254, "spellName": "Flétrissement", "kind": "portee", "value": 1, "maxRank": 1, "level": 15 }  // Marchitación
+    ],
+    // Ecaflip
+    "6": [
+      { "id": "ecaflip-pile-ou-face-degats", "spell": 12841, "spellName": "Pile ou Face", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Cara o Cruz
+      { "id": "ecaflip-pile-ou-face-critique", "spell": 12841, "spellName": "Pile ou Face", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Cara o Cruz
+      { "id": "ecaflip-topkaj-degats", "spell": 12846, "spellName": "Topkaj", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Topkaj
+      { "id": "ecaflip-reflexes-portee", "spell": 12857, "spellName": "Réflexes", "kind": "portee", "value": 1, "maxRank": 1, "level": 1 },  // Reflejos
+      { "id": "ecaflip-blackjack-degats", "spell": 12870, "spellName": "Blackjack", "kind": "degats", "value": 5, "maxRank": 3, "level": 35 },  // Blakjak
+      { "id": "ecaflip-baraka-critique", "spell": 12848, "spellName": "Baraka", "kind": "critique", "value": 5, "maxRank": 3, "level": 25 },  // Baraka
+      { "id": "ecaflip-bluff-lancers", "spell": 29785, "spellName": "Bluff", "kind": "lancers", "value": 1, "maxRank": 1, "level": 90 }  // Farol
+    ],
+    // Eniripsa
+    "7": [
+      { "id": "eniripsa-mot-tapageur-soins", "spell": 25858, "spellName": "Mot Tapageur", "kind": "soins", "value": 6, "maxRank": 3, "level": 1 },  // Palabra Escandalosa
+      { "id": "eniripsa-mot-tapageur-portee", "spell": 25858, "spellName": "Mot Tapageur", "kind": "portee", "value": 1, "maxRank": 1, "level": 1 },  // Palabra Escandalosa
+      { "id": "eniripsa-mot-vampirique-degats", "spell": 25870, "spellName": "Mot Vampirique", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Palabra Vampírica
+      { "id": "eniripsa-mot-vampirique-critique", "spell": 25870, "spellName": "Mot Vampirique", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Palabra Vampírica
+      { "id": "eniripsa-blaspheme-degats", "spell": 25867, "spellName": "Blasphème", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Blasfemia
+      { "id": "eniripsa-mot-taquin-degats", "spell": 25877, "spellName": "Mot Taquin", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Palabra Juguetona
+      { "id": "eniripsa-lamentations-pa", "spell": 25871, "spellName": "Lamentations", "kind": "pa", "value": 1, "maxRank": 1, "level": 20 },  // Lamentos
+      { "id": "eniripsa-mot-de-solidarite-soins", "spell": 13219, "spellName": "Mot de Solidarité", "kind": "soins", "value": 6, "maxRank": 3, "level": 200 }  // Palabra de Solidaridad
+    ],
+    // Iop
+    "8": [
+      { "id": "iop-pression-degats", "spell": 13106, "spellName": "Pression", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Presión
+      { "id": "iop-pression-critique", "spell": 13106, "spellName": "Pression", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Presión
+      { "id": "iop-epee-divine-degats", "spell": 13110, "spellName": "Épée Divine", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Espada Divina
+      { "id": "iop-epee-divine-lancers", "spell": 13110, "spellName": "Épée Divine", "kind": "lancers", "value": 1, "maxRank": 1, "level": 1 },  // Espada Divina
+      { "id": "iop-colere-de-iop-relance", "spell": 13124, "spellName": "Colère de Iop", "kind": "relance", "value": 1, "maxRank": 1, "level": 200 },  // Ira de Yopuka
+      { "id": "iop-epee-destructrice-pa", "spell": 13119, "spellName": "Épée Destructrice", "kind": "pa", "value": 1, "maxRank": 1, "level": 35 },  // Espada Destructora
+      { "id": "iop-souffle-portee", "spell": 13116, "spellName": "Souffle", "kind": "portee", "value": 1, "maxRank": 2, "level": 30 },  // Soplido
+      { "id": "iop-concentration-degats", "spell": 13123, "spellName": "Concentration", "kind": "degats", "value": 5, "maxRank": 3, "level": 15 }  // Concentración
+    ],
+    // Crâ
+    "9": [
+      { "id": "cra-fleche-glacee-degats", "spell": 32435, "spellName": "Flèche Glacée", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Flecha Helada
+      { "id": "cra-fleche-de-recul-degats", "spell": 32426, "spellName": "Flèche de Recul", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Flecha de Retroceso
+      { "id": "cra-fleche-de-recul-critique", "spell": 32426, "spellName": "Flèche de Recul", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Flecha de Retroceso
+      { "id": "cra-fleche-harcelante-critique", "spell": 32708, "spellName": "Flèche Harcelante", "kind": "critique", "value": 5, "maxRank": 3, "level": 100 },  // Flecha Acosante
+      { "id": "cra-fleche-explosive-pa", "spell": 32445, "spellName": "Flèche Explosive", "kind": "pa", "value": 1, "maxRank": 1, "level": 45 },  // Flecha Explosiva
+      { "id": "cra-fleche-explosive-lancers", "spell": 32445, "spellName": "Flèche Explosive", "kind": "lancers", "value": 1, "maxRank": 1, "level": 45 },  // Flecha Explosiva
+      { "id": "cra-fleche-d-expiation-relance", "spell": 32438, "spellName": "Flèche d'Expiation", "kind": "relance", "value": 1, "maxRank": 1, "level": 75 },  // Flecha de Expiación
+      { "id": "cra-fleche-errante-degats", "spell": 32455, "spellName": "Flèche Errante", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 }  // Flecha Vagabunda
+    ],
+    // Sadida
+    "10": [
+      { "id": "sadida-ronce-degats", "spell": 13516, "spellName": "Ronce", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Zarza
+      { "id": "sadida-ronce-critique", "spell": 13516, "spellName": "Ronce", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Zarza
+      { "id": "sadida-tremblement-degats", "spell": 13514, "spellName": "Tremblement", "kind": "degats", "value": 5, "maxRank": 3, "level": 75 },  // Temblor
+      { "id": "sadida-contagion-pa", "spell": 13575, "spellName": "Contagion", "kind": "pa", "value": 1, "maxRank": 1, "level": 20 },  // Contagio
+      { "id": "sadida-ronces-agressives-degats", "spell": 13527, "spellName": "Ronces Agressives", "kind": "degats", "value": 5, "maxRank": 3, "level": 35 },  // Zarzas Agresivas
+      { "id": "sadida-seve-paralysante-lancers", "spell": 13533, "spellName": "Sève Paralysante", "kind": "lancers", "value": 1, "maxRank": 1, "level": 15 },  // Savia Paralizante
+      { "id": "sadida-malediction-vaudou-relance", "spell": 13576, "spellName": "Malédiction Vaudou", "kind": "relance", "value": 1, "maxRank": 1, "level": 165 }  // Maldición Vudú
+    ],
+    // Sacrieur
+    "11": [
+      { "id": "sacrieur-absorption-degats", "spell": 12734, "spellName": "Absorption", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Absorción
+      { "id": "sacrieur-supplice-critique", "spell": 12725, "spellName": "Supplice", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Suplicio
+      { "id": "sacrieur-hemorragie-degats", "spell": 12748, "spellName": "Hémorragie", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Hemorragia
+      { "id": "sacrieur-sacrifice-relance", "spell": 12739, "spellName": "Sacrifice", "kind": "relance", "value": 1, "maxRank": 1, "level": 65 },  // Sacrificio
+      { "id": "sacrieur-hecatombe-pa", "spell": 12750, "spellName": "Hécatombe", "kind": "pa", "value": 1, "maxRank": 1, "level": 75 },  // Hecatombe
+      { "id": "sacrieur-transfusion-soins", "spell": 12738, "spellName": "Transfusion", "kind": "soins", "value": 6, "maxRank": 3, "level": 50 }  // Transfusión
+    ],
+    // Pandawa
+    "12": [
+      { "id": "pandawa-paume-explosive-degats", "spell": 12781, "spellName": "Paume Explosive", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Palma Explosiva
+      { "id": "pandawa-paume-explosive-critique", "spell": 12781, "spellName": "Paume Explosive", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Palma Explosiva
+      { "id": "pandawa-gueule-de-bois-degats", "spell": 12803, "spellName": "Gueule de Bois", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Resaca
+      { "id": "pandawa-distillation-pa", "spell": 12815, "spellName": "Distillation", "kind": "pa", "value": 1, "maxRank": 1, "level": 100 },  // Destilación
+      { "id": "pandawa-main-de-pandawa-relance", "spell": 24039, "spellName": "Main de Pandawa", "kind": "relance", "value": 1, "maxRank": 1, "level": 200 },  // Mano de Pandawa
+      { "id": "pandawa-eau-de-vie-lancers", "spell": 12808, "spellName": "Eau-de-Vie", "kind": "lancers", "value": 1, "maxRank": 1, "level": 45 }  // Aguardiente
+    ],
+    // Roublard
+    "13": [
+      { "id": "roublard-tromblon-degats", "spell": 13440, "spellName": "Tromblon", "kind": "degats", "value": 5, "maxRank": 3, "level": 15 },  // Fusil
+      { "id": "roublard-extraction-critique", "spell": 13433, "spellName": "Extraction", "kind": "critique", "value": 5, "maxRank": 3, "level": 60 },  // Extracción
+      { "id": "roublard-pulsar-degats", "spell": 13442, "spellName": "Pulsar", "kind": "degats", "value": 5, "maxRank": 3, "level": 10 },  // Púlsar
+      { "id": "roublard-dagues-boomerang-pa", "spell": 13438, "spellName": "Dagues Boomerang", "kind": "pa", "value": 1, "maxRank": 1, "level": 50 },  // Dagas Bumerán
+      { "id": "roublard-bombardement-portee", "spell": 14415, "spellName": "Bombardement", "kind": "portee", "value": 1, "maxRank": 1, "level": 30 },  // Bombardeo
+      { "id": "roublard-recel-degats", "spell": 13477, "spellName": "Recel", "kind": "degats", "value": 5, "maxRank": 3, "level": 25 }  // Receptación
+    ],
+    // Zobal
+    "14": [
+      { "id": "zobal-brincadeira-degats", "spell": 13425, "spellName": "Brincadeira", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Brincadeira
+      { "id": "zobal-catalepsie-degats", "spell": 13420, "spellName": "Catalepsie", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Catalepsia
+      { "id": "zobal-parafuso-degats", "spell": 13391, "spellName": "Parafuso", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Parafuso
+      { "id": "zobal-cavalcade-pa", "spell": 13415, "spellName": "Cavalcade", "kind": "pa", "value": 1, "maxRank": 1, "level": 1 },  // Cabalgata
+      { "id": "zobal-appui-relance", "spell": 13403, "spellName": "Appui", "kind": "relance", "value": 1, "maxRank": 1, "level": 15 },  // Apoyo
+      { "id": "zobal-ponteira-portee", "spell": 13422, "spellName": "Ponteira", "kind": "portee", "value": 1, "maxRank": 2, "level": 25 },  // Ponteira
+      { "id": "zobal-furia-critique", "spell": 13394, "spellName": "Furia", "kind": "critique", "value": 5, "maxRank": 3, "level": 35 }  // Furial
+    ],
+    // Steamer
+    "15": [
+      { "id": "steamer-torpille-degats", "spell": 13865, "spellName": "Torpille", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Torpedo
+      { "id": "steamer-longue-vue-degats", "spell": 13837, "spellName": "Longue-Vue", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Catalejo
+      { "id": "steamer-amarrage-critique", "spell": 13857, "spellName": "Amarrage", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Amarre
+      { "id": "steamer-sabotage-degats", "spell": 13858, "spellName": "Sabotage", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Sabotaje
+      { "id": "steamer-ancrage-pa", "spell": 13827, "spellName": "Ancrage", "kind": "pa", "value": 1, "maxRank": 1, "level": 70 },  // Anclaje
+      { "id": "steamer-trident-portee", "spell": 13824, "spellName": "Trident", "kind": "portee", "value": 1, "maxRank": 1, "level": 45 }  // Tridente
+    ],
+    // Eliotrope
+    "16": [
+      { "id": "eliotrope-insulte-degats", "spell": 14575, "spellName": "Insulte", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Insulto
+      { "id": "eliotrope-audace-critique", "spell": 14593, "spellName": "Audace", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Audacia
+      { "id": "eliotrope-choc-degats", "spell": 14583, "spellName": "Choc", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Shock
+      { "id": "eliotrope-affront-portee", "spell": 14608, "spellName": "Affront", "kind": "portee", "value": 1, "maxRank": 2, "level": 25 },  // Afrenta
+      { "id": "eliotrope-affliction-pa", "spell": 14584, "spellName": "Affliction", "kind": "pa", "value": 1, "maxRank": 1, "level": 65 },  // Aflicción
+      { "id": "eliotrope-harcelement-lancers", "spell": 14592, "spellName": "Harcèlement", "kind": "lancers", "value": 1, "maxRank": 1, "level": 45 }  // Acoso
+    ],
+    // Huppermage
+    "17": [
+      { "id": "huppermage-onde-sismique-degats", "spell": 13668, "spellName": "Onde Sismique", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Onda Sísmica
+      { "id": "huppermage-ether-degats", "spell": 13669, "spellName": "Éther", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Éter
+      { "id": "huppermage-lance-flammes-degats", "spell": 13666, "spellName": "Lance-Flammes", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Lanzallamas
+      { "id": "huppermage-stalagmite-critique", "spell": 13667, "spellName": "Stalagmite", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Estalagmita
+      { "id": "huppermage-tempete-pa", "spell": 13674, "spellName": "Tempête", "kind": "pa", "value": 1, "maxRank": 1, "level": 65 },  // Tormenta
+      { "id": "huppermage-traversee-relance", "spell": 13683, "spellName": "Traversée", "kind": "relance", "value": 1, "maxRank": 1, "level": 40 },  // Travesía
+      { "id": "huppermage-meteore-portee", "spell": 13675, "spellName": "Météore", "kind": "portee", "value": 1, "maxRank": 2, "level": 15 }  // Meteoro
+    ],
+    // Ouginak
+    "18": [
+      { "id": "ouginak-molosse-degats", "spell": 13756, "spellName": "Molosse", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Moloso
+      { "id": "ouginak-pistage-degats", "spell": 13755, "spellName": "Pistage", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Rastreo
+      { "id": "ouginak-charogne-degats", "spell": 13766, "spellName": "Charogne", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Carroña
+      { "id": "ouginak-cubitus-critique", "spell": 13760, "spellName": "Cubitus", "kind": "critique", "value": 5, "maxRank": 3, "level": 25 },  // Cúbito
+      { "id": "ouginak-tibia-pa", "spell": 13763, "spellName": "Tibia", "kind": "pa", "value": 1, "maxRank": 1, "level": 55 },  // Tibia
+      { "id": "ouginak-carcasse-portee", "spell": 13768, "spellName": "Carcasse", "kind": "portee", "value": 1, "maxRank": 2, "level": 40 }  // Carcasa
+    ],
+    // Forgelance
+    "20": [
+      { "id": "forgelance-effondrement-degats", "spell": 23736, "spellName": "Effondrement", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Colapso
+      { "id": "forgelance-au-trident-degats", "spell": 23393, "spellName": "Au Trident", "kind": "degats", "value": 5, "maxRank": 3, "level": 1 },  // Al Tridente
+      { "id": "forgelance-estoc-ardent-critique", "spell": 23754, "spellName": "Estoc Ardent", "kind": "critique", "value": 5, "maxRank": 3, "level": 1 },  // Estocada Ardiente
+      { "id": "forgelance-balestra-lancers", "spell": 23434, "spellName": "Balestra", "kind": "lancers", "value": 1, "maxRank": 1, "level": 40 },  // Balestra
+      { "id": "forgelance-muspel-relance", "spell": 23750, "spellName": "Muspel", "kind": "relance", "value": 1, "maxRank": 1, "level": 55 },  // Muspel
+      { "id": "forgelance-lance-pierres-portee", "spell": 23719, "spellName": "Lance-Pierres", "kind": "portee", "value": 1, "maxRank": 1, "level": 20 }  // Lanzapiedras
+    ]
+  }
+}

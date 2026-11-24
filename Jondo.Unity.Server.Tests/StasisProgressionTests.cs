@@ -68,12 +68,26 @@ public sealed class StasisProgressionTests
         Assert.Equal(11, Dons.QueueOffers(p, Content, 8, 1, 12));
         Assert.Equal(Enumerable.Range(2, 11), p.Pending.Select(o => o.Level));
         Assert.All(p.Pending, o => Assert.Equal(3, o.Cards.Count));
-        Assert.Equal(new[] { "sort", "carac" }, p.Pending.Single(o => o.Level == 10).Cards.Take(2));
+        // A spell level offers the class's spell dons (SpellDonsTests has the rules).
+        Assert.All(p.Pending.Single(o => o.Level == 10).Cards, c => Assert.StartsWith("iop-", c));
         Assert.Equal(0, Dons.QueueOffers(p, Content, 8, 1, 12));
 
         // The class passives: all of the breed's, for the Iop his own.
         Dons.QueueOffers(p, Content, 8, 49, 50);
         Assert.Equal(new[] { "iop_terre", "iop_puissance" }, p.Pending.Last().Cards);
+    }
+
+    [Fact]
+    public void An_accomplishment_also_brings_a_spell_offer_shown_at_its_own_level()
+    {
+        var p = NewProfile();
+        Assert.Equal(2, Dons.QueueOffers(p, Content, 8, 224, 225));
+        Assert.Contains(p.Pending, o => o.Level == 225 && o.Kind == Dons.KindAccomplishment);
+        var spell = Assert.Single(p.Pending, o => o.Kind == Dons.KindSpell);
+        Assert.Equal(Dons.SpellPointLevelOffset + 225, spell.Level);
+        Assert.Equal(225, Dons.RealLevel(spell.Level));
+        Assert.All(spell.Cards, c => Assert.StartsWith("iop-", c));
+        Assert.Equal(0, Dons.QueueOffers(p, Content, 8, 224, 225));
     }
 
     [Fact]
@@ -281,9 +295,11 @@ public sealed class StasisProgressionTests
         Assert.Equal("evolue", Ascension.CannotAscend(p, 250, Content));
         Assert.Equal("deja-evolue", Ascension.CannotEvolve(p, 300, Content));
 
-        // Climbing back, only the accomplishments past 200 are offered again.
-        Assert.Equal(4, Dons.QueueOffers(p, Content, 8, 200, 300));
-        Assert.Equal(new[] { 225, 250, 275, 300 }, p.Pending.Select(o => o.Level));
+        // Climbing back, only the accomplishments past 200 are offered again, each with its spell
+        // offer (an accomplishment's spell point, kept under SpellPointLevelOffset + its level).
+        Assert.Equal(8, Dons.QueueOffers(p, Content, 8, 200, 300));
+        Assert.Equal(new[] { 225, 250, 275, 300 }, p.Pending.Where(o => o.Kind == Dons.KindAccomplishment).Select(o => o.Level));
+        Assert.Equal(new[] { 225, 250, 275, 300 }, p.Pending.Where(o => o.Kind == Dons.KindSpell).Select(o => Dons.RealLevel(o.Level)));
     }
 
     [Fact]
