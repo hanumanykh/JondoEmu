@@ -159,18 +159,18 @@ namespace Jondo.Unity.Server.Handlers
                 await NotifyAsync(stream, "Cette zone n'a pas de jauge.", channel, accountId);
                 return;
             }
-            long price = ZoneCounter.Price(buff, zone.Level);
-            if (GameState.Kamas < price)
+            long price = OrbePrice(ZoneCounter.Price(buff, zone.Level));
+            if (OrbesHeld() < price)
             {
-                await NotifyAsync(stream, $"{ZoneCounter.Label(buff)} coûte {price:N0} kamas ; vous en avez {GameState.Kamas:N0}.", channel, accountId);
+                await NotifyAsync(stream, $"{ZoneCounter.Label(buff)} coûte {price:N0} {OrbeLabel} ; vous en avez {OrbesHeld():N0}.", channel, accountId);
                 return;
             }
+            if (!await PayOrbesAsync(stream, -price)) return;
             var until = ZoneCounter.Extend(profile, subArea, buff, now);
             FarmProfiles.Save(profile);
-            await PayAsync(stream, -price);
             ActivityJournal.Current.Write("farm.counter", accountId > 0 ? accountId : SessionContext.Current.AccountId, GameState.CharacterId,
                 new { buff, subArea, price });
-            await NotifyAsync(stream, $"{ZoneCounter.Label(buff)} ({ZoneCounter.Effect(buff)}) pour {price:N0} kamas : actif dans " +
+            await NotifyAsync(stream, $"{ZoneCounter.Label(buff)} ({ZoneCounter.Effect(buff)}) pour {price:N0} {OrbeLabel} : actif dans " +
                                       $"{Tides.SafeName(subArea)} encore {FormatSpan(until - now)}.", channel, accountId);
         }
 

@@ -57,10 +57,24 @@ namespace Jondo.Unity.Server.Managers.Economy
         public static long KamasFor(FightInstance fight, int characterLevel)
         {
             var facts = FactsOf(fight);
-            if (!Orbes.Current.Enabled)
+            if (!Orbes.Current.Enabled || Orbes.Current.PayInCoins)
                 return ServerSettings.WithBonus(facts.Monsters.Sum(m => 10L + m.Level * 5L), ServerSettings.Current.KamasBonusPercent);
             long orbes = Orbes.ForFighter(characterLevel, facts.Monsters, facts.Archmonster, facts.Tide);
             return ServerSettings.WithBonus(orbes, ServerSettings.Current.KamasBonusPercent);
+        }
+
+        /// <summary>
+        /// In coin mode, the Jondo Coins (Orbes) one winner takes: the Orbes curve -- bosses,
+        /// archmonster x5, tide x2, carry and over-level rules included -- divided by
+        /// <see cref="Orbes.Settings.KamasPerCoin"/>, never under the plain per-monster coin.
+        /// </summary>
+        public static int CoinsFor(FightInstance fight, int characterLevel)
+        {
+            var facts = FactsOf(fight);
+            int plain = facts.Monsters.Sum(m => JondoCoin.RewardFor(m.Level));
+            long curve = Orbes.ForFighter(characterLevel, facts.Monsters, facts.Archmonster, facts.Tide);
+            int coins = (int)Math.Min(int.MaxValue / 2, JondoCoin.FromKamas(curve, roundUp: false));
+            return Math.Max(plain, coins);
         }
 
         /// <summary>

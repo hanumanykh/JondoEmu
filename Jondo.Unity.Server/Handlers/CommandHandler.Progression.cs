@@ -107,6 +107,21 @@ namespace Jondo.Unity.Server.Handlers
             var state = session.State;
             string result;
             long paid;
+            if (JondoCoin.IsOrbe && session.Stream != null)
+            {
+                // The Orbes are Jondo Coins: the cost is taken out of the bag, in the session's context.
+                using (SessionContext.Push(session))
+                {
+                    lock (profile.Gate)
+                    {
+                        long held = OrbesHeld();
+                        result = Dons.Reroll(profile, ProgressionContent.Current, state.Breed, ref held, out paid, OrbePrice);
+                        if (result == "ok") ProgressionStore.Save(profile);
+                    }
+                    if (result == "ok" && paid > 0) await PayOrbesAsync(session.Stream, -paid);
+                }
+                return result;
+            }
             lock (profile.Gate)
             {
                 long kamas = state.Kamas;
@@ -339,7 +354,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 string reroll = offer.Rerolled || offer.Kind == Dons.KindPassive ? "relance indisponible"
                     : Dons.RerollsLeft(profile, content) > 0 ? "relance gratuite disponible"
-                    : $"relance : {Dons.RerollCost(Dons.RealLevel(offer.Level), content)} kamas";
+                    : $"relance : {OrbePrice(Dons.RerollCost(Dons.RealLevel(offer.Level), content))} {OrbeLabel}";
                 text.Append($"\n.don <n> [caractéristique] pour choisir, .don relance ({reroll}), .don refonte <de> <vers> ({Dons.RepicksLeft(profile, content)} restante(s)).");
             }
             return text.ToString();

@@ -1,5 +1,9 @@
 {
-  // Orbes de Stasis = kamas (Managers/Economy/Orbes.cs). Per beaten monster:
+  // Orbes de Stasis = Jondo Coins (item 20440) when PayInCoins is true: every won fight drops
+  // (curve below) / KamasPerCoin coins, and fusion, Raffineur, counter, Fissure keys and rewards,
+  // don rerolls are paid in coins at the same rate. Kamas stay for marketplaces, NPCs and bots,
+  // and fights pay the old 10 + 5 x level kamas. PayInCoins false = Orbes are kamas again.
+  // The curve (Managers/Economy/Orbes.cs), per beaten monster:
   //   Flat + PerLevel * level^Exponent, a dungeon boss x BossFactor.
   // A monster counts at most at (character level + CarryTolerance); more than OverLevelTolerance
   // levels above the strongest monster costs OverLevelPenaltyPerLevel per level, down to OverLevelFloor.
@@ -15,5 +19,7 @@
   "CarryTolerance": 20,
   "OverLevelTolerance": 30,
   "OverLevelPenaltyPerLevel": 0.01,
-  "OverLevelFloor": 0.25
+  "OverLevelFloor": 0.25,
+  "PayInCoins": true,
+  "KamasPerCoin": 150
 }

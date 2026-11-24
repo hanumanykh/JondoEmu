@@ -218,24 +218,24 @@ namespace Jondo.Unity.Server.Handlers
 
             var party = Parties.Of(me);
             int fighters = Math.Clamp(party == null ? 1 : Parties.MembersOf(party).Count, 1, settings.MaxFighters);
-            long cost = (long)band.Key * fighters;
-            if (GameState.Kamas < cost)
+            long cost = OrbePrice((long)band.Key * fighters);
+            if (OrbesHeld() < cost)
             {
-                await NotifyAsync(stream, $"{fighters} clé(s) {band.Name} coûtent {cost:N0} kamas ; vous en avez {GameState.Kamas:N0}.", channel, accountId);
+                await NotifyAsync(stream, $"{fighters} clé(s) {band.Name} coûtent {cost:N0} {OrbeLabel} ; vous en avez {OrbesHeld():N0}.", channel, accountId);
                 return;
             }
             var opened = Fissure.Open(me, band, fighters);
             if (opened == null) { await NotifyAsync(stream, "La Fissure ne s'ouvre pas (vague impossible à placer).", channel, accountId); return; }
-            await PayAsync(stream, -cost);
+            if (!await PayOrbesAsync(stream, -cost)) { Fissure.Close(me); return; }
             ActivityJournal.Current.Write("fissure.open", accountId > 0 ? accountId : SessionContext.Current.AccountId, me, new { band = band.Id, fighters, cost });
             var bonus = Fissure.FormationFor(fighters, settings.Formations);
-            await NotifyAsync(stream, $"Fissure {band.Name} ouverte pour {cost:N0} kamas. Vague 1 (niveau {Fissure.MonsterLevel(band, 1)}) vous attend. " +
+            await NotifyAsync(stream, $"Fissure {band.Name} ouverte pour {cost:N0} {OrbeLabel}. Vague 1 (niveau {Fissure.MonsterLevel(band, 1)}) vous attend. " +
                                       $"Bonus de formation ({fighters}) : +{bonus.Ap} PA, +{bonus.Mp} PM, +{bonus.LifePercent} % PV, +{bonus.DamagePercent} % dégâts.",
                               channel, accountId);
             if (await WorldMoveHandler.TeleportAsync(stream, opened.ArenaMap) == null)
             {
                 Fissure.Close(me);
-                await PayAsync(stream, cost);
+                await PayOrbesAsync(stream, cost);
                 await NotifyAsync(stream, "Impossible de vous emmener dans la Fissure ; l'expédition est annulée et remboursée.", channel, accountId);
             }
         }

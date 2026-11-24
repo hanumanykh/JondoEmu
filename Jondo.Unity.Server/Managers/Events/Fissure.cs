@@ -300,9 +300,19 @@ namespace Jondo.Unity.Server.Managers
             // Every one of its people is paid for the wave.
             long kamas = KamasFor(exp.Band, wave);
             int tokens = TokensFor(exp.Band, wave);
-            GameState.Kamas += kamas;
-            DatabaseManager.SaveCurrentCharacter();
-            await session.SendAsync(ConnectionProtocol.Push(Op.Ivf, ConnectionProtocol.BuildKamas(GameState.Kamas)));
+            string currency = "kamas";
+            if (JondoCoin.IsOrbe && session.Stream != null)
+            {
+                kamas = JondoCoin.FromKamas(kamas, roundUp: false);
+                currency = "Jondo Coins";
+                await Handlers.WorkshopHandler.GiveAsync(session.Stream, JondoCoin.TemplateId, (int)Math.Min(int.MaxValue, kamas));
+            }
+            else
+            {
+                GameState.Kamas += kamas;
+                DatabaseManager.SaveCurrentCharacter();
+                await session.SendAsync(ConnectionProtocol.Push(Op.Ivf, ConnectionProtocol.BuildKamas(GameState.Kamas)));
+            }
             if (tokens > 0) EventTokens.Add(id, tokens);
             var given = new List<string>();
             foreach (var r in exp.Band.Resources)
@@ -312,7 +322,7 @@ namespace Jondo.Unity.Server.Managers
             var p = Record(id, wave, Eligible(exp.Band, wave, _settings.Dofus));
             int owed = DofusOwed(p.Eligible, p.DofusClaimed, _settings.Dofus.WavesNeeded);
 
-            string line = $"Fissure {exp.Band.Name}, vague {wave} gagnée : {kamas:N0} kamas, {tokens} jeton(s)" +
+            string line = $"Fissure {exp.Band.Name}, vague {wave} gagnée : {kamas:N0} {currency}, {tokens} jeton(s)" +
                           (given.Count > 0 ? ", " + string.Join(", ", given) : "") +
                           $". Total : {p.Waves} vagues, {p.Eligible % _settings.Dofus.WavesNeeded}/{_settings.Dofus.WavesNeeded} vers le Dofus." +
                           (wave == exp.Band.Validate ? " Expédition validée !" : "") +

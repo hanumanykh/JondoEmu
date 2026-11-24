@@ -372,7 +372,8 @@ namespace Jondo.Unity.Server.Managers
         /// Draws the oldest offer's cards again, once per offer: free while the Relance research
         /// has rerolls left this cycle, else for kamas taken from <paramref name="kamas"/>. "ok", or why not.
         /// </summary>
-        internal static string Reroll(ProgressionProfile profile, ProgressionContent content, int breed, ref long kamas, out long paid)
+        internal static string Reroll(ProgressionProfile profile, ProgressionContent content, int breed, ref long kamas, out long paid,
+                                    Func<long, long>? price = null)
         {
             paid = 0;
             if (profile.Pending.Count == 0) return "aucune-offre";
@@ -383,6 +384,7 @@ namespace Jondo.Unity.Server.Managers
             if (!free)
             {
                 paid = RerollCost(RealLevel(offer.Level), content);
+                if (price != null) paid = price(paid);
                 if (kamas < paid) { paid = 0; return "kamas"; }
                 kamas -= paid;
             }
@@ -450,7 +452,7 @@ namespace Jondo.Unity.Server.Managers
             "sort-plafond" => "Ce don de sort n'est plus possible (points, familles ou rang au maximum).",
             "deja-relancee" => "Cette offre a déjà été relancée.",
             "non-relancable" => "Les passifs de classe se choisissent tels quels : pas de relance.",
-            "kamas" => "Pas assez de kamas pour relancer.",
+            "kamas" => "Pas assez d'Orbes (Jondo Coins) pour relancer.",
             "plus-de-refonte" => "Plus de refonte disponible pour ce cycle d'Ascension.",
             "rien-a-refondre" => "Aucun point de don dans cette caractéristique.",
             "niveau" => "Niveau insuffisant.",

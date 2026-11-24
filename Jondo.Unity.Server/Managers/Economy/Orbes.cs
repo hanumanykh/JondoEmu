@@ -64,6 +64,10 @@ namespace Jondo.Unity.Server.Managers.Economy
             public int OverLevelTolerance { get; set; } = 30;
             public double OverLevelPenaltyPerLevel { get; set; } = 0.01;
             public double OverLevelFloor { get; set; } = 0.25;
+            /// <summary>Pay the Orbes in Jondo Coins (the server's resource) instead of kamas.</summary>
+            public bool PayInCoins { get; set; } = true;
+            /// <summary>How many kamas of the curve one Jondo Coin stands for, in coin mode.</summary>
+            public double KamasPerCoin { get; set; } = 150;
         }
 
         private static Settings? _settings;

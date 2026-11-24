@@ -58,6 +58,18 @@ namespace Jondo.Unity.Server.Managers
         /// should not exist, but the client's data is theirs and not ours— pays one, not
         /// zero nor some odd number.
         /// </remarks>
+        /// <summary>Whether the Stasis-like Orbes are paid and spent in coins (content/economy/orbes.json).</summary>
+        public static bool IsOrbe => Economy.Orbes.Current.Enabled && Economy.Orbes.Current.PayInCoins;
+
+        /// <summary>A price of the kamas-calibrated curves in coins: rounded up for a cost, down for a gain, at least 1 if non-zero.</summary>
+        public static long FromKamas(long kamas, bool roundUp = true)
+        {
+            if (kamas <= 0) return 0;
+            double rate = Math.Max(1, Economy.Orbes.Current.KamasPerCoin);
+            double coins = kamas / rate;
+            return Math.Max(1, roundUp ? (long)Math.Ceiling(coins) : (long)Math.Floor(coins));
+        }
+
         public static int RewardFor(int monsterLevel)
         {
             int nivel = Math.Clamp(monsterLevel, 1, HighestBandedLevel);

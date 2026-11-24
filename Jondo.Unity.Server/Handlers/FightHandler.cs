@@ -14520,9 +14520,12 @@ namespace Jondo.Unity.Server.Handlers
                 // The server's coin. It ALWAYS drops, without rolling the die: it is not an item of
                 // the monster's table, it is what the fight pays. The quantity comes from the level, in
                 // steps of 25 (see Managers.JondoCoin).
-                int monedas = Managers.JondoCoin.RewardFor(monster.Level);
-                loot.TryGetValue(Managers.JondoCoin.TemplateId, out int llevadas);
-                loot[Managers.JondoCoin.TemplateId] = llevadas + monedas;
+                if (!Managers.JondoCoin.IsOrbe)
+                {
+                    int monedas = Managers.JondoCoin.RewardFor(monster.Level);
+                    loot.TryGetValue(Managers.JondoCoin.TemplateId, out int llevadas);
+                    loot[Managers.JondoCoin.TemplateId] = llevadas + monedas;
+                }
 
                 // Today's Almanax raises the chances where its day says so (type 16): this monster,
                 // this place, what he wears.
@@ -14631,6 +14634,17 @@ namespace Jondo.Unity.Server.Handlers
             {
                 int more = Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.HunterMeat, Managers.Almanax.Where.Obtaining(item));
                 if (more > 0) loot[item] = Managers.Almanax.Raised(loot[item], more, Random.Shared);
+            }
+
+            // The Orbes: in coin mode the fight pays its Jondo Coins by the Orbes curve (FarmEconomy.CoinsFor).
+            if (Managers.JondoCoin.IsOrbe && !Managers.Dreams.IsDreamMap(fight.RoleplayMapId))
+            {
+                int orbes = Managers.Economy.FarmEconomy.CoinsFor(fight, SessionContext.State.CharacterLevel);
+                if (orbes > 0)
+                {
+                    loot.TryGetValue(Managers.JondoCoin.TemplateId, out int llevadas);
+                    loot[Managers.JondoCoin.TemplateId] = llevadas + orbes;
+                }
             }
 
             // No dungeon key drops, and a hardcore dungeon fight drops twice (Managers/Stasis/Tiers.cs).

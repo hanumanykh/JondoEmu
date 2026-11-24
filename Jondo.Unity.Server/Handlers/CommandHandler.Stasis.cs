@@ -80,10 +80,10 @@ namespace Jondo.Unity.Server.Handlers
             var (gid, tier) = group.Key;
             var template = Forgemagic.TemplateOf(gid);
             if (template == null) return;
-            long cost = Stasis.FusionCost(template.Level, tier + 1);
-            if (GameState.Kamas < cost)
+            long cost = OrbePrice(Stasis.FusionCost(template.Level, tier + 1));
+            if (OrbesHeld() < cost)
             {
-                await NotifyAsync(stream, $"La fusion en {Stasis.Name(tier + 1)} coûte {cost:N0} kamas ; vous en avez {GameState.Kamas:N0}.",
+                await NotifyAsync(stream, $"La fusion en {Stasis.Name(tier + 1)} coûte {cost:N0} {OrbeLabel} ; vous en avez {OrbesHeld():N0}.",
                                   channel, accountId);
                 return;
             }
@@ -109,11 +109,11 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
             Stasis.Mark(uid, tier + 1);
-            await PayAsync(stream, -cost);
+            await PayOrbesAsync(stream, -cost);
             await RefreshPodsAsync(stream);
             ActivityJournal.Current.Write("stasis.fusion", accountId > 0 ? accountId : session.AccountId, GameState.CharacterId,
                 new { gid, from = tier, to = tier + 1, cost, uid });
-            await NotifyAsync(stream, $"Fusion réussie : {NameOfItem(gid)} {Stasis.Name(tier + 1)} pour {cost:N0} kamas." +
+            await NotifyAsync(stream, $"Fusion réussie : {NameOfItem(gid)} {Stasis.Name(tier + 1)} pour {cost:N0} {OrbeLabel}." +
                                       (tier + 1 == 3 ? " Les exos ont été effacés." : ""), channel, accountId);
         }
 
@@ -136,20 +136,56 @@ namespace Jondo.Unity.Server.Handlers
                                   channel, accountId);
                 return;
             }
-            long price = Stasis.BuybackPrice(ReferencePrices.Of(piece.Item.Template), piece.Tier);
+            long price = OrbePrice(Stasis.BuybackPrice(ReferencePrices.Of(piece.Item.Template), piece.Tier));
             var session = SessionContext.Current;
             if (!await WorkshopHandler.ConsumeAsync(session, piece.Item, 1, inWorkshop: false)) return;
-            await PayAsync(stream, price);
+            await PayOrbesAsync(stream, price);
             await RefreshPodsAsync(stream);
             ActivityJournal.Current.Write("stasis.raffineur", accountId > 0 ? accountId : session.AccountId, GameState.CharacterId,
                 new { gid = piece.Item.Template, tier = piece.Tier, price });
-            await NotifyAsync(stream, $"Le raffineur rachète {NameOfItem(piece.Item.Template)} {Stasis.Name(piece.Tier)} pour {price:N0} kamas.",
+            await NotifyAsync(stream, $"Le raffineur rachète {NameOfItem(piece.Item.Template)} {Stasis.Name(piece.Tier)} pour {price:N0} {OrbeLabel}.",
                               channel, accountId);
         }
 
         // ─── Shared ─────────────────────────────────────────────────────────────────────────
 
         /// <summary>Kamas given (or taken, negative), saved and shown, as .kamas does.</summary>
+        /// <summary>What the Stasis-like costs and gains are counted in: Jondo Coins in coin mode, else kamas.</summary>
+        internal static string OrbeLabel => JondoCoin.IsOrbe ? "Jondo Coins" : "kamas";
+
+        /// <summary>A kamas-calibrated cost or gain in the Orbes' currency.</summary>
+        internal static long OrbePrice(long kamas) => JondoCoin.IsOrbe ? JondoCoin.FromKamas(kamas) : kamas;
+
+        /// <summary>How many Orbes the character holds: the coins in his bag, or his kamas.</summary>
+        internal static long OrbesHeld()
+            => JondoCoin.IsOrbe
+                ? Equipment.All.Where(i => i.Template == JondoCoin.TemplateId && i.Position == Equipment.Bag).Sum(i => (long)i.Quantity)
+                : GameState.Kamas;
+
+        /// <summary>
+        /// Pays (positive) or takes (negative) Orbes: coins into or out of the bag, or kamas.
+        /// False when there were not enough coins to take.
+        /// </summary>
+        internal static async Task<bool> PayOrbesAsync(NetworkStream stream, long amount)
+        {
+            if (!JondoCoin.IsOrbe) { await PayAsync(stream, amount); return true; }
+            if (amount == 0) return true;
+            if (amount > 0)
+                return await WorkshopHandler.GiveAsync(stream, JondoCoin.TemplateId, (int)Math.Min(int.MaxValue, amount));
+            long left = -amount;
+            if (OrbesHeld() < left) return false;
+            var session = SessionContext.Current;
+            foreach (var stack in Equipment.All.Where(i => i.Template == JondoCoin.TemplateId && i.Position == Equipment.Bag).ToList())
+            {
+                int take = (int)Math.Min(stack.Quantity, left);
+                if (take <= 0) continue;
+                if (!await WorkshopHandler.ConsumeAsync(session, stack, take, inWorkshop: false)) return false;
+                left -= take;
+                if (left == 0) break;
+            }
+            return left == 0;
+        }
+
         private static async Task PayAsync(NetworkStream stream, long amount)
         {
             GameState.Kamas = Math.Max(0, GameState.Kamas + amount);
