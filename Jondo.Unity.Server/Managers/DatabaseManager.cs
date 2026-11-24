@@ -2851,6 +2851,18 @@ namespace Jondo.Unity.Server
             return command.ExecuteScalar() is long map ? map : 0;
         }
 
+        /// <summary>The map and cell a character out of the world is kept on; (0, -1) if there is no such character.</summary>
+        public static (long Map, int Cell) PlaceOfOffline(long characterId)
+        {
+            using var connection = new SqliteConnection(WorldConnectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT MapId, CellId FROM Characters WHERE Id = $id;";
+            command.Parameters.AddWithValue("$id", characterId);
+            using var reader = command.ExecuteReader();
+            return reader.Read() ? (reader.GetInt64(0), reader.GetInt32(1)) : (0, -1);
+        }
+
         /// <summary>
         /// A character out of the world put on a map's cell: a simulated player sworn to a city
         /// comes in on the war ground (Bots.SimulatedPlayer.War), as one that logged out there.

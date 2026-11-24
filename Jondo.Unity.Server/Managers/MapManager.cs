@@ -502,16 +502,91 @@ namespace Jondo.Unity.Server
             return true;
         }
 
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, HashSet<int>> _mainFloor = new();
+
+        /// <summary>
+        /// The floor of a map one can walk all over: the largest piece of it -- the walkable cells
+        /// and the fight's, joined where they touch -- counted by its walkable cells. Some maps
+        /// have pockets apart from it: on 188744705 cell 87, on 189792265 eight cells around 142.
+        /// Whoever was put in one (a border crossed, the nearest walkable cell to the cell across
+        /// it) could reach no border: the simulated players stood there for good, every way out
+        /// failing. Empty when the map has no floor data.
+        /// </summary>
+        public static HashSet<int> MainFloor(long mapId) => _mainFloor.GetOrAdd(mapId, map =>
+        {
+            if (!WalkableCells.TryGetValue(map, out var walkable) || walkable.Count == 0) return new HashSet<int>();
+            var floor = new HashSet<int>(walkable);
+            if (FightWalkableCells.TryGetValue(map, out var fight) && fight != null) floor.UnionWith(fight);
+            var walk = new HashSet<int>(walkable);
+            var seen = new HashSet<int>();
+            HashSet<int> best = new HashSet<int>();
+            int bestWalk = -1;
+            // Every piece that reaches a border is kept: a map split in two halves, each reached
+            // from its own neighbour, has no pocket. Only the pieces no border can be reached
+            // from are left out -- and if none reaches one, the largest is the floor.
+            var open = new HashSet<int>();
+            static bool Border(int c) => c % 14 == 0 || c % 14 == 13 || c / 14 <= 1 || c / 14 >= 38;
+            foreach (int start in walkable)
+            {
+                if (!seen.Add(start)) continue;
+                var piece = new HashSet<int> { start };
+                var queue = new Queue<int>();
+                queue.Enqueue(start);
+                while (queue.Count > 0)
+                {
+                    int cell = queue.Dequeue();
+                    foreach (int next in Jondo.Unity.World.Maps.MapGeometry.GetNeighbors(cell))
+                    {
+                        if (floor.Contains(next) && seen.Add(next))
+                        {
+                            piece.Add(next);
+                            queue.Enqueue(next);
+                        }
+                    }
+                }
+                int count = piece.Count(walk.Contains);
+                if (count > bestWalk) { best = piece; bestWalk = count; }
+                if (piece.Any(Border)) open.UnionWith(piece);
+            }
+            return open.Count > 0 ? open : best;
+        });
+
+        /// <summary>Whether a cell is in a map's <see cref="MainFloor"/>; true when the map has no data to say.</summary>
+        public static bool OnMainFloor(long mapId, int cellId)
+        {
+            var main = MainFloor(mapId);
+            return main.Count == 0 || main.Contains(cellId);
+        }
+
         public static int GetNearestWalkableCell(long mapId, int targetCellId)
         {
-            if (!WalkableCells.TryGetValue(mapId, out var cells) || cells.Count == 0)
+            if (!WalkableCells.TryGetValue(mapId, out var all) || all.Count == 0)
             {
                 return targetCellId;
             }
-            if (cells.Contains(targetCellId))
+            // A walkable cell asked for is given, as it always was: a door may lead into any part
+            // of a map. Looking for the nearest one, only the main floor's: a pocket apart from
+            // it is a trap (MainFloor).
+            if (all.Contains(targetCellId))
             {
                 return targetCellId;
             }
+            return NearestOnMainFloor(mapId, targetCellId);
+        }
+
+        /// <summary>
+        /// The walkable cell of a map's <see cref="MainFloor"/> nearest to a cell, even when that
+        /// cell is walkable itself: the way out of a pocket.
+        /// </summary>
+        public static int NearestOnMainFloor(long mapId, int targetCellId)
+        {
+            if (!WalkableCells.TryGetValue(mapId, out var all) || all.Count == 0)
+            {
+                return targetCellId;
+            }
+            var main = MainFloor(mapId);
+            var cells = main.Count == 0 ? all : all.Where(main.Contains).ToList();
+            if (cells.Count == 0) cells = all;
 
             int targetRow = targetCellId / 14;
             int targetCol = targetCellId % 14;

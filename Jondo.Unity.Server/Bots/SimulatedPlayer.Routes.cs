@@ -112,6 +112,16 @@ namespace Jondo.Unity.Server.Bots
         {
             // A step that did not go is not tried again on this trip: the way is sought anew
             // without it, twice at the most.
+            // Stranded in a pocket of floor (MapManager.MainFloor), as a fight's end may still leave
+            // it: no way out can be walked to from there. It steps onto the main floor first --
+            // the server's own state, which is all a bot's position is.
+            if (!MapManager.OnMainFloor(session.State.MapId, session.State.CellId))
+            {
+                int stranded = session.State.CellId;
+                session.State.CellId = MapManager.NearestOnMainFloor(session.State.MapId, stranded);
+                SimulatedPlayers.Journal($"{_name} was stranded on cell {stranded} of {session.State.MapId}; " +
+                                         $"now on {session.State.CellId}.");
+            }
             var failed = new HashSet<(long From, long To)>();
             for (int attempt = 0; attempt < 3; attempt++)
             {

@@ -617,6 +617,8 @@ namespace Jondo.Unity.Server.Handlers
             MapManager.WalkableCells.TryGetValue(map, out var roleplayWalkable);
             int landing = ChooseLandingCell(arrival, fightWalkable, roleplayWalkable,
                                             cell => MapManager.GetNearestWalkableCell(map, cell));
+            // Never in a pocket of floor apart from the rest of the map (MapManager.MainFloor).
+            if (!MapManager.OnMainFloor(map, landing)) landing = MapManager.NearestOnMainFloor(map, landing);
             if (landing != arrival)
                 Console.WriteLine($"[Move] Cell {arrival} of map {map} cannot be stood on; {landing} instead.");
             return landing;

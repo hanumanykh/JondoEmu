@@ -251,10 +251,21 @@ namespace Jondo.Unity.Server.Bots
         /// </summary>
         private void LeaveTheTutorial()
         {
-            long map = DatabaseManager.MapOfOffline(_characterId);
+            var (map, cell) = DatabaseManager.PlaceOfOffline(_characterId);
             if (map <= 0) return;
             long tutorial = Handlers.CharacterCreationHandler.TutorialMap;
-            if (map != tutorial && DatabaseManager.SubAreaOfMap(map) != DatabaseManager.SubAreaOfMap(tutorial)) return;
+            if (map != tutorial && DatabaseManager.SubAreaOfMap(map) != DatabaseManager.SubAreaOfMap(tutorial))
+            {
+                // Saved in a pocket of floor no border can be reached from (MapManager.MainFloor):
+                // onto the nearest cell of the map's main floor.
+                if (cell >= 0 && !MapManager.OnMainFloor(map, cell))
+                {
+                    int onFloor = MapManager.NearestOnMainFloor(map, cell);
+                    DatabaseManager.SetPlaceOffline(_characterId, map, onFloor);
+                    SimulatedPlayers.Journal($"{_name} was in a pocket of map {map} (cell {cell}); now on cell {onFloor}.");
+                }
+                return;
+            }
             long home = Handlers.CharacterCreationHandler.StartingMap;
             DatabaseManager.SetPlaceOffline(_characterId, home,
                 MapManager.GetNearestWalkableCell(home, Handlers.TeleportHandler.MapCentre));

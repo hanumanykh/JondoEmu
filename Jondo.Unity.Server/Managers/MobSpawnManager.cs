@@ -1955,6 +1955,10 @@ namespace Jondo.Unity.Server.Managers
             // otherwise, when all the inside cells are taken, the fallback puts back exactly
             // the clickable cells that have just been set aside.
             var candidatas = innerCells.Count > 0 ? innerCells : new List<int>(cells);
+            // Only on the floor one can walk all over: a group in a pocket apart from it could
+            // never be reached, and a bot put there could never leave (MapManager.MainFloor).
+            var reachable = candidatas.Where(c => MapManager.OnMainFloor(mapId, c)).ToList();
+            if (reachable.Count > 0) candidatas = reachable;
 
             // And out with the cells that have something clickable on top. A group planted
             // on the zaap covers it: the click goes to the monster and there is no longer a way to travel.
