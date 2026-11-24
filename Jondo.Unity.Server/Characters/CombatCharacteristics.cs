@@ -18,7 +18,12 @@ public sealed class CombatCharacteristics
         strength = state.TotalStrength; intelligence = state.TotalIntelligence;
         chance = state.TotalChance; agility = state.TotalAgility; vitality = state.TotalVitality;
         equipment = Equipment.BonusesOf(state.EquipmentItems.Values.Select(item => (item.Position, item)));
-        alterations = new Dictionary<int, long>(Alterations.Bonuses(state.CharacterId));
+        var temporary = new Dictionary<int, long>(Alterations.Bonuses(state.CharacterId));
+        // The Stasis dons and research count as the alterations do: a characteristic bonus of the
+        // character's own, read by every fighter built from this (Managers/Stasis/Dons.cs).
+        foreach (var (id, value) in Dons.BonusesOf(state.CharacterId))
+            temporary[id] = temporary.GetValueOrDefault(id) + value;
+        alterations = temporary;
         apCap = ServerSettings.Current.MaxActionPoints;
         mpCap = ServerSettings.Current.MaxMovementPoints;
     }

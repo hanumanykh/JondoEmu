@@ -141,7 +141,13 @@ internal sealed class CharacteristicsMessages(ICharacteristicsMessagesBackend ba
         public long NextLevelFloor(int level) => ExperienceTable.NextLevelFloor(level);
         public IReadOnlyDictionary<int, long> EquipmentBonuses(GameSession session)
             => Equipment.BonusesOf(session.State.EquipmentItems.Values.Select(item => (item.Position, item)));
-        public IReadOnlyDictionary<int, long> AlterationBonuses(long characterId) => Alterations.Bonuses(characterId);
+        // The Stasis dons and research shown with the alterations, as the fight counts them (CombatCharacteristics).
+        public IReadOnlyDictionary<int, long> AlterationBonuses(long characterId)
+        {
+            var total = new Dictionary<int, long>(Alterations.Bonuses(characterId));
+            foreach (var (id, value) in Dons.BonusesOf(characterId)) total[id] = total.GetValueOrDefault(id) + value;
+            return total;
+        }
         public MonsterGradeStats? MutationSheet(GameSession session)
         {
             var item = session.State.EquipmentItems.Values.FirstOrDefault(item => item.Position == Mutations.Slot);

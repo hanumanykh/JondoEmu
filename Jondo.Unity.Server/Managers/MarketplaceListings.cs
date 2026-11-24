@@ -342,6 +342,19 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>
+        /// The effects every lot of an offer shares, or none when it is gone: what the market maker
+        /// reads a stasified piece's tier from (Stasis.TierInEffects) before it values a lot.
+        /// </summary>
+        public static IReadOnlyList<ItemEffect> EffectsOfOffer(int offerId)
+        {
+            lock (Gate)
+            {
+                Load();
+                return _offersById.TryGetValue(offerId, out var offer) ? offer.Effects : Array.Empty<ItemEffect>();
+            }
+        }
+
         /// <summary>Every offer of one item in a marketplace, oldest first.</summary>
         public static IReadOnlyList<OfferView> OffersOf(Marketplaces.House house, int gid)
         {

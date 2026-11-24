@@ -273,7 +273,10 @@ namespace Jondo.Unity.Server.Network
         {
             if (state == null) return CharacteristicRules.BasePods;
             var gear = Managers.Equipment.BonusesOf(state.EquipmentItems.Values.ToArray().Select(item => (item.Position, item)));
-            var temporary = Managers.Alterations.Bonuses(state.CharacterId);
+            var temporary = new Dictionary<int, long>(Managers.Alterations.Bonuses(state.CharacterId));
+            // And the Stasis dons' pods and strength, as the sheet shows them (Managers/Stasis/Dons.cs).
+            foreach (var (id, value) in Managers.Dons.BonusesOf(state.CharacterId))
+                temporary[id] = temporary.GetValueOrDefault(id) + value;
             // Widened before the sum: points and scrolls near int.MaxValue add up past it.
             long strength = (long)state.StatStrength + state.ScrolledStrength
                 + gear.GetValueOrDefault(Stat.Strength) + temporary.GetValueOrDefault(Stat.Strength);

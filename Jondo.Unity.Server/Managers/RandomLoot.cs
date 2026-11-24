@@ -221,6 +221,13 @@ namespace Jondo.Unity.Server.Managers
                && (EquipmentFamilies.Contains(t.Family) || t.Family == CreatureFamily
                    || t.Family == DofusFamily || t.Category == CosmeticCategory);
 
+        /// <summary>
+        /// Whether an item of this type is equipment proper -- an amulet, a ring, a weapon, a hat...
+        /// --, neither a creature, a dofus nor a cosmetic: what stasifies (Stasis.Applies).
+        /// </summary>
+        public static bool IsEquipmentType(int type)
+            => Types.TryGetValue(type, out var t) && EquipmentFamilies.Contains(t.Family) && t.Category != CosmeticCategory;
+
         // ─── The roll ───────────────────────────────────────────────────────────────────────
 
         /// <summary>

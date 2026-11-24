@@ -197,9 +197,9 @@ namespace Jondo.Unity.Server.Managers
                         else if (stacks) effects = Forgemagic.Serialize(Forgemagic.Roll(template, Dice));
                         else
                         {
-                            var (rolled, factor) = RollForSale(template, settings);
+                            var (rolled, percent) = RollForSale(template, settings);
                             effects = Forgemagic.Serialize(rolled);
-                            price = Math.Max(1, price * factor);
+                            price = Math.Max(1, price * percent / 100);
                         }
                         MarketplaceListings.Add(house, character, account, gid, type, lot, effects, price, now);
                     }
@@ -211,28 +211,59 @@ namespace Jondo.Unity.Server.Managers
         private static readonly (int Effect, long Factor)[] Exos = { (111, 25), (128, 12), (117, 6) };
 
         /// <summary>
-        /// A piece of equipment as it goes on sale: an ordinary roll, now and then a perfect one
-        /// (twice and a half dearer), and rarely an exo -- an AP, an MP or a range its template does
-        /// not give, from six to twenty-five times dearer, as on the official marketplaces where an
-        /// exo AP is the dearest thing a piece can carry. The roll and the price's factor.
+        /// A piece of equipment as it goes on sale, and its price against the plain item's
+        /// reference worth, in percent.
         /// </summary>
-        internal static (List<Equipment.ItemEffect> Effects, long Factor) RollForSale(Forgemagic.Template template, Settings settings)
+        /// <remarks>
+        /// <para>
+        /// Stasified equipment (Managers.Stasis) goes on sale as it drops: at its max roll and a
+        /// tier drawn from content/items/stasis.json's marketTierWeights -- mostly S1, some S2, rare
+        /// S3, very rare S4 --, priced by Stasis.PriceFactor (S1 x1.25, then each tier three of the
+        /// one below, what fusing up to it costs). Every piece is a max roll then, so the old
+        /// «perfect» lot has nothing left to mean and PerfectPercent applies only to what does not
+        /// stasify (pets, custom items). The exo stays: one lot in ExoPercent carries an AP, an MP
+        /// or a range its template lacks, from six to twenty-five times dearer, as on the official
+        /// marketplaces where an exo AP is the dearest thing a piece can carry.
+        /// </para>
+        /// </remarks>
+        internal static (List<Equipment.ItemEffect> Effects, long Percent) RollForSale(Forgemagic.Template template, Settings settings)
         {
             int roll = Dice.Next(100);
-            bool perfect = roll < settings.PerfectPercent + settings.ExoPercent && Dice.Next(2) == 0;
-            var effects = Forgemagic.Roll(template, Dice, perfect ? 100 : 0);
-            long factor = perfect ? 5 : 2;   // halves: 2 = x1, 5 = x2.5
+            List<Equipment.ItemEffect> effects;
+            double percent;
+            if (Stasis.Applies(template))
+            {
+                int tier = Stasis.MarketTier(Dice);
+                effects = Stasis.AtMax(template, tier);
+                percent = 100 * Stasis.PriceFactor(tier);
+            }
+            else
+            {
+                bool perfect = roll < settings.PerfectPercent + settings.ExoPercent && Dice.Next(2) == 0;
+                effects = Forgemagic.Roll(template, Dice, perfect ? 100 : 0);
+                percent = perfect ? 250 : 100;
+            }
             if (roll < settings.ExoPercent && template.Level >= 20)
             {
                 var exo = Exos.Where(e => template.MaxOf(e.Effect) == null).OrderBy(_ => Dice.Next()).FirstOrDefault();
                 if (exo.Effect != 0)
                 {
-                    effects.Add(new Equipment.ItemEffect(exo.Effect, 1, 0, 0));
-                    factor *= exo.Factor;
+                    // Before the label, which stays the last line.
+                    int at = effects.FindIndex(e => e.Effect == Stasis.LabelEffect);
+                    effects.Insert(at < 0 ? effects.Count : at, new Equipment.ItemEffect(exo.Effect, 1, 0, 0));
+                    percent *= exo.Factor;
                 }
             }
-            return (effects, Math.Max(1, factor / 2));
+            return (effects, Math.Max(1, (long)Math.Round(percent)));
         }
+
+        /// <summary>
+        /// What a lot is worth to a buyer: the reference worth of its item times the lot, and for a
+        /// stasified piece its tier's factor (Stasis.PriceFactor) -- the same as the market maker
+        /// prices its own, so a player's S3 is not bought as if it were an S1.
+        /// </summary>
+        internal static long WorthOf(long reference, int lot, int tier)
+            => Math.Max(1, Stasis.Worth(reference, tier) * Math.Max(1, lot));
 
         /// <summary>
         /// The bots' lots bought now and then by other players that are not there: the cheapest of
@@ -259,7 +290,8 @@ namespace Jondo.Unity.Server.Managers
             var buyer = Sellers().Count > 0 ? Sellers()[Dice.Next(Sellers().Count)].Character : 0;
             foreach (var lot in MarketplaceListings.CheapestLotsBy(house.Id, account => !IsBot(account), now))
             {
-                long worth = Math.Max(1, ReferencePrices.Of(lot.Gid) * lot.Lot);
+                int tier = Stasis.TierInEffects(MarketplaceListings.EffectsOfOffer(lot.Offer));
+                long worth = WorthOf(ReferencePrices.Of(lot.Gid), lot.Lot, tier);
                 long percent = lot.Price * 100 / worth;
                 if (percent > settings.FairPercent) continue;
                 // A fair one in PlayerLotMinutes on average; a bargain twice as fast.

@@ -14708,9 +14708,19 @@ namespace Jondo.Unity.Server.Handlers
                     int exo = at >= 0 ? exos[at].Exo : 0;
                     if (at >= 0) exos.RemoveAt(at);
                     var effects = Managers.RandomLoot.EffectsOf(template, exo, Random.Shared);
+                    // Stasification (Managers.Stasis): equipment drops at its max roll times its
+                    // tier -- S1 for everyone, the evolved distribution for an evolved character --,
+                    // the random loot's exo kept on top. Pets, dofus and cosmetics roll as before.
+                    int tier = 0;
+                    if (Managers.Stasis.Applies(template))
+                    {
+                        tier = Managers.Stasis.DropTier(GameState.CharacterId, Random.Shared);
+                        effects = Managers.Stasis.Apply(exo != 0 ? effects : Managers.Forgemagic.Perfect(template), tier);
+                    }
                     var piece = DatabaseManager.AddPieceToInventory(GameState.CharacterId, kv.Key,
                                                                     Managers.Forgemagic.Serialize(effects));
                     if (piece != null) pieces.Add(piece);
+                    if (piece != null && tier != 0) Managers.Stasis.Mark(piece.Uid, tier);
                     if (exo != 0)
                         Program.LogDebug($"[FightHandler] Loot: a perfect item {kv.Key} with an exo {exo}.");
                 }

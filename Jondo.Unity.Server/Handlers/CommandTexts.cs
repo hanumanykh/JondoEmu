@@ -14,6 +14,9 @@ namespace Jondo.Unity.Server.Handlers
     {
         private static readonly IReadOnlyDictionary<string, string> Es = new Dictionary<string, string>
         {
+            ["usage.stasis"] = "Uso: .stasis — explica la estasificación de los objetos (niveles S1 a S4).",
+            ["usage.fusion"] = "Uso: .fusion <objeto o id> [S1|S2|S3] — 3 objetos idénticos del mismo nivel dan 1 del nivel siguiente.",
+            ["usage.raffiner"] = "Uso: .raffiner <objeto o id> [S1..S4] — el refinador te compra un objeto estasificado sobrante.",
             ["usage.kamas"] = "Uso: .kamas <cantidad> — por ejemplo .kamas 10000 (con menos delante, resta)",
             ["hunt.expired"] = "Tu orden de caza contra {0} ha caducado.",
             ["hunt.escaped"] = "{0} ha desaparecido del mundo: la caza se cierra por ahora.",
@@ -281,6 +284,9 @@ namespace Jondo.Unity.Server.Handlers
 
         private static readonly IReadOnlyDictionary<string, string> En = new Dictionary<string, string>
         {
+            ["usage.stasis"] = "Usage: .stasis — explains item stasification (tiers S1 to S4).",
+            ["usage.fusion"] = "Usage: .fusion <item or id> [S1|S2|S3] — 3 identical items of one tier make 1 of the next tier.",
+            ["usage.raffiner"] = "Usage: .raffiner <item or id> [S1..S4] — the raffineur buys back a surplus stasified item.",
             ["usage.kamas"] = "Usage: .kamas <amount> — for example .kamas 10000 (a negative amount removes kamas)",
             ["hunt.expired"] = "Your hunt order on {0} has run out.",
             ["hunt.escaped"] = "{0} has left the world: the hunt closes for now.",
@@ -548,6 +554,9 @@ namespace Jondo.Unity.Server.Handlers
 
         private static readonly IReadOnlyDictionary<string, string> Fr = new Dictionary<string, string>
         {
+            ["usage.stasis"] = "Utilisation : .stasis — explique la stasification des objets (paliers S1 à S4).",
+            ["usage.fusion"] = "Utilisation : .fusion <objet ou id> [S1|S2|S3] — 3 objets identiques du même palier donnent 1 objet du palier suivant.",
+            ["usage.raffiner"] = "Utilisation : .raffiner <objet ou id> [S1..S4] — le raffineur rachète un objet stasifié en trop.",
             ["usage.kamas"] = "Utilisation : .kamas <quantité> — exemple : .kamas 10000 (une valeur négative en retire)",
             ["hunt.expired"] = "Ton ordre de traque contre {0} a expiré.",
             ["hunt.escaped"] = "{0} a quitté le monde : la traque se ferme pour l'instant.",

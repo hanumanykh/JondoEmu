@@ -199,6 +199,21 @@ namespace Jondo.Unity.Server.Handlers
                         ConnectionProtocol.Push(Op.Ivq, Pb.New().Var(1, uid).Var(2, loSuyo.Position).Build()));
                     return false;
                 }
+
+                // Nor an S3 or S4 piece by a character not evolved (Managers.Stasis): it may loot,
+                // bank, trade and sell one, but wears it only once evolved, as on Stasis.
+                if (loSuyo != null
+                    && Managers.Stasis.TierOf(loSuyo.Uid, loSuyo.Effects) is int tier and > 0
+                    && !Managers.Stasis.MayWear(SessionContext.State.CharacterId, tier))
+                {
+                    Console.WriteLine($"[Equipment] Item {uid} is {Managers.Stasis.Name(tier)} and the character is not evolved. It is not put on.");
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildNotice(
+                            $"Un objet {Managers.Stasis.Name(tier)} ne peut être équipé que par un personnage évolué.")));
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Ivq, Pb.New().Var(1, uid).Var(2, loSuyo.Position).Build()));
+                    return false;
+                }
             }
 
             // One of a stack: a slot holds one, and the iuk asks for one (its f1). Moving the stack

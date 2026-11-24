@@ -105,6 +105,10 @@ namespace Jondo.Unity.Server.Handlers
                 [".remove"] = "usage.remove",
                 [".gate"] = "usage.gate",
                 [".gift"] = "usage.gift",
+                // Stasification, the players' (CommandHandler.Stasis.cs).
+                [".stasis"] = "usage.stasis",
+                [".fusion"] = "usage.fusion",
+                [".raffiner"] = "usage.raffiner",
             };
 
         /// <summary>
@@ -138,6 +142,10 @@ namespace Jondo.Unity.Server.Handlers
                 [".size"] = Roles.GameMaster,
                 [".shop"] = Roles.GameMaster,
                 [".gremio"] = Roles.Jugador,
+                // Stasification is the game itself, every player's (CommandHandler.Stasis.cs).
+                [".stasis"] = Roles.Jugador,
+                [".fusion"] = Roles.Jugador,
+                [".raffiner"] = Roles.Jugador,
 
                 // Information and moving about, to go and help somebody: a moderator's.
                 [".who"] = Roles.Moderador,
@@ -219,6 +227,10 @@ namespace Jondo.Unity.Server.Handlers
                 await NotifyAsync(stream, T("jail.no_commands"), channel, accountId);
                 return true;
             }
+
+            // The Stasis progression's commands (.dons, .don, .ascension, .evolution, .recherche):
+            // any player's, French only, served before the role table (CommandHandler.Progression.cs).
+            if (await TryProgressionAsync(stream, command, RestOf(text), channel, accountId)) return true;
 
             if (!Uso.ContainsKey(command))
             {
@@ -329,6 +341,9 @@ namespace Jondo.Unity.Server.Handlers
                 case ".reve": await DreamAsync(stream, rest, channel, accountId); break;
                 case ".heros":
                 case ".heroes": await HeroesProbeAsync(stream, rest, channel, accountId); break;
+                case ".stasis": await StasisAsync(stream, channel, accountId); break;
+                case ".fusion": await FusionAsync(stream, rest, channel, accountId); break;
+                case ".raffiner": await RaffinerAsync(stream, rest, channel, accountId); break;
                 default: await AdminAsync(command, stream, rest, channel, accountId); break;
             }
         }

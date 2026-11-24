@@ -699,7 +699,7 @@ namespace JondoFix
         /// something hidden is no guide -- the client keeps closed windows around, and opening
         /// beside one of those is opening where nothing is drawn.
         /// </summary>
-        private static VisualElement FindLayer()
+        internal static VisualElement FindLayer()
         {
             VisualElement beside = null, topRoot = null, high = null;
             float topOrder = float.MinValue;
@@ -768,7 +768,7 @@ namespace JondoFix
         /// A press, a release, a click or the wheel on the window ends at the window: whatever
         /// listens further up for a click on the map does not hear it.
         /// </summary>
-        private static void KeepEvents(VisualElement window)
+        internal static void KeepEvents(VisualElement window)
         {
             int kept = 0;
             try { window.RegisterCallback<PointerDownEvent>(Stop<PointerDownEvent>(), TrickleDown.NoTrickleDown); kept++; } catch { }

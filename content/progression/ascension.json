@@ -1,0 +1,12 @@
+{
+  "_comment": "Ascension and Evolution (Managers/Stasis/Ascension.cs reads this). An Ascension, from minLevel, sends the character back to level 1 (experience 0, characteristics given back, spells as level 1; items and kamas kept), clears its dons and pays Éclats: floor(eclatsBase x (level / eclatsReferenceLevel) ^ eclatsExponent), plus the Moisson research. Until the best level ever reached, experience is multiplied by catchUpBase plus the Rattrapage research. An Evolution, at evolutionLevel with evolutionEclats Éclats (spent) and the tier dungeons done, returns the character to evolutionReturnLevel for good, evolved, keeping the dons of levels up to evolutionKeepDonsUpTo. An evolved character does not ascend any more.",
+  "minLevel": 50,
+  "eclatsBase": 10,
+  "eclatsReferenceLevel": 50,
+  "eclatsExponent": 2.0,
+  "catchUpBase": 2,
+  "evolutionLevel": 300,
+  "evolutionEclats": 1000,
+  "evolutionReturnLevel": 200,
+  "evolutionKeepDonsUpTo": 200
+}

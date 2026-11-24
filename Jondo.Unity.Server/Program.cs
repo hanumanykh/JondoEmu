@@ -225,6 +225,8 @@ namespace Jondo.Unity.Server
             Managers.InteractiveMessages.Load();
             Managers.DungeonExitRooms.Load();
             Managers.FightWinAlterations.Load();
+            // The Stasis dons, Ascension and research files, and IsEvolved handed to the stasified items.
+            Managers.Ascension.Load();
             Managers.IdolRules.Load();
             // After the quests: 259 achievements are earned by finishing one, and the catalogue is indexed
             // by quest when loaded.

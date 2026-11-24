@@ -763,6 +763,10 @@ namespace JondoFix
             // The monster group tooltip's loot and achievements, as the server answers them.
             MonsterGroupTooltip.Tick();
 
+            // The Stasis «Progression» window (dons, research, Ascension): F9, and by itself on an offer.
+            try { ProgressionUi.Tick(); }
+            catch (Exception ex) { LoggerInstance.Warning($"[JondoFix] Progression window: {ex.Message}"); }
+
             // The administrator's item window: its key, and what the server answered it.
             if (IsJondoAdministrator)
             {

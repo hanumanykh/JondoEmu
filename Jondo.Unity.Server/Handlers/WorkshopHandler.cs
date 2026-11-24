@@ -545,8 +545,15 @@ namespace Jondo.Unity.Server.Handlers
             {
                 var effects = Forgemagic.Roll(template, Dice, quality);
                 if (i < signatures) effects = Forgemagic.Signed(effects, Forgemagic.CraftedBy, name);
+                // A crafted piece of equipment is stasified too (Managers.Stasis), at the crafted
+                // tier (S1): its ROLLED lines multiplied, not its max -- the craft keeps its dice
+                // and smithmagic its point, and a drop stays the way to a max roll. The signature
+                // and the tier share the one 988 line.
+                bool stasified = Stasis.Applies(template);
+                if (stasified) effects = Stasis.Apply(effects, Stasis.Current.CraftedTier);
                 var created = Equipment.Create(gid, 1, effects);
                 if (created != null) arrived.Add(created);
+                if (created != null && stasified) Stasis.Mark(created.Uid, Stasis.Current.CraftedTier);
             }
             if (arrived.Count == 0) return (Array.Empty<Equipment.ItemEffect>(), 0);
             await SendAsync(stream, Op.Itf, WorkshopProtocol.BuildItemsArrived(arrived.Select(Arrival)));

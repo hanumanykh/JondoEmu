@@ -29,10 +29,19 @@ internal static class CharacterProgression
     /// of every level gained (<see cref="CharacteristicRules.PointsForLevelUp"/>). Non-positive
     /// amounts change nothing. Never lowers the level.
     /// </summary>
+    /// <remarks>
+    /// The Stasis progression stands at this door twice (Managers/Stasis): before the experience is
+    /// added, <see cref="Managers.Dons.ScaleExperience"/> multiplies it -- the catch-up after an
+    /// Ascension (x2 to x9 until the best level ever reached) and the Découverte don's percent --
+    /// so every source of experience gets it without each caller knowing; after the level moved,
+    /// <see cref="Managers.Dons.OnLevelsGained"/> queues the dons the new levels earn. The callers'
+    /// own figures (the fight's end screen) show the experience before that multiplier.
+    /// </remarks>
     internal static ExperienceGain AddExperience(SessionState state, long experience)
     {
         int oldLevel = state.CharacterLevel;
         if (experience <= 0) return new(0, oldLevel, oldLevel, 0);
+        experience = Managers.Dons.ScaleExperience(state, experience);
 
         // Saturating: a bonus on a huge gain must not wrap the total negative.
         state.Experience = experience > long.MaxValue - state.Experience ? long.MaxValue : state.Experience + experience;
@@ -43,6 +52,7 @@ internal static class CharacterProgression
         int points = CharacteristicRules.PointsForLevelUp(oldLevel, newLevel);
         if (points > 0) state.CharacterRemainingPoints += points;
         state.CharacterLevel = newLevel;
+        Managers.Dons.OnLevelsGained(state, oldLevel, newLevel);
         return new(experience, oldLevel, newLevel, points);
     }
 }

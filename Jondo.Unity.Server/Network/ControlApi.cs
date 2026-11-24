@@ -88,6 +88,14 @@ namespace Jondo.Unity.Server.Network
                     case Prefijo + "headhunts/take": return ConSesion(cuerpo, cuenta => HeadHuntTake(cuerpo, cuenta));
                     case Prefijo + "headhunts/abandon": return ConSesion(cuerpo, HeadHuntAbandon);
                     // The Heroes mod's window: his account's characters, connected beside him or not.
+                    // The Stasis progression window (JondoFix's «Progression», F9): ControlApiProgression.cs.
+                    case Prefijo + "stasis/state": return ConSesion(cuerpo, ProgressionState);
+                    case Prefijo + "stasis/pick": return ConSesion(cuerpo, cuenta => ProgressionPick(cuerpo, cuenta));
+                    case Prefijo + "stasis/reroll": return ConSesion(cuerpo, ProgressionReroll);
+                    case Prefijo + "stasis/repick": return ConSesion(cuerpo, cuenta => ProgressionRepick(cuerpo, cuenta));
+                    case Prefijo + "stasis/research": return ConSesion(cuerpo, cuenta => ProgressionResearch(cuerpo, cuenta));
+                    case Prefijo + "stasis/ascend": return ConSesion(cuerpo, cuenta => ProgressionAscend(cuerpo, cuenta));
+                    case Prefijo + "stasis/evolve": return ConSesion(cuerpo, cuenta => ProgressionEvolve(cuerpo, cuenta));
                     case Prefijo + "heroes/list": return ConSesion(cuerpo, HeroesList);
                     case Prefijo + "heroes/connect": return ConSesion(cuerpo, cuenta => HeroesConnect(cuerpo, cuenta));
                     case Prefijo + "heroes/disconnect": return ConSesion(cuerpo, cuenta => HeroesDisconnect(cuerpo, cuenta));
