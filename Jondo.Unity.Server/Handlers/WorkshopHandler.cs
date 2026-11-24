@@ -941,6 +941,21 @@ namespace Jondo.Unity.Server.Handlers
             return any;
         }
 
+        /// <summary>
+        /// One item with exactly these effects, into the bag of the session being served, and its
+        /// uid; 0 if it could not be made. A unique copy is given so (CustomInstances).
+        /// </summary>
+        public static async Task<long> GiveExactAsync(NetworkStream stream, int gid, IReadOnlyList<Equipment.ItemEffect> effects)
+        {
+            var created = Equipment.Create(gid, 1, effects);
+            if (created == null) return 0;
+            await SendAsync(stream, Op.Iua, ConnectionProtocol.BuildItemArrived(3, new HavenBagStore.StoredItem
+            {
+                Uid = created.Uid, Gid = gid, Quantity = 1, Effects = Forgemagic.Serialize(created.Effects),
+            }));
+            return created.Uid;
+        }
+
         /// <summary>A new stack in the bag, and the iua that shows it.</summary>
         private static async Task<bool> ArriveAsync(NetworkStream stream, int gid, int quantity, IReadOnlyList<Equipment.ItemEffect> effects)
         {

@@ -48,6 +48,26 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly object Gate = new();
         private static Dictionary<int, Custom>? _items;
+        private static Dictionary<string, Custom>? _unique;
+
+        /// <summary>
+        /// A unique copy (a row with an «id»): made over its base but given one by one, each with
+        /// its own effects and look -- several of them can share one base. Only the items it was
+        /// given as are it (CustomInstances); the base stays itself for everybody else.
+        /// </summary>
+        public static bool TryGetUnique(string id, out Custom custom)
+        {
+            custom = null!;
+            All();
+            lock (Gate) return _unique!.TryGetValue(id, out custom!);
+        }
+
+        /// <summary>Every unique copy, by its id.</summary>
+        public static IReadOnlyDictionary<string, Custom> Unique()
+        {
+            All();
+            lock (Gate) return _unique!;
+        }
 
         /// <summary>The custom item made over a template, if there is one.</summary>
         public static bool TryGet(int gid, out Custom custom)
@@ -63,8 +83,11 @@ namespace Jondo.Unity.Server.Managers
             lock (Gate)
             {
                 if (_items != null) return _items;
-                _items = Load(Paths.ContentFile(AuthoredFile));
-                if (_items.Count > 0) Console.WriteLine($"[Items] {_items.Count} custom item(s) from {AuthoredFile}.");
+                string path = Paths.ContentFile(AuthoredFile);
+                _unique = LoadUnique(path);
+                _items = Load(path);
+                if (_items.Count + _unique.Count > 0)
+                    Console.WriteLine($"[Items] {_items.Count} custom item(s) and {_unique.Count} unique copie(s) from {AuthoredFile}.");
                 return _items;
             }
         }
@@ -72,12 +95,28 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Forgets what was read: the next question reads the file again.</summary>
         public static void Reload()
         {
-            lock (Gate) _items = null;
+            lock (Gate) { _items = null; _unique = null; }
         }
 
+        /// <summary>The rows without an «id»: custom items of every new item of their base.</summary>
         internal static Dictionary<int, Custom> Load(string path)
         {
             var items = new Dictionary<int, Custom>();
+            foreach (var (id, custom) in Rows(path)) if (id == null) items[custom.Base] = custom;
+            return items;
+        }
+
+        /// <summary>The rows with an «id»: unique copies.</summary>
+        internal static Dictionary<string, Custom> LoadUnique(string path)
+        {
+            var items = new Dictionary<string, Custom>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (id, custom) in Rows(path)) if (id != null) items[id] = custom;
+            return items;
+        }
+
+        private static List<(string? Id, Custom Custom)> Rows(string path)
+        {
+            var items = new List<(string?, Custom)>();
             try
             {
                 if (!File.Exists(path)) return items;
@@ -87,6 +126,8 @@ namespace Jondo.Unity.Server.Managers
                 foreach (var row in list.EnumerateArray())
                 {
                     if (!row.TryGetProperty("base", out var b) || !b.TryGetInt32(out int gid) || gid <= 0) continue;
+                    string? key = row.TryGetProperty("id", out var i) && i.ValueKind == JsonValueKind.String
+                                  && (i.GetString() ?? "").Trim().Length > 0 ? i.GetString()!.Trim() : null;
                     int skin = 0;
                     if (row.TryGetProperty("skin", out var s) && s.TryGetInt32(out int own)) skin = own;
                     else if (row.TryGetProperty("skinOf", out var o) && o.TryGetInt32(out int other)) skin = EquipmentSkins.All.TryGetValue(other, out int measured) ? measured : 0; // not SkinOf: it asks this class back
@@ -110,7 +151,7 @@ namespace Jondo.Unity.Server.Managers
                     }
                     string? json = effects == null ? null
                         : "[" + string.Join(",", effects.Select(x => $"[{x.Effect},{x.Value},0,0]")) + "]";
-                    items[gid] = new Custom(gid, skin, effects, json);
+                    items.Add((key, new Custom(gid, skin, effects, json)));
                 }
             }
             catch (Exception ex)

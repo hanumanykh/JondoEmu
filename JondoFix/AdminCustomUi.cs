@@ -25,6 +25,13 @@ namespace JondoFix
                     "Se hace sobre un objeto que existe: guarda su nombre, su icono y su nivel. Cada uno nuevo nace con estas características, y llevado tiene el aspecto del otro objeto. Los ids salen en la pestaña Objetos.",
                     "It is made over an existing item: it keeps its name, icon and level. Every new one is born with these characteristics, and worn it looks like the other item. The ids are in the Items tab.",
                     "Il se fait sur un objet existant : il garde son nom, son icône et son niveau. Chaque nouvel exemplaire naît avec ces caractéristiques et, porté, prend l'apparence de l'autre objet. Les ids sont dans l'onglet Objets."),
+                ["custom.id"] = AdminItemsUi.L("Nombre único (opcional)", "Unique name (optional)", "Nom unique (facultatif)"),
+                ["custom.id_hint"] = AdminItemsUi.L(
+                    "Con un nombre es una copia única: varias pueden compartir la misma base, cada una con lo suyo, y sólo se consiguen dándolas desde aquí. Sin nombre, todos los objetos nuevos de esa base cambian.",
+                    "With a name it is a unique copy: several can share one base, each with its own, and they are only got by giving them from here. Without a name, every new item of that base changes.",
+                    "Avec un nom, c'est une copie unique : plusieurs peuvent partager la même base, chacune avec ses propres stats et son apparence, et on ne les obtient qu'en les donnant d'ici. Sans nom, tous les nouveaux objets de cette base changent."),
+                ["custom.unique"] = AdminItemsUi.L("copia única", "unique copy", "copie unique"),
+                ["custom.all"] = AdminItemsUi.L("todos los nuevos", "every new one", "tous les nouveaux"),
                 ["custom.base"] = AdminItemsUi.L("Objeto base (id)", "Base item (id)", "Objet de base (id)"),
                 ["custom.skin"] = AdminItemsUi.L("Aspecto de (id, opcional)", "Looks like (id, optional)", "Apparence de (id, facultatif)"),
                 ["custom.stats"] = AdminItemsUi.L("Características (vacío = sin; negativo = malus)", "Characteristics (empty = none; negative = malus)", "Caractéristiques (vide = aucune ; négatif = malus)"),
@@ -59,7 +66,7 @@ namespace JondoFix
             ("fuite", "Huida", "Dodge", "Fuite"), ("pods", "Pods", "Pods", "Pods"),
         };
 
-        private static TextInput _customBase, _customSkin;
+        private static TextInput _customId, _customBase, _customSkin;
         private static readonly Dictionary<string, TextInput> _customFields = new Dictionary<string, TextInput>();
         private static VisualElement _customList;
         private static DofusLabel _customListTitle;
@@ -76,7 +83,7 @@ namespace JondoFix
 
         private static void ResetCustom()
         {
-            _customBase = _customSkin = null;
+            _customId = _customBase = _customSkin = null;
             _customFields.Clear();
             _customList = null;
             _customListTitle = null;
@@ -89,9 +96,11 @@ namespace JondoFix
             page.Add(Hint(CT("custom.hint")));
 
             var ids = Flow();
+            _customId = Field(ids, CT("custom.id"), false, 240f, "chapeau-du-roi");
             _customBase = Field(ids, CT("custom.base"), true, 200f, "2474");
             _customSkin = Field(ids, CT("custom.skin"), true, 220f, "7921");
             page.Add(ids);
+            page.Add(Hint(CT("custom.id_hint")));
 
             page.Add(AdminItemsUi.Label(CT("custom.stats"), true));
             var stats = Flow();
@@ -105,7 +114,7 @@ namespace JondoFix
             actions.style.marginTop = new StyleLength(8f);
             actions.Add(ClientButton(CT("custom.save"), false, () => SaveCustom(give: false)));
             actions.Add(ClientButton(CT("custom.give"), true, () => SaveCustom(give: true)));
-            actions.Add(ClientButton(CT("custom.clear"), false, () => FillCustom(0, 0, new Dictionary<string, long>())));
+            actions.Add(ClientButton(CT("custom.clear"), false, () => FillCustom("", 0, 0, new Dictionary<string, long>())));
             page.Add(actions);
             page.Add(Status());
 
@@ -118,8 +127,9 @@ namespace JondoFix
             return page;
         }
 
-        private static void FillCustom(int gid, int skinOf, Dictionary<string, long> effects)
+        private static void FillCustom(string id, int gid, int skinOf, Dictionary<string, long> effects)
         {
+            _customId?.SetValueWithoutNotify(id);
             _customBase?.SetValueWithoutNotify(gid > 0 ? gid.ToString(CultureInfo.InvariantCulture) : "");
             _customSkin?.SetValueWithoutNotify(skinOf > 0 ? skinOf.ToString(CultureInfo.InvariantCulture) : "");
             foreach (var (key, field) in _customFields)
@@ -139,7 +149,9 @@ namespace JondoFix
                 if (long.TryParse(Read(field), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long v) && v != 0)
                     effects[key] = v;
 
+            string id = Read(_customId);
             var body = new Dictionary<string, object> { ["base"] = gid, ["effects"] = effects };
+            if (id.Length > 0) body["id"] = id;
             if (skinOf > 0) body["skinOf"] = skinOf;
             string who = _who;
             Ask("customs/save", body, root =>
@@ -150,10 +162,15 @@ namespace JondoFix
                     Say(CT("custom.saved", gid));
                     return;
                 }
-                Ask("personaje", new Dictionary<string, object>
-                {
-                    ["personaje"] = who, ["objeto"] = gid, ["cantidad"] = 1, ["modo"] = "max",
-                }, _ => Say(CT("custom.given")));
+                // A unique copy is given as itself; a custom of every item, as any item of its base.
+                if (id.Length > 0)
+                    Ask("customs/give", new Dictionary<string, object> { ["id"] = id, ["personaje"] = who },
+                        _ => Say(CT("custom.given")));
+                else
+                    Ask("personaje", new Dictionary<string, object>
+                    {
+                        ["personaje"] = who, ["objeto"] = gid, ["cantidad"] = 1, ["modo"] = "max",
+                    }, _ => Say(CT("custom.given")));
             });
         }
 
@@ -166,6 +183,7 @@ namespace JondoFix
             {
                 count++;
                 int gid = item.GetProperty("base").GetInt32();
+                string id = item.TryGetProperty("id", out var idv) ? idv.GetString() ?? "" : "";
                 int skinOf = item.TryGetProperty("skinOf", out var s) ? s.GetInt32() : 0;
                 string name = item.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
                 var effects = new Dictionary<string, long>();
@@ -178,7 +196,7 @@ namespace JondoFix
                     string label = known.Key != null ? StatLabel(known) : x.Key;
                     return (x.Value > 0 ? "+" : "") + x.Value.ToString(CultureInfo.InvariantCulture) + " " + label;
                 }));
-                string text = $"{gid} · {name}" + (skinOf > 0 ? " · " + CT("custom.looks", skinOf) : "")
+                string text = (id.Length > 0 ? $"« {id} » ({CT("custom.unique")}) · " : $"({CT("custom.all")}) · ") + $"{gid} · {name}" + (skinOf > 0 ? " · " + CT("custom.looks", skinOf) : "")
                               + (stats.Length > 0 ? " · " + stats : "");
 
                 var line = AdminItemsUi.Row();
@@ -191,9 +209,9 @@ namespace JondoFix
                 label.style.flexShrink = new StyleFloat(1f);
                 label.style.whiteSpace = new StyleEnum<WhiteSpace>(WhiteSpace.Normal);
                 line.Add(label);
-                line.Add(ClientButton(CT("custom.edit"), false, () => FillCustom(gid, skinOf, effects)));
+                line.Add(ClientButton(CT("custom.edit"), false, () => FillCustom(id, gid, skinOf, effects)));
                 line.Add(ClientButton(CT("custom.remove"), false, () =>
-                    Ask("customs/remove", new Dictionary<string, object> { ["base"] = gid }, r =>
+                    Ask("customs/remove", new Dictionary<string, object> { ["base"] = gid, ["id"] = id }, r =>
                     {
                         ShowCustoms(r);
                         Say(CT("custom.removed"));

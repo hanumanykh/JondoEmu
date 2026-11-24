@@ -44,3 +44,28 @@ public sealed class CustomItemsTests
         Assert.Empty(Read("""{ "items": [ { "skin": 5 } ] }"""));
     }
 }
+
+public sealed class UniqueCustomItemsTests
+{
+    [Fact]
+    public void Rows_with_an_id_are_unique_copies_and_can_share_a_base()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"custom-unique-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, """
+            { "items": [ { "base": 2474, "effects": { "vitalite": 10 } },
+                         { "id": "a", "base": 2474, "skin": 11, "effects": { "force": 40 } },
+                         { "id": "b", "base": 2474, "skin": 22 } ] }
+            """);
+        try
+        {
+            var all = CustomItems.Load(path);
+            var unique = CustomItems.LoadUnique(path);
+            Assert.Equal(10L, Assert.Single(all[2474].Effects!).Value);
+            Assert.Equal(2, unique.Count);
+            Assert.Equal(11, unique["A"].Skin);
+            Assert.Equal(22, unique["b"].Skin);
+            Assert.Null(unique["b"].Effects);
+        }
+        finally { File.Delete(path); }
+    }
+}

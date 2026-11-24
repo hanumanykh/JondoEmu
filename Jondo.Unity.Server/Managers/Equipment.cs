@@ -192,7 +192,8 @@ namespace Jondo.Unity.Server.Managers
             {
                 foreach (var item in All)
                 {
-                    if (IsWorn(item.Position)) worn.Add((item.Position, item.Template));
+                    // A unique copy is drawn with its own skin (CustomInstances).
+                    if (IsWorn(item.Position)) worn.Add((item.Position, CustomInstances.LookTemplate(item.Uid, item.Template)));
                 }
                 // By slot. Not because any capture asks for it -- the order they come out in has not
                 // been measured -- but so that they ALWAYS come out in the same one: the session's
@@ -209,7 +210,7 @@ namespace Jondo.Unity.Server.Managers
                 connection.Open();
 
                 var command = connection.CreateCommand();
-                command.CommandText = "SELECT Position, Gid FROM CharacterItems " +
+                command.CommandText = "SELECT Position, Gid, Uid FROM CharacterItems " +
                                       "WHERE CharacterId = $id AND Position BETWEEN 0 AND $last " +
                                       "ORDER BY Position;";
                 command.Parameters.AddWithValue("$id", characterId);
@@ -219,7 +220,9 @@ namespace Jondo.Unity.Server.Managers
                 while (reader.Read())
                 {
                     if (reader.IsDBNull(0) || reader.IsDBNull(1)) continue;
-                    worn.Add((reader.GetInt32(0), reader.GetInt32(1)));
+                    int template = reader.GetInt32(1);
+                    if (!reader.IsDBNull(2)) template = CustomInstances.LookTemplate(reader.GetInt64(2), template);
+                    worn.Add((reader.GetInt32(0), template));
                 }
             }
             catch (Exception ex)

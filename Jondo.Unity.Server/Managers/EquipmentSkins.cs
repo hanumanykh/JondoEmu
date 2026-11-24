@@ -139,6 +139,8 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The skin that real item puts in, or zero if we do not have it measured.</summary>
         public static int SkinOf(int templateId)
         {
+            // A negative template is a skin itself: a unique copy's (CustomInstances.LookTemplate).
+            if (templateId < 0) return -templateId;
             EnsureLoaded();
             // A custom item is worn with the skin its file gives it (CustomItems).
             if (CustomItems.TryGet(templateId, out var custom) && custom.Skin > 0) return custom.Skin;

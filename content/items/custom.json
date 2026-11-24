@@ -13,14 +13,45 @@
     "           A negative value is a malus.",
     "",
     "Every way an item is made gives the custom one: .item, the F10 window, drops, crafts,",
-    "shops. Items made before keep their old effects. Remove a row to undo it."
+    "shops. Items made before keep their old effects. Remove a row to undo it.",
+    "",
+    "  id       optional. With an id the row is a UNIQUE COPY: several can share one base, each",
+    "           with its own effects and look; only the items given as it (admin window, Customs",
+    "           tab, or /api/customs/give) are it, and the base stays itself for everything else."
   ],
   "items": [
     {
       "base": 2474,
       "note": "Chapeau de l'aventurier (niveau 9), avec l'apparence de la Couronne de Tofu Royal",
       "skinOf": 7921,
-      "effects": { "vitalite": 60, "agilite": 25, "sagesse": 10, "prospection": 15, "pm": 1 }
+      "effects": {
+        "vitalite": 60,
+        "agilite": 25,
+        "sagesse": 10,
+        "prospection": 15,
+        "pm": 1
+      }
+    },
+    {
+      "id": "couronne-du-roi-tofu",
+      "base": 2474,
+      "note": "Copie unique : chapeau de l'aventurier, apparence Couronne de Tofu Royal, orienté force",
+      "skinOf": 7921,
+      "effects": {
+        "vitalite": 80,
+        "force": 40,
+        "pa": 1
+      }
+    },
+    {
+      "id": "cape-du-buhotofu",
+      "base": 2474,
+      "note": "Copie unique sur la même base : apparence Cape de buhotofu",
+      "skinOf": 14085,
+      "effects": {
+        "sagesse": 30,
+        "prospection": 40
+      }
     }
   ]
 }
