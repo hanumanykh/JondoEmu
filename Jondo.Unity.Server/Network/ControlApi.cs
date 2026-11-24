@@ -127,6 +127,10 @@ namespace Jondo.Unity.Server.Network
                     case Prefijo + "ficha": return ConRol(cuerpo, Roles.Administrador, cuenta => Ficha(cuerpo, cuenta));
                     case Prefijo + "visitar-carcel": return ConRol(cuerpo, Roles.Administrador, VisitarCarcel);
                     case Prefijo + "niveles-monstruos": return ConRol(cuerpo, Roles.Administrador, _ => NivelesMonstruos());
+                    // The custom items tab (ControlApiCustomItems.cs).
+                    case Prefijo + "customs/list": return ConRol(cuerpo, Roles.Administrador, _ => CustomsList());
+                    case Prefijo + "customs/save": return ConRol(cuerpo, Roles.Administrador, cuenta => CustomsSave(cuerpo, cuenta));
+                    case Prefijo + "customs/remove": return ConRol(cuerpo, Roles.Administrador, cuenta => CustomsRemove(cuerpo, cuenta));
                     case Prefijo + "personaje":
                         return !metodo.Equals("POST", StringComparison.OrdinalIgnoreCase)
                             ? Mal(405, "metodo")

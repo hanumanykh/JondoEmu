@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -95,6 +95,7 @@ namespace JondoFix
                 ["tab.teleport"] = L("Teletransporte", "Teleport", "Téléportation"),
                 ["tab.spawn"] = L("Invocar", "Spawn", "Invoquer"),
                 ["tab.jail"] = L("Cárcel", "Jail", "Prison"),
+                ["tab.custom"] = L("Customs", "Customs", "Customs"),
                 ["search"] = L("Nombre, tipo, id o niveles 190-200", "Name, type, id or levels 190-200",
                                "Nom, type, id ou niveaux 190-200"),
                 ["quantity"] = L("Cantidad", "Quantity", "Quantité"),
@@ -401,7 +402,7 @@ namespace JondoFix
         }
 
         /// <summary>The tabs, in order: their text is "tab." and the key, in every language.</summary>
-        private static readonly string[] TabKeys = { "items", "character", "teleport", "spawn", "jail" };
+        private static readonly string[] TabKeys = { "items", "custom", "character", "teleport", "spawn", "jail" };
 
         private static DofusTabGroup _tabs;
         private static readonly List<DofusTab> _tabList = new List<DofusTab>();

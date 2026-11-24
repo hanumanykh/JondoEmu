@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -26,7 +26,7 @@ namespace JondoFix
     /// /api/visitar-carcel, /api/presos -- and the server checks the
     /// administrator's role on every request; nothing here decides anything.
     /// </remarks>
-    internal static class AdminWorldUi
+    internal static partial class AdminWorldUi
     {
         // ─── Texts ───────────────────────────────────────────────────────────────────────
 
@@ -163,6 +163,7 @@ namespace JondoFix
             _search = null;
             _kinds = _list = _detail = _group = _mapList = _prisonList = null;
             _pageLabel = _groupLabel = _mapLabel = null;
+            ResetCustom();
         }
 
         public static VisualElement Build(string tab)
@@ -174,6 +175,7 @@ namespace JondoFix
                 "teleport" => BuildTeleport(),
                 "spawn" => BuildSpawn(),
                 "jail" => BuildJail(),
+                "custom" => BuildCustom(),
                 _ => new VisualElement(),
             };
         }
@@ -350,6 +352,7 @@ namespace JondoFix
                 if (doc.RootElement.TryGetProperty("error", out var error)) reason = error.GetString() ?? body;
             }
             catch { }
+            if (RefusalOfCustom(reason) is string custom) return custom;
             return Texts.ContainsKey("error." + reason) ? T("error." + reason) : T("error.other", reason);
         }
 
