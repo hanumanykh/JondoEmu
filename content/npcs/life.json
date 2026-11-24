@@ -1,0 +1,70 @@
+{
+  "_comment": [
+    "The NPCs that live a little: a short walk around their home cell now and then, and a line on",
+    "the map's general channel now and then (Jondo.Unity.Server/Managers/NpcLife.cs). Only while a",
+    "real player stands on the map; the bots are no audience. Read once at the first beat of the loop.",
+    "",
+    "Opt-in: an NPC this file does not name never moves and never speaks. Leave merchants, bankers and",
+    "quest givers out, or give them radius 0 (lines only), so people find them where they always were.",
+    "",
+    "  { \"npc\": 7870, \"map\": 191105026, \"radius\": 3, \"name\": \"...\", \"lines\": [\"...\"] }",
+    "",
+    "  npc     the NPC template id (as in spawns.json / datos/npcs_reales.json). Required.",
+    "  map     only that placement's map; left out, every map the template stands on. A row with",
+    "          the map wins over one without it.",
+    "  radius  how far from home it may walk, 0..4 cells (more is held to 4). 0 never walks.",
+    "          It walks on the map's main floor only, never onto an interactive, a player or",
+    "          another NPC, every 20-60 s, a few cells at a time, and always heads back home.",
+    "  name    the speaker shown on its lines. The server knows no NPC names (the client takes",
+    "          them from its own data), so it has to be written here.",
+    "  lines   what it says, in French; one picked at random every 1-3 minutes, and no map hears",
+    "          two NPC lines closer than 40 s. Empty or left out: it never speaks.",
+    "",
+    "A row that neither walks nor speaks is ignored."
+  ],
+  "npcs": [
+    {
+      "npc": 7870, "map": 191105026, "radius": 3, "name": "Astrubien paranoïaque",
+      "lines": [
+        "Vous avez vu ? Ce bouftou me suit depuis ce matin...",
+        "Ne regardez pas le zaap trop longtemps, il vous regarde aussi.",
+        "Chut ! Ils écoutent. Ils écoutent toujours."
+      ]
+    },
+    {
+      "npc": 6831, "map": 191105026, "radius": 0, "name": "Tokageko",
+      "lines": [
+        "Le vent d'Astrub porte bien des histoires, voyageur.",
+        "Prenez le temps de souffler avant de repartir à l'aventure."
+      ]
+    },
+    {
+      "npc": 2274, "map": 191104002, "radius": 2, "name": "Chevalier d'Astrub",
+      "lines": [
+        "Les rues d'Astrub sont sûres tant que je veille.",
+        "Circulez, circulez, rien à voir ici !"
+      ]
+    },
+    {
+      "npc": 4368, "map": 191104002, "radius": 0, "name": "Bontarien énervé",
+      "lines": [
+        "Bonta vaincra ! Brâkmar n'a qu'à bien se tenir.",
+        "Encore une Brâkmarienne qui me regarde de travers..."
+      ]
+    },
+    {
+      "npc": 4369, "map": 191104002, "radius": 0, "name": "Brâkmarienne énervée",
+      "lines": [
+        "Les Bontariens et leurs grands airs, quelle plaie !",
+        "Un jour, Astrub choisira le bon camp. Le nôtre."
+      ]
+    },
+    {
+      "npc": 4366, "map": 191105028, "radius": 2, "name": "Cindy Cato",
+      "lines": [
+        "Quelle belle journée pour une balade en ville !",
+        "Vous n'auriez pas vu passer un tofu égaré ?"
+      ]
+    }
+  ]
+}

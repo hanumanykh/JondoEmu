@@ -1855,8 +1855,30 @@ namespace Jondo.Unity.Server.Managers
             lock (_candado)
             {
                 if (!_mapMobs.TryGetValue(mapId, out var groups)) return movements;
-                var candidates = groups.Where(g => g.CanRoam && g.Members.Count > 0 &&
-                    !Handlers.FightHandler.IsGroupFighting(g.MobId) && Random.Shared.Next(3) == 0).ToList();
+                // Each group keeps its own clock and its own home (RoamState); the states of the
+                // groups no longer on the map (fought, respawned under a new id) are dropped here.
+                var now = DateTime.UtcNow;
+                if (!_roaming.TryGetValue(mapId, out var states)) _roaming[mapId] = states = new();
+                foreach (var gone in states.Keys.Where(id => groups.All(g => g.MobId != id)).ToList())
+                    states.Remove(gone);
+                var candidates = new List<(MobGroup Group, RoamState State)>();
+                foreach (var g in groups)
+                {
+                    if (!g.CanRoam || g.Members.Count == 0) continue;
+                    if (!states.TryGetValue(g.MobId, out var state))
+                    {
+                        // First sight: the cell it stands on is its home, and the first walk comes
+                        // anywhere in the next interval, so that the groups of a map just entered
+                        // do not all set off on the same tick.
+                        states[g.MobId] = state = new RoamState(g.CellId,
+                            now.AddSeconds(Random.Shared.Next(RoamMinSeconds / 3, RoamMaxSeconds)));
+                        continue;
+                    }
+                    if (now < state.NextWalk) continue;
+                    state.NextWalk = now.AddSeconds(Random.Shared.Next(RoamMinSeconds, RoamMaxSeconds + 1));
+                    if (Handlers.FightHandler.IsGroupFighting(g.MobId)) continue;
+                    candidates.Add((g, state));
+                }
                 if (candidates.Count == 0) return movements;
 
                 if (!MapManager.WalkableCells.TryGetValue(mapId, out var walkable) ||
@@ -1872,20 +1894,14 @@ namespace Jondo.Unity.Server.Managers
                 allowed.ExceptWith(Interactives.ElementsOf(mapId).Where(e => e.Cell != 0).Select(e => e.Cell));
                 allowed.ExceptWith(occupied);
                 allowed.ExceptWith(groups.Select(g => g.CellId));
+                // Only the floor every border reaches: a step into a pocket apart from it would
+                // leave a group nobody can walk up to (MapManager.MainFloor).
+                var main = MapManager.MainFloor(mapId);
+                if (main.Count > 0) allowed.IntersectWith(main);
 
-                foreach (var group in candidates)
+                foreach (var (group, state) in candidates)
                 {
-                    int preferredLength = Random.Shared.Next(2, 6);
-                    var nearby = allowed.Where(cell => MapGeometry.Distance(group.CellId, cell) <= 5).ToHashSet();
-                    var destinations = nearby
-                        .Select(cell => (Cell: cell, Distance: MapGeometry.Distance(group.CellId, cell)))
-                        .Where(target => target.Distance >= 2 && spots.Contains(target.Cell))
-                        .OrderBy(target => Math.Abs(target.Distance - preferredLength))
-                        .ThenBy(_ => Random.Shared.Next());
-
-                    var cells = destinations
-                        .Select(target => MapGeometry.FindShortestPath(group.CellId, target.Cell, nearby))
-                        .FirstOrDefault(path => path.Count is >= 3 and <= 6);
+                    var cells = ChooseWalk(group.CellId, state.Home, allowed, spots, Random.Shared);
                     if (cells == null) continue;
 
                     // Groups can animate at the same time, so reserve the full path for this tick.
@@ -1905,6 +1921,65 @@ namespace Jondo.Unity.Server.Managers
             }
 
             return movements;
+        }
+
+        /// <summary>The shortest wait, in seconds, between two walks of one group.</summary>
+        internal const int RoamMinSeconds = 15;
+
+        /// <summary>The longest wait, in seconds, between two walks of one group.</summary>
+        internal const int RoamMaxSeconds = 45;
+
+        /// <summary>How many steps from its home a group may wander; it never ends a walk farther.</summary>
+        internal const int RoamRadius = 4;
+
+        /// <summary>The most steps one walk takes.</summary>
+        internal const int RoamMaxSteps = 4;
+
+        /// <summary>
+        /// What a roaming group remembers between ticks: the cell it was first seen on, which it
+        /// stays around, and when it walks next. Kept apart from <see cref="MobGroup"/> so that the
+        /// copies a map is restored from (<c>_asLoaded</c>) never carry a clock.
+        /// </summary>
+        private sealed class RoamState(int home, DateTime nextWalk)
+        {
+            public int Home { get; } = home;
+            public DateTime NextWalk { get; set; } = nextWalk;
+        }
+
+        /// <summary>The roaming states per map and per group, touched under <see cref="_candado"/> only.</summary>
+        private static readonly Dictionary<long, Dictionary<long, RoamState>> _roaming = new();
+
+        /// <summary>
+        /// Picks one walk for a group standing on <paramref name="from"/>: the path, start cell
+        /// first, of 1 to <see cref="RoamMaxSteps"/> steps, over <paramref name="allowed"/> cells
+        /// only, ending on a cell of <paramref name="spots"/> (where a group may stand) within
+        /// <see cref="RoamRadius"/> of <paramref name="home"/>. Null when there is nowhere to go.
+        /// </summary>
+        /// <remarks>
+        /// A group already outside its radius (a map whose cells changed, a group put back by an
+        /// administrator) may also end anywhere nearer home than it stands, so it drifts back
+        /// instead of freezing. The length is drawn first and the nearest lengths tried after it,
+        /// so that short shuffles and longer strolls both happen, as on the official servers.
+        /// Pure: the map is only what the sets say, which is what the tests rely on.
+        /// </remarks>
+        internal static List<int>? ChooseWalk(int from, int home, IReadOnlySet<int> allowed,
+            IReadOnlySet<int> spots, Random random)
+        {
+            int awayNow = MapGeometry.Distance(home, from);
+            var reach = new HashSet<int>(allowed.Where(c => MapGeometry.Distance(from, c) <= RoamMaxSteps)) { from };
+            int preferred = random.Next(1, RoamMaxSteps + 1);
+            var targets = reach
+                .Where(c => c != from && spots.Contains(c))
+                .Select(c => (Cell: c, Steps: MapGeometry.Distance(from, c), Home: MapGeometry.Distance(home, c)))
+                .Where(t => t.Home <= RoamRadius || t.Home < awayNow)
+                .OrderBy(t => Math.Abs(t.Steps - preferred))
+                .ThenBy(_ => random.Next());
+            foreach (var target in targets)
+            {
+                var path = MapGeometry.FindShortestPath(from, target.Cell, reach);
+                if (path.Count >= 2 && path.Count <= RoamMaxSteps + 1) return path;
+            }
+            return null;
         }
 
         public static List<int> GetInnerWalkableCells(long mapId)

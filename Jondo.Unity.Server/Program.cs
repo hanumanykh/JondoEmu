@@ -323,6 +323,9 @@ namespace Jondo.Unity.Server
             // ports just opened, as clients do (Bots.SimulatedPlayers).
             Bots.SimulatedPlayers.Start(ServerSettings.Current);
 
+            // The roaming bosses and the zone of the hour, cried to the real players (Managers.WorldHappenings).
+            Managers.WorldHappenings.Start();
+
             // The head hunters' clock: hunts opening and closing, the prey sighted (HeadHunts).
             var headHunts = new System.Threading.Timer(
                 _ =>
@@ -344,9 +347,22 @@ namespace Jondo.Unity.Server
                 },
                 null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
+            // The NPCs content/npcs/life.json brings to life: short walks and a line now and then (NpcLife).
+            int npcLifeTicking = 0;
+            using var npcLife = new System.Threading.Timer(
+                _ =>
+                {
+                    if (Interlocked.Exchange(ref npcLifeTicking, 1) != 0) return;
+                    try { Managers.NpcLife.TickAsync().GetAwaiter().GetResult(); }
+                    catch (Exception ex) { Console.WriteLine($"[NPC life] {ex.Message}"); }
+                    finally { Interlocked.Exchange(ref npcLifeTicking, 0); }
+                },
+                null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+
             _ready = true;
 
             await _shutdown.Task;
+            await npcLife.DisposeAsync();
             await monsterWalks.DisposeAsync();
             await launchCleanup.DisposeAsync();
             await matchmaking.DisposeAsync();

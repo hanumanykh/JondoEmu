@@ -86,6 +86,13 @@ namespace Jondo.Unity.Server.Bots
         /// </summary>
         private void ChooseGround(int level)
         {
+            // A bot has been around: it knows every zaap, or it could not come back from a far
+            // ground to the marketplaces and workshops of Astrub when the server asks for the
+            // zaaps to be discovered (ServerSettings.RequireZaapDiscovery).
+            if (ServerSettings.Current.RequireZaapDiscovery)
+                foreach (var waypoint in Interactives.Waypoints.Where(w => w.Activated))
+                    ZaapDiscoveries.Discover(_characterId, waypoint.MapId);
+
             if (_atWar) return;
             Ground? ground;
             try { ground = GroundFor(level, _dice); }
