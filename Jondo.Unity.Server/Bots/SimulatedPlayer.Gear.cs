@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -395,18 +395,17 @@ namespace Jondo.Unity.Server.Bots
         // ─── Selling ─────────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// What an item is worth to it, a unit: what it sells for here, or what its ingredients are
-        /// worth and a little more, or the price of its template; ten kamas a level at the least.
+        /// What an item is worth to it, a unit: its reference price (Managers.ReferencePrices),
+        /// drawn toward what it really sells for here once it has sold, but never further than
+        /// from six tenths to half again of the reference -- or the bots' own sales would drag the
+        /// worth wherever they had first priced it.
         /// </summary>
-        internal static long ValueOf(int gid, int depth = 0)
+        internal static long ValueOf(int gid)
         {
+            long reference = Math.Max(1, ReferencePrices.Of(gid));
             long average = MarketplaceListings.AveragePrice(gid);
-            if (average > 0) return average;
-            int level = Forgemagic.TemplateOf(gid)?.Level ?? 1;
-            long floor = Math.Max(1, 10L * level);
-            if (depth < 2 && RecipeManager.TryGetByResult(gid, out var recipe))
-                return Math.Max(floor, recipe.Ingredients.Sum(i => ValueOf(i.ItemId, depth + 1) * i.Quantity) * 11 / 10);
-            return Math.Max(depth == 0 ? floor : 1, 2 * Outfitter.BasePrice(gid));
+            if (average <= 0) return reference;
+            return Math.Clamp((reference + average) / 2, reference * 6 / 10, reference * 3 / 2);
         }
 
         /// <summary>

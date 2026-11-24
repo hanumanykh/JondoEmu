@@ -1,0 +1,15 @@
+{
+  "_comment": [
+    "Marketplace prices written by hand (Managers.ReferencePrices): what the simulated players",
+    "take an item to be worth, a unit, when they sell it and when they buy a player's. A price",
+    "here wins over the one reckoned from the game's data (the droppers' level and chance, a",
+    "boss's or an archmonster's resource dearer, a craft at its ingredients' worth).",
+    "",
+    "  \"prices\": { \"<item id>\": <kamas for one>, ... }",
+    "",
+    "Put here the official prices you know for the items that matter to you. Read when the",
+    "server starts."
+  ],
+  "prices": {
+  }
+}
