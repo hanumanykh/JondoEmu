@@ -355,11 +355,17 @@ namespace Jondo.Unity.Server.Handlers
             bool freeEntryLeft = dungeon.OnKeyring && DungeonKeyring.FreeEntryLeft(state.CharacterId, dungeon.Id, DateTime.Now);
             var method = Chosen(dungeon, new DungeonDoor.Options(), 0, freeEntryLeft) ?? EntryMethod.Key;
             bool freeEntry = method == EntryMethod.Keyring && freeEntryLeft;
-            if (!TryTakeTheKey(dungeon, method, freeEntry, out long uid, out int item))
+            // A simulated player only comes to complete a real player's group (Bots.DungeonCompanions):
+            // it carries no key and spends none.
+            bool companion = Bots.SimulatedPlayers.IsSimulated(SessionContext.Current.AccountId);
+            long uid = 0;
+            int item = 0;
+            if (!companion && !TryTakeTheKey(dungeon, method, freeEntry, out uid, out item))
             {
                 await TellAsync(stream, Refusal(dungeon, method, false, freeEntryLeft, DateTime.Now));
                 return false;
             }
+            if (companion) method = EntryMethod.Key;
             if (await WaysForHeroesAsync(stream, dungeon, uid != 0, DateTime.Now) is not { } heroWays) return false;
             if (uid != 0)
             {

@@ -75,12 +75,24 @@ namespace Jondo.Unity.Server.Bots
             if (party == null) return false;
             var leader = SessionRegistry.FindByCharacter(party.LeaderId);
             if (leader == null) return false;
+            // Into his fights and ready with him, however it came into his party -- an invitation
+            // or the dungeon search (DungeonCompanions).
+            if (!FightHandler.AutoJoinOn(_characterId) || !FightHandler.AutoReadyOn(_characterId))
+                FightHandler.SetAutoOptions(_characterId, join: true, ready: true);
             // His fight's placement takes it in by itself, if it stands on his map.
             if (leader.State.IsInFight) return true;
 
             long there = leader.State.MapId;
             if (there != session.State.MapId)
             {
+                // A dungeon's rooms are joined by its fights and doors, not by borders: in one, or
+                // coming out of one, it goes straight to him, as the search's group is brought.
+                if (DungeonManager.OfRoom(there) != null || DungeonManager.OfRoom(session.State.MapId) != null)
+                {
+                    if (await JoinLeaderAsync(session, there)) _lostSteps = 0;
+                    else if (++_lostSteps >= LostSteps) await LeavePartyAsync(session, party);
+                    return true;
+                }
                 if (await GoToAsync(session, there, stop)) _lostSteps = 0;
                 else if (++_lostSteps >= LostSteps)
                 {
@@ -94,6 +106,29 @@ namespace Jondo.Unity.Server.Bots
             if (_dice.Next(100) < 4) await SayAsync(ChatChannels.Party, LineOf("party", session));
             else if (_dice.Next(100) < 40) await WanderAsync(session, stop);
             return true;
+        }
+
+        /// <summary>
+        /// To its leader's map at once, by the server's own teleport -- the map loads on its socket
+        /// as any teleport's does (jru, answered by SimulatedPlayer.OnFrameAsync).
+        /// </summary>
+        private async Task<bool> JoinLeaderAsync(GameSession session, long map)
+        {
+            if (session.Stream == null || !await session.UnoCadaVez.WaitAsync(TimeSpan.FromSeconds(5))) return false;
+            try
+            {
+                using (SessionContext.Push(session))
+                {
+                    if (session.State.IsInFight) return false;
+                    _arrived = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    if (await WorldMoveHandler.TeleportAsync(session.Stream, map) == null) return false;
+                }
+            }
+            finally
+            {
+                session.UnoCadaVez.Release();
+            }
+            return await WithinAsync(_arrived.Task) == map;
         }
 
         /// <summary>Says goodbye and leaves the party (inh { f2 party }).</summary>

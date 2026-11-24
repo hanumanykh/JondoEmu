@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -75,6 +75,8 @@ namespace Jondo.Unity.Server.Handlers
             try
             {
                 await ExpireAsync(DateTime.UtcNow);
+                // Alone on the server, a search is completed with bots of the player's level.
+                Bots.DungeonCompanions.Fill(DateTime.UtcNow);
                 await TryMatchAsync(DateTime.UtcNow);
                 await ExpireVotesAsync(DateTime.UtcNow);
             }
@@ -256,6 +258,13 @@ namespace Jondo.Unity.Server.Handlers
                 Console.WriteLine($"[Matchmaking] Dungeon {match.DungeonId} offered to " +
                                   string.Join(", ", match.Members) + ".");
                 await TellReadyCheckAsync(match, now);
+                // The bots of the offer say yes at once (Bots.DungeonCompanions).
+                if (match.Members.Any(Bots.DungeonCompanions.IsBot))
+                {
+                    bool all = Bots.DungeonCompanions.AcceptFor(match, out var accepted);
+                    await TellReadyCheckAsync(accepted, now);
+                    if (all) _ = Task.Run(() => FormAsync(accepted));
+                }
             }
         }
 
