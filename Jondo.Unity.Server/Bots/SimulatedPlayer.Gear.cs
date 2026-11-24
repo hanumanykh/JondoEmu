@@ -447,7 +447,7 @@ namespace Jondo.Unity.Server.Bots
             foreach (var (uid, template, lot) in lots)
             {
                 if (house.MaxListings > 0 && MarketplaceListings.OfAccount(houseId, _accountId).Count >= house.MaxListings) break;
-                long price = ValueOf(template) * lot;
+                long price = AskFor(house, template, lot);
                 if (house.Tax(price) > session.State.Kamas) continue;
                 await SendAsync(Op.Kge, Pb.New().Var(1, price).Var(2, uid).Var(3, lot).Build());
                 await Task.Delay(400);

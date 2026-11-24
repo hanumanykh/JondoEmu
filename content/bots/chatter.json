@@ -1,0 +1,83 @@
+{
+  "_comment": [
+    "What the simulated players say (Bots.SimulatedPlayer.Talk). Edit freely: the server reads",
+    "this file when it starts. A line is drawn at random from its list.",
+    "",
+    "  map      general channel, heard on the map only, when a real player stands there",
+    "  greet    the same, the first time a bot meets a real player on a map; {player} is his name",
+    "  fight    on the map, after a fight it won",
+    "  trade    trade channel, the whole server, now and then, when it has something on sale",
+    "  recruit  recruitment channel, the whole server: invite it to your party to play together",
+    "  joined   party channel, on joining your party",
+    "  party    party channel, now and then while it follows you",
+    "  left     party channel, before it leaves the world or the party",
+    "",
+    "Placeholders: {player} a real player's name, {level} the bot's level, {zone} the subarea it",
+    "stands in, {leader} the party's leader."
+  ],
+  "map": [
+    "Quelqu'un sait où on trouve des ressources par ici ?",
+    "Ça drop pas terrible aujourd'hui...",
+    "Je fais une petite pause, ça fait deux heures que je farm.",
+    "Il fait beau à {zone} !",
+    "Les monstres de {zone} sont costauds en ce moment.",
+    "J'ai enfin fini ma panoplie !",
+    "Quelqu'un a vu passer un archimonstre ?",
+    "Bon, encore quelques combats et je monte niveau.",
+    "Ils ont encore augmenté les prix à l'HDV...",
+    "Vous avez fait le donjon du coin ?",
+    "Mon familier a faim, faut que je pense à le nourrir.",
+    "Je cherche un forgemage pour mon anneau, quelqu'un ?",
+    "Ah, enfin un peu de calme.",
+    "Je vais aller faire un tour au zaap d'Astrub."
+  ],
+  "greet": [
+    "Salut {player} !",
+    "Yo {player}, bonne chasse !",
+    "Bonjour {player} :)",
+    "Hey {player}, tu farm quoi ici ?",
+    "Salut ! Ça va {player} ?",
+    "{player} ! Ça fait longtemps."
+  ],
+  "fight": [
+    "GG, facile celui-là.",
+    "Ouf, c'était juste !",
+    "Enfin un bon drop !",
+    "Pas de drop... encore.",
+    "Ils tapent fort, les bougres.",
+    "Et un de plus !"
+  ],
+  "trade": [
+    "Vends équipements niveau {level} à l'HDV d'Astrub, prix corrects !",
+    "J'ai mis des ressources en vente à l'HDV, passez voir !",
+    "Achète ressources à bon prix, mettez-les à l'HDV d'Astrub.",
+    "Vends panoplie complète niveau {level}, MP-moi ou regardez l'HDV.",
+    "Liquidation de mon sac à l'HDV d'Astrub, tout doit partir !"
+  ],
+  "recruit": [
+    "Cherche groupe niveau {level} pour farmer {zone}, invitez-moi !",
+    "Niveau {level} dispo pour aider, qui m'invite ?",
+    "Quelqu'un pour un donjon ? Je suis niveau {level}.",
+    "Groupe pour {zone} ? Niveau {level}, je tape fort.",
+    "Je m'ennuie en solo, invitez-moi en groupe (niveau {level})."
+  ],
+  "joined": [
+    "Merci pour l'invit {leader} ! J'arrive.",
+    "C'est parti {leader}, je te suis.",
+    "Ok, on y va !",
+    "Présent ! Mène la danse {leader}."
+  ],
+  "party": [
+    "Je suis derrière toi.",
+    "On attaque quoi ensuite ?",
+    "Bien joué !",
+    "J'ai encore de la vie, on continue.",
+    "Tu veux aller où après ?",
+    "Ce groupe est top."
+  ],
+  "left": [
+    "Je dois y aller, merci pour le groupe !",
+    "Bon, je déco. À plus !",
+    "C'était cool, à la prochaine !"
+  ]
+}

@@ -41,22 +41,30 @@ namespace Jondo.Unity.Server.Bots
             {
                 var session = Session;
                 if (session == null || !session.IsInWorld) return;
-                if (DateTime.UtcNow >= _leaveAt) _leaving = true;
+                // In a real player's party it stays as long as he keeps it.
+                if (DateTime.UtcNow >= _leaveAt && !InParty) _leaving = true;
 
                 // A fight plays itself from what the server sends (SimulatedPlayer.Fight).
                 if (session.State.IsInFight)
                 {
+                    _wasInFight = true;
                     await Task.Delay(1000, stop);
                     continue;
                 }
                 if (_leaving)
                 {
+                    if (PlayerParty is { } party) await LeavePartyAsync(session, party);
                     if (_queuedSince != null) await SendAsync(Op.Lsi);
                     Console.WriteLine($"[Bots] {_name} leaves the world.");
                     return;
                 }
 
                 await SpendCapitalAsync();
+                try { await ChatterAsync(session); }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    SimulatedPlayers.Journal($"{_name}'s chatter broke: {ex.Message}");
+                }
                 await ActAsync(session, stop);
                 await Task.Delay(_dice.Next(2000, 10000), stop);
             }
@@ -75,8 +83,13 @@ namespace Jondo.Unity.Server.Bots
                 _queuedSince = null;
             }
 
+            // In a real player's party, it follows him and nothing else.
+            if (await FollowAsync(session, stop)) return;
+
             int roll = _dice.Next(100);
             bool free = _queuedSince == null;
+            // Now and then a round of the marketplaces (SimulatedPlayer.Market).
+            if (free && await MarketRoundAsync(session, stop)) return;
             // Its outfit, now and then and after every level (SimulatedPlayer.Gear).
             if (free && await GearUpAsync(session, stop)) return;
             if (_atWar && free)

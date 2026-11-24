@@ -223,6 +223,7 @@ namespace Jondo.Unity.Server.Bots
             }
             LeaveTheTutorial();
             JoinTheWar(level);
+            ChooseGround(level);
             RaiseTradesOffline(_characterId, level);
 
             // A character still in a fight is not selected: the kvd's «go on» (kwb) put it back already.
@@ -383,6 +384,10 @@ namespace Jondo.Unity.Server.Bots
                 case Op.Hqc:
                     // A duel offered to it: always yes.
                     if (Var(payload, 2) == _characterId) _ = Task.Run(() => AcceptDuelAsync((int)Var(payload, 3)));
+                    break;
+                case Op.Ijz:
+                    // A party invitation: from a real player, yes (SimulatedPlayer.Party).
+                    _ = Task.Run(() => InvitedAsync(payload));
                     break;
                 case Op.Lsh:
                     // The Koliseo has found it a match: yes, after a moment.

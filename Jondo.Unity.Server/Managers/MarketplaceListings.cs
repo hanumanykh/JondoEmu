@@ -318,6 +318,30 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>
+        /// The lots of a marketplace a buyer would be handed first -- the cheapest of each size of
+        /// each offer -- whose seller passes <paramref name="seller"/>, with their price. The
+        /// simulated players look here for what real players sell (Bots.SimulatedPlayer.Market).
+        /// </summary>
+        public static IReadOnlyList<(int Offer, int Gid, int Lot, long Price)> CheapestLotsBy(
+            int house, Func<long, bool> seller, DateTime nowUtc)
+        {
+            lock (Gate)
+            {
+                Load();
+                var lots = new List<(int, int, int, long)>();
+                foreach (var offer in _offersById.Values.Where(o => o.House == house))
+                {
+                    foreach (var size in offer.Listings.Where(l => l.ExpiresUtc > nowUtc).GroupBy(l => l.Quantity))
+                    {
+                        var cheapest = size.OrderBy(l => l.Price).ThenBy(l => l.Id).First();
+                        if (seller(cheapest.SellerAccountId)) lots.Add((offer.Id, offer.Gid, size.Key, cheapest.Price));
+                    }
+                }
+                return lots;
+            }
+        }
+
         /// <summary>Every offer of one item in a marketplace, oldest first.</summary>
         public static IReadOnlyList<OfferView> OffersOf(Marketplaces.House house, int gid)
         {
