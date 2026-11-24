@@ -522,8 +522,8 @@ namespace Jondo.Unity.Server
             HashSet<int> best = new HashSet<int>();
             int bestWalk = -1;
             // Every piece that reaches a border is kept: a map split in two halves, each reached
-            // from its own neighbour, has no pocket. Only the pieces no border can be reached
-            // from are left out -- and if none reaches one, the largest is the floor.
+            // from its own neighbour, has no pocket. Only the small pieces no border can be
+            // reached from are left out.
             var open = new HashSet<int>();
             static bool Border(int c) => c % 14 == 0 || c % 14 == 13 || c / 14 <= 1 || c / 14 >= 38;
             foreach (int start in walkable)
@@ -548,7 +548,10 @@ namespace Jondo.Unity.Server
                 if (count > bestWalk) { best = piece; bestWalk = count; }
                 if (piece.Any(Border)) open.UnionWith(piece);
             }
-            return open.Count > 0 ? open : best;
+            // And the largest piece always: on a dungeon room or an inside reached by a door it is
+            // the room itself, border or not (65 maps have a small piece on a border beside it).
+            open.UnionWith(best);
+            return open;
         });
 
         /// <summary>Whether a cell is in a map's <see cref="MainFloor"/>; true when the map has no data to say.</summary>
