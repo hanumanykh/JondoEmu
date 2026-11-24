@@ -16,8 +16,8 @@ public sealed class ReferencePricesTests
         Assert.InRange(common, 100, 400);
         Assert.True(rare > common * 5);
         Assert.True(high > common * 10);
-        Assert.InRange(boss, common * 6 - 6, common * 6 + 6);
-        Assert.True(arch > boss);
+        Assert.InRange(boss, common * 15 - 15, common * 15 + 15);
+        Assert.True(arch > common * 10);
     }
 
     [Fact]

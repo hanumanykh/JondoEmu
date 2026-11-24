@@ -19,7 +19,7 @@ namespace Jondo.Unity.Server.Managers
     /// There is no public record of the official marketplaces' prices to copy, so the worth is
     /// reckoned from how hard a thing is to get. A resource from its droppers: the level of the
     /// lowest monster that drops it and its best chance of falling, a boss's resource
-    /// (a dungeon's) six times dearer and an archmonster's twelve. Something crafted: what its
+    /// (a dungeon's) fifteen times dearer and an archmonster's thirty. Something crafted: what its
     /// ingredients are worth and 5% more -- near what crafting it costs. Anything else (sold by NPCs, a quest's): its NPC
     /// price twice over, as before.
     /// </para>
@@ -35,7 +35,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The best chance taken into account: a drop rarer than one in a thousand is not dearer for it.</summary>
         private const double RarestChance = 0.001;
 
-        private const double BossFactor = 6, ArchmonsterFactor = 12;
+        private const double BossFactor = 15, ArchmonsterFactor = 30;
 
         /// <summary>One way a resource falls: the dropper's level, its best chance, and what the dropper is.</summary>
         internal sealed record Source(int Level, double Chance, bool Boss, bool Archmonster);
