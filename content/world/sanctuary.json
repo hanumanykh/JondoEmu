@@ -18,8 +18,8 @@
   "merchantOnlyInSanctuary": true,
   "npcs": [
     { "template": 660,  "cell": 303, "role": "marchand",  "name": "Marchand de Stasis" },
-    { "template": 663,  "cell": 331, "role": "raffineur", "name": "Raffineur" },
-    { "template": 671,  "cell": 357, "role": "comptoir",  "name": "Comptoir de zone" },
+    { "template": 663,  "cell": 331, "role": "consommables", "name": "Marchand de consommables" },
+    { "template": 671,  "cell": 357, "role": "conseille", "name": "Marchand du stuff conseillé" },
     { "template": 6394, "cell": 289, "role": "banque",    "name": "Banquier" }
   ],
   "merchant": {

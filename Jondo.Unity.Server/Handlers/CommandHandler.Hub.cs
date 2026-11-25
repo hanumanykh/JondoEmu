@@ -183,17 +183,23 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>Whether this NPC on this map is the Sanctuary's Merchant selling in Jondo Coins.</summary>
         internal static bool IsCoinMerchant(int template, long mapId)
-            => JondoCoin.IsOrbe && Sanctuary.RoleOf(template, mapId) == "marchand";
+            => JondoCoin.IsOrbe && Sanctuary.RoleOf(template, mapId) is "marchand" or "consommables" or "conseille";
 
-        /// <summary>What the Merchant's window lists for this character: his level band's pieces, then the consumables.</summary>
-        internal static List<int> MerchantWindowCatalogue(SessionState state)
+        /// <summary>
+        /// What a Sanctuary shop window lists for this character: «marchand» his level band's
+        /// equipment, «consommables» the potions, soul stones and breads, «conseille» the pieces
+        /// recommended for his class's element at his level.
+        /// </summary>
+        internal static List<int> MerchantWindowCatalogue(SessionState state, int template = 0)
         {
+            string role = template == 0 ? "marchand" : Sanctuary.RoleOf(template, state.MapId) ?? "marchand";
+            if (role == "consommables")
+                return Sanctuary.Current.Merchant.Consumables.Where(c => c.Item > 0).Select(c => c.Item).Distinct().ToList();
+            if (role == "conseille")
+                return RecommendedFor(state, "").Select(p => p.Gid).Distinct().ToList();
             var (min, max) = StasisMerchant.BandOf(state.CharacterLevel);
-            var gids = StasisMerchant.Catalogue(Outfitter.Craftable.Value, min, max)
-                                     .OrderBy(p => p.Level).Select(p => p.Gid).ToList();
-            foreach (var c in Sanctuary.Current.Merchant.Consumables)
-                if (c.Item > 0 && !gids.Contains(c.Item)) gids.Add(c.Item);
-            return gids;
+            return StasisMerchant.Catalogue(Outfitter.Craftable.Value, min, max)
+                                 .OrderBy(p => p.Level).Select(p => p.Gid).Distinct().ToList();
         }
 
         /// <summary>The window's prices: each item at the Merchant's price in Jondo Coins, the coin as the currency.</summary>
@@ -205,10 +211,10 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>A purchase from the Merchant's window: the same path as «.marchand acheter», told in the chat.</summary>
-        internal static async Task MerchantWindowBuyAsync(GameSession session, int gid, int quantity)
+        internal static async Task MerchantWindowBuyAsync(GameSession session, int gid, int quantity, int template = 0)
         {
             if (session.Stream == null) return;
-            if (!MerchantWindowCatalogue(session.State).Contains(gid))
+            if (!MerchantWindowCatalogue(session.State, template).Contains(gid))
             {
                 await NotifyAsync(session.Stream, "Le Marchand ne vend pas cet objet à votre niveau.", 0, 0);
                 return;

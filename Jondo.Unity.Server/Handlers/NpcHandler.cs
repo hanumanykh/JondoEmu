@@ -158,7 +158,7 @@ namespace Jondo.Unity.Server.Handlers
             // The Sanctuary's Merchant: his level band's catalogue, priced in Jondo Coins (CommandHandler.Hub.cs).
             if (CommandHandler.IsCoinMerchant(npc.NpcId, SessionContext.State.MapId))
             {
-                var gids = CommandHandler.MerchantWindowCatalogue(SessionContext.State);
+                var gids = CommandHandler.MerchantWindowCatalogue(SessionContext.State, npc.NpcId);
                 if (gids.Count == 0) return;
                 OpenShop = npc.ContextualId;
                 OpenShopNpc = npc.NpcId;
@@ -2097,7 +2097,7 @@ namespace Jondo.Unity.Server.Handlers
             // The Sanctuary's Merchant sells through «.marchand acheter»'s path: coins, rolls, refunds.
             if (CommandHandler.IsCoinMerchant(OpenShopNpc, SessionContext.State.MapId))
             {
-                await CommandHandler.MerchantWindowBuyAsync(SessionContext.Current, gid, (int)quantity);
+                await CommandHandler.MerchantWindowBuyAsync(SessionContext.Current, gid, (int)quantity, OpenShopNpc);
                 return;
             }
 

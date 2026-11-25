@@ -268,7 +268,9 @@ namespace JondoFix
             return row;
         }
 
-        internal static string Number(long n) => n.ToString("N0", CultureInfo.GetCultureInfo("fr-FR"));
+        // The client runs .NET in globalization-invariant mode: no fr-FR culture, so the French
+        // thousands space is put in by hand.
+        internal static string Number(long n) => n.ToString("N0", CultureInfo.InvariantCulture).Replace(",", " ");
 
         // ─── Icons ───────────────────────────────────────────────────────────────────────
 
