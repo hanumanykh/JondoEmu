@@ -241,7 +241,30 @@ namespace Jondo.Unity.Server.Handlers
             }
             Console.WriteLine($"[Progression] {state.CharacterName} ascends from {outcome.FromLevel}: +{outcome.Eclats} Éclats, ascension {profile.Ascensions}.");
             await MoveLevelAsync(session, outcome.ToLevel);
+            await UnequipAboveLevelAsync(session, outcome.ToLevel);
             return ("ok", outcome);
+        }
+
+        /// <summary>
+        /// After an Ascension the character is level 1 again: every worn piece above his new level
+        /// goes back to the bag (kept, as the spec says, but not worn), as the client would refuse
+        /// to put it on at that level.
+        /// </summary>
+        private static async Task UnequipAboveLevelAsync(GameSession session, int level)
+        {
+            if (session.Stream == null) return;
+            using (SessionContext.Push(session))
+            {
+                var worn = Equipment.All.Where(i => i.Position != Equipment.Bag && i.Position >= 0 && i.Position < Equipment.Bag)
+                                        .Where(i => (Forgemagic.TemplateOf(i.Template)?.Level ?? 0) > level)
+                                        .Select(i => i.Uid).ToList();
+                foreach (long uid in worn)
+                {
+                    try { await EquipmentHandler.MoveItemAsync(session.Stream, uid, Equipment.Bag); }
+                    catch (Exception ex) { Console.WriteLine($"[Progression] Unequip {uid} after Ascension failed: {ex.Message}"); }
+                }
+                if (worn.Count > 0) await NotifyAsync(session.Stream, $"Ascension : {worn.Count} objet(s) trop haut(s) pour votre niveau rangé(s) dans le sac.", 0, 0);
+            }
         }
 
         /// <summary>The Evolution, state and client.</summary>
