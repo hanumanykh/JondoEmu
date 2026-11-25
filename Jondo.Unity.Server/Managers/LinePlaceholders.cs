@@ -121,7 +121,7 @@ namespace Jondo.Unity.Server.Managers
                 var command = connection.CreateCommand();
                 command.CommandText = "SELECT Text FROM Translations WHERE Key = $key;";
                 command.Parameters.AddWithValue("$key", key.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                return command.ExecuteScalar() as string ?? "";
+                return GameText.Of(Convert.ToInt64(key), command.ExecuteScalar() as string);
             }
             catch
             {

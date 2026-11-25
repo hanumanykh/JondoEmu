@@ -1,0 +1,51 @@
+{
+  // Les Dofus des boss (docs/stasis-gameplay-spec.md §13) : un taux de base FIXE par boss, le même
+  // pour tous les grades, multiplié par la prospection comme les autres drops (FightHandler.RollLoot,
+  // Managers/Stasis/DofusDrops.cs). Les lignes de ces Dofus dans les tables du client sont ignorées :
+  // seul ce fichier les fait tomber. Ni défi, ni bonus de drop serveur, ni Almanax.
+  // Une ligne : "monster" (id MonsterTemplates), "item" (id ItemTemplates), "percent" (taux de base, en %).
+  // Les boss d'Expédition (version 200 du même donjon) reprennent le taux de leur boss.
+  "drops": [
+    // Dofus Argenté (19629, « Dofus plateado ») : 1 %.
+    { "monster": 147,  "item": 19629, "percent": 1,    "note": "Bouftou Royal (Jalató Real)" },
+    { "monster": 928,  "item": 19629, "percent": 1,    "note": "Mob l'Éponge (Mob Lasponja)" },
+    { "monster": 7872, "item": 19629, "percent": 1,    "note": "Mob l'Éponge, Expédition" },
+    { "monster": 799,  "item": 19629, "percent": 1,    "note": "Tournesol Affamé (Girasol Hambriento)" },
+    { "monster": 7796, "item": 19629, "percent": 1,    "note": "Tournesol Affamé, Expédition" },
+
+    // Dofus Cawotte (972, « Dofus zanahowia ») : 0,5 %.
+    { "monster": 180,  "item": 972,   "percent": 0.5,  "note": "Wa Wabbit (Wey Wabbit)" },
+    { "monster": 3460, "item": 972,   "percent": 0.5,  "note": "Wa Wobot (Wey Wobot)" },
+
+    // Dofus Pourpre (694, « Dofus Púrpura ») : Minotot 0,1 %, Minotoror 0,05 %.
+    { "monster": 827,  "item": 694,   "percent": 0.1,  "note": "Minotot" },
+    { "monster": 121,  "item": 694,   "percent": 0.05, "note": "Minotoror (Minotauroro)" },
+    { "monster": 7925, "item": 694,   "percent": 0.05, "note": "Minotoror, Expédition" },
+
+    // Dofus Émeraude (737, « Dofus Esmeralda ») : Koulosse 0,3 %, Meulou 0,1 %.
+    { "monster": 2986, "item": 737,   "percent": 0.3,  "note": "Koulosse (Tejossus)" },
+    { "monster": 232,  "item": 737,   "percent": 0.1,  "note": "Meulou (Maxilubo)" },
+    { "monster": 7790, "item": 737,   "percent": 0.1,  "note": "Meulou, Expédition" },
+
+    // Dofus Vulbis (6980, « Dofus vulbis » ; le 21186 est celui de la quête) : Torkélonia 0,3 %, Crocabulia 0,08 %.
+    { "monster": 5806, "item": 6980,  "percent": 0.3,  "note": "Torkélonia (Torkelonia)" },
+    { "monster": 854,  "item": 6980,  "percent": 0.08, "note": "Crocabulia (Cocabulia)" },
+    { "monster": 7906, "item": 6980,  "percent": 0.08, "note": "Crocabulia, Expédition" },
+
+    // Dofus des Glaces (7043, « Dofus de los hielos ») : Harebourg 0,5 %, Klime/Frizz/Nileza/Sylargh 0,3 %.
+    { "monster": 3416, "item": 7043,  "percent": 0.5,  "note": "Comte Harebourg (Conde Kontatrás)" },
+    { "monster": 3384, "item": 7043,  "percent": 0.3,  "note": "Klime (Klim)" },
+    { "monster": 3391, "item": 7043,  "percent": 0.3,  "note": "Missiz Frizz (Mizz Frizz)" },
+    { "monster": 3397, "item": 7043,  "percent": 0.3,  "note": "Nileza" },
+    { "monster": 3409, "item": 7043,  "percent": 0.3,  "note": "Sylargh" },
+
+    // Dofus Ébène (7114, « Dofus Ébano ») : 0,2 %.
+    { "monster": 3564, "item": 7114,  "percent": 0.2,  "note": "Ombre (Sombra)" },
+
+    // « La plupart des Dofus 180 à 0,3 % par boss » : les Dofus de boss connus hors de la liste du §13.
+    { "monster": 4444, "item": 18043, "percent": 0.3,  "note": "Dofus Abyssal — Dantinéa (Dientinea)" },
+    { "monster": 3556, "item": 8698,  "percent": 0.3,  "note": "Dofus Nébuleux — Kanigroula (Kanígrula)" },
+    { "monster": 5319, "item": 19398, "percent": 0.3,  "note": "Dofus Forgelave — Dazak Martegel (Dazahk Martillelo)" },
+    { "monster": 3618, "item": 15235, "percent": 0.3,  "note": "Dotruz — Haute Truche (Thor Pestruz)" }
+  ]
+}

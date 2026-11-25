@@ -41,10 +41,11 @@
   "breedOrbes": { "1": 500, "2": 800, "3": 1200, "4": 1800, "5": 2500, "6": 3200, "7": 4000, "8": 5500, "9": 7500, "10": 10000 },
   "species": { "1": "Dragodinde", "2": "Muldo", "3": "Volkorne" },
   // Dons «Pension» : niv. 20 un œuf de familier Starter, niv. 50 et 60 un œuf de monture gén. 1.
+  // "offer": true -> choisis dans les offres de dons (dons.json "pension", Dons.cs) et non donnés d'office.
   "gifts": [
-    { "level": 20, "kind": "familier", "rarity": "Starter" },
-    { "level": 50, "kind": "monture" },
-    { "level": 60, "kind": "monture" }
+    { "level": 20, "kind": "familier", "rarity": "Starter", "offer": true },
+    { "level": 50, "kind": "monture", "offer": true },
+    { "level": 60, "kind": "monture", "offer": true }
   ],
   // Les familiers du client tirés à l'éclosion, par rareté (objets réels, croissance Pets).
   "pets": {

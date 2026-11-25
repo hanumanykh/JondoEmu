@@ -252,9 +252,23 @@ public sealed class StasisEventsTests
         Assert.Equal(new[] { StasisEvents.TimeAttack, StasisEvents.Poutch, StasisEvents.Traque }, s.Rotation);
         Assert.Equal(3, s.Events.Count);
         Assert.Equal(new[] { 100, 75, 50 }, s.Events[StasisEvents.TimeAttack].Rewards["III"]);
-        Assert.Equal(99090957, s.Events[StasisEvents.Poutch].Map);
+        // The Pandawushu Dojo's inner hall, not the Amakna kanojedo its master and puchs use.
+        Assert.Equal(209455110, s.Events[StasisEvents.Poutch].Map);
         Assert.Equal(1.25, s.Events[StasisEvents.Poutch].ClassCoefficients[7]);
         Assert.Contains(s.Shop, i => i.Rune && i.Price == 250);
+    }
+
+    [Fact]
+    public void The_traque_hides_only_on_the_main_world_outdoors_and_never_on_a_board()
+    {
+        static Jondo.Unity.Server.MapInfo M(bool outdoor, int world, long flags = 0)
+            => new() { MapId = 1, PosX = 3, PosY = 4, SubAreaId = 10, Outdoor = outdoor, Name = "", Flags = flags, WorldMap = world };
+
+        Assert.True(StasisEvents.TraqueGround(M(true, 1)));
+        Assert.False(StasisEvents.TraqueGround(M(false, 1)));                       // an inside
+        Assert.False(StasisEvents.TraqueGround(M(true, 19)));                       // the dream lands
+        Assert.False(StasisEvents.TraqueGround(M(true, -1)));                       // the Koliseo's boards
+        Assert.False(StasisEvents.TraqueGround(M(true, 1, MapManager.ArenaFlags))); // a fight board
     }
 
     [Fact]
@@ -266,5 +280,7 @@ public sealed class StasisEventsTests
         Assert.Equal(6, s.Dofus.Items.Count);
         Assert.Equal(1000, s.Dofus.WavesNeeded);
         Assert.Equal(4, s.Formations.Count);
+        // The Dimensional Voyagers' Tower of «Futuro no previsto», not Astrub's bank square.
+        Assert.Equal(202901510, s.ArenaMap);
     }
 }

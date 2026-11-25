@@ -6,10 +6,12 @@ using Jondo.Unity.Server.Network;
 namespace Jondo.Unity.Server.Managers
 {
     /// <summary>
-    /// The level-up dons, after the Stasis server's rules: every level gained up to 200 offers a
-    /// few cards and the player keeps one; every fifth level an adventure don, some levels a spell
-    /// don (SpellDons, a card on one of the class's spells), level 50 the class passives, and 225/250/275/300 an accomplishment. And the ONE place
-    /// that says what the dons and the research add to a character: <see cref="BonusesOf(long)"/>.
+    /// The level-up dons, after the Stasis server's rules (docs/stasis-gameplay-spec.md §10): one
+    /// offer a level from 1 to 200 -- level 1 the starting offer, every fifth level an adventure
+    /// don, the spell levels (10, 30, 50 ... 190) a spell point (SpellDons), the other levels a
+    /// combat don --, plus the class passives at 50, the dons «Pension» at 20, 50 and 60, and the
+    /// accomplishments at 225/250/275/300 (each with a spell point). And the ONE place that says
+    /// what the dons and the research add to a character: <see cref="BonusesOf(long)"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -19,36 +21,53 @@ namespace Jondo.Unity.Server.Managers
     /// fighter building, the wisdom of the fight's experience and the prospecting of its loot all
     /// read). Each of them already adds the alterations next to the equipment; the dons are added
     /// right beside them, as a third source of the same kind -- characteristic id to amount -- so
-    /// nothing downstream needs to know the dons exist. A +3 Force card is Force for the
-    /// initiative, the pods and the damage exactly as a +3 Force amulet would be.
+    /// nothing downstream needs to know the dons exist. The walk speed dons are a percent the
+    /// JondoFix client walks faster by (/api/stasis/speed, <see cref="SpeedPercent"/>).
+    /// </para>
+    /// <para>
+    /// A standard offer (starting, combat, adventure) shows three cards, four with the Quatrième
+    /// carte research. Each card has a RARITY drawn on its own -- Commun, Rare or Légendaire, at
+    /// dons.json's chances, which the Fortune research raises -- and gives its rarity's values.
+    /// The first card is almost always the characteristic of one's choice, the last a don not
+    /// taken recently, and after five offers in a row without a Légendaire the next has one (the
+    /// counter is kept in the profile). One reroll an offer (combat, adventure, spell), paid in
+    /// Orbes growing with the level unless the Relance research has a free one left; the starting
+    /// offer, the passives, the dons «Pension» and the accomplishments are not rerolled.
     /// </para>
     /// <para>
     /// The cards themselves are data (content/progression/dons.json, <see cref="ProgressionContent"/>);
-    /// this class only knows the kinds of offer and how a card is drawn, kept and counted. What is
-    /// kept is the CARD (and for the characteristic card the characteristic and the amount given at
-    /// the time), not its numbers: retuning a card in the file retunes every character who has it.
+    /// what is kept is the CARD and its rarity (and for the characteristic card the characteristic
+    /// and the amount given at the time), not its numbers: retuning a card in the file retunes
+    /// every character who has it.
     /// </para>
     /// <para>
-    /// Offers queue: a fight that gives three levels queues three offers, and they are answered
-    /// oldest first. A level that already has a don or an offer waiting earns nothing again, which
-    /// is what keeps an evolved character climbing back from 200 to 300 from being offered the
-    /// dons of levels it kept.
+    /// Offers queue, oldest level first. One offer a level on the main track (the offer's Level is
+    /// the character level); the extra offers a level brings are kept under an offset so that the
+    /// rule «one offer a level» still holds: <see cref="SpellPointLevelOffset"/> (an
+    /// accomplishment's spell point), <see cref="PassiveLevelOffset"/> (the passives),
+    /// <see cref="PensionLevelOffset"/> (a don «Pension»). <see cref="RealLevel"/> gives the level
+    /// back. A level that already has a don or an offer waiting earns nothing again.
     /// </para>
     /// </remarks>
     public static class Dons
     {
-        /// <summary>A pseudo characteristic: percent of experience (Découverte). Never sent to the sheet.</summary>
-        internal const int XpPercent = -1;
+        /// <summary>Pseudo characteristics, never sent to the sheet: percent of experience, of walk speed, of animation speed.</summary>
+        internal const int XpPercent = -1, SpeedPercentStat = -2, AnimationPercentStat = -3;
 
         /// <summary>The offer kinds, as the window and the commands name them.</summary>
         internal const string KindLevel = "niveau", KindSpell = "sort", KindAdventure = "aventure",
-                              KindPassive = "passif", KindAccomplishment = "accomplissement";
+                              KindPassive = "passif", KindAccomplishment = "accomplissement",
+                              KindStart = "depart", KindPension = "pension";
+
+        /// <summary>The rarities, as kept.</summary>
+        internal const int Commun = 0, Rare = 1, Legendaire = 2;
 
         /// <summary>
         /// The French names the content files use, to the characteristic ids of the sheet and the
         /// fight (<see cref="Stat"/> and the ones FightHandler reads from CombatCharacteristics:
         /// 16 damage, 86 critical damage, 88-92 elemental damage, 33-37 elemental resistance %, 84
-        /// push damage).
+        /// push damage). They are the client's own characteristic ids too: the window draws a
+        /// card's icon from them.
         /// </summary>
         internal static readonly IReadOnlyDictionary<string, int> StatIds = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
@@ -63,7 +82,7 @@ namespace Jondo.Unity.Server.Managers
             ["initiative"] = Stat.Initiative, ["prospection"] = Stat.Prospecting, ["pods"] = Stat.Pods,
             ["esquivePA"] = Stat.DodgeActionPoints, ["esquivePM"] = Stat.DodgeMovementPoints,
             ["retraitPA"] = Stat.WithdrawActionPoints, ["retraitPM"] = Stat.WithdrawMovementPoints,
-            ["decouverte"] = XpPercent,
+            ["decouverte"] = XpPercent, ["vitesse"] = SpeedPercentStat, ["animation"] = AnimationPercentStat,
         };
 
         /// <summary>The French label of a characteristic card's choice, for the texts.</summary>
@@ -71,6 +90,22 @@ namespace Jondo.Unity.Server.Managers
         {
             ["force"] = "Force", ["intelligence"] = "Intelligence", ["chance"] = "Chance",
             ["agilite"] = "Agilité", ["vitalite"] = "Vitalité", ["sagesse"] = "Sagesse",
+        };
+
+        /// <summary>How an effect reads after its value: «+20 Vitalité», «+2 % Résistance Feu».</summary>
+        private static readonly IReadOnlyDictionary<string, string> EffectLabels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["force"] = "Force", ["intelligence"] = "Intelligence", ["chance"] = "Chance", ["agilite"] = "Agilité",
+            ["vitalite"] = "Vitalité", ["sagesse"] = "Sagesse", ["puissance"] = "Puissance", ["critique"] = "% Critique",
+            ["po"] = "PO", ["pa"] = "PA", ["pm"] = "PM", ["invocations"] = "Invocation", ["dommages"] = "Dommages",
+            ["dommagesCritiques"] = "Dommages critiques", ["dommagesTerre"] = "Dommages Terre", ["dommagesFeu"] = "Dommages Feu",
+            ["dommagesEau"] = "Dommages Eau", ["dommagesAir"] = "Dommages Air", ["dommagesNeutre"] = "Dommages Neutre",
+            ["resTerre"] = "% Résistance Terre", ["resFeu"] = "% Résistance Feu", ["resEau"] = "% Résistance Eau",
+            ["resAir"] = "% Résistance Air", ["resNeutre"] = "% Résistance Neutre", ["dommagesPoussee"] = "Dommages de poussée",
+            ["soins"] = "Soins", ["tacle"] = "Tacle", ["fuite"] = "Fuite", ["initiative"] = "Initiative",
+            ["prospection"] = "Prospection", ["pods"] = "Pods", ["esquivePA"] = "Esquive PA", ["esquivePM"] = "Esquive PM",
+            ["retraitPA"] = "Retrait PA", ["retraitPM"] = "Retrait PM", ["decouverte"] = "% d'expérience",
+            ["vitesse"] = "% vitesse de déplacement", ["animation"] = "% vitesse d'animation",
         };
 
         internal static string StatName(int id) => StatIds.FirstOrDefault(kv => kv.Value == id).Key ?? id.ToString();
@@ -98,13 +133,13 @@ namespace Jondo.Unity.Server.Managers
             var total = new Dictionary<int, long>();
             void Add(int id, long value)
             {
-                if (id == XpPercent || value == 0) return;
+                if (id < 0 || value == 0) return;
                 total[id] = total.GetValueOrDefault(id) + value;
             }
 
             foreach (var don in profile.Dons)
             {
-                if (string.Equals(don.Card, content.Dons.CharacteristicCard.Id, StringComparison.OrdinalIgnoreCase))
+                if (IsCharacteristicCard(don.Card, content))
                 {
                     Add(don.Stat, don.Amount);
                     continue;
@@ -112,15 +147,15 @@ namespace Jondo.Unity.Server.Managers
                 var card = content.CardOf(don.Card);
                 if (card == null) continue;
                 foreach (var effect in card.Effects)
-                    if (StatIds.TryGetValue(effect.Stat, out int id)) Add(id, effect.Value);
+                    if (StatIds.TryGetValue(effect.Stat, out int id)) Add(id, effect.ValueAt(don.Rarity));
             }
             foreach (var research in content.Research.Where(r => r.Kind == "stat"))
                 if (StatIds.TryGetValue(research.Stat, out int id)) Add(id, (long)profile.RankOf(research.Id) * research.PerRank);
             return total;
         }
 
-        /// <summary>The Découverte percent the dons give (adventure don «Découverte»).</summary>
-        internal static long DiscoveryPercent(ProgressionProfile profile, ProgressionContent content)
+        /// <summary>The sum of a pseudo characteristic (a percent) over the dons kept, each at its rarity.</summary>
+        internal static long PercentOf(ProgressionProfile profile, ProgressionContent content, int pseudo)
         {
             long percent = 0;
             foreach (var don in profile.Dons)
@@ -128,9 +163,28 @@ namespace Jondo.Unity.Server.Managers
                 var card = content.CardOf(don.Card);
                 if (card == null) continue;
                 foreach (var effect in card.Effects)
-                    if (StatIds.TryGetValue(effect.Stat, out int id) && id == XpPercent) percent += effect.Value;
+                    if (StatIds.TryGetValue(effect.Stat, out int id) && id == pseudo) percent += effect.ValueAt(don.Rarity);
             }
             return percent;
+        }
+
+        /// <summary>The experience percent the dons give (a «decouverte» effect).</summary>
+        internal static long DiscoveryPercent(ProgressionProfile profile, ProgressionContent content) => PercentOf(profile, content, XpPercent);
+
+        /// <summary>The out-of-combat walk speed percent the dons give (Vitesse perso, Élan), for /api/stasis/speed.</summary>
+        public static long SpeedPercent(long characterId)
+        {
+            if (characterId <= 0) return 0;
+            var profile = ProgressionStore.Of(characterId);
+            lock (profile.Gate) return PercentOf(profile, ProgressionContent.Current, SpeedPercentStat);
+        }
+
+        /// <summary>The animation speed percent the dons give (Vitesse d'animation, Élan): sent, not drawn by the client.</summary>
+        public static long AnimationPercent(long characterId)
+        {
+            if (characterId <= 0) return 0;
+            var profile = ProgressionStore.Of(characterId);
+            lock (profile.Gate) return PercentOf(profile, ProgressionContent.Current, AnimationPercentStat);
         }
 
         // ─── The experience hook ────────────────────────────────────────────────────────
@@ -180,66 +234,144 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>Where an accomplishment's extra spell offer is kept: this plus its level.</summary>
-        internal const int SpellPointLevelOffset = 1000;
+        /// <summary>Where the extra offers of a level are kept: this plus the level (see the remarks).</summary>
+        internal const int SpellPointLevelOffset = 1000, PassiveLevelOffset = 2000, PensionLevelOffset = 3000;
 
-        /// <summary>The level an offer belongs to, an accomplishment's spell offer included.</summary>
+        /// <summary>The level an offer or a don belongs to, the extra offers' included.</summary>
         internal static int RealLevel(int offerLevel)
-            => offerLevel > SpellPointLevelOffset ? offerLevel - SpellPointLevelOffset : offerLevel;
+            => offerLevel > SpellPointLevelOffset ? offerLevel % SpellPointLevelOffset : offerLevel;
 
-        internal static int QueueOffers(ProgressionProfile profile, ProgressionContent content, int breed, int oldLevel, int newLevel)
+        private static bool Has(ProgressionProfile profile, int key)
+            => profile.Dons.Any(d => d.Level == key) || profile.Pending.Any(o => o.Level == key);
+
+        private static int TryQueue(ProgressionProfile profile, ProgressionContent content, int breed, int key, int level, string kind, Random dice)
         {
+            if (Has(profile, key)) return 0;
+            var offer = Draw(profile, content, breed, level, kind, dice);
+            if (offer.Cards.Count == 0) return 0;
+            offer.Level = key;
+            profile.Pending.Add(offer);
+            return 1;
+        }
+
+        /// <summary>Oldest level first; on one level the main offer, then its extras.</summary>
+        private static void SortPending(ProgressionProfile profile)
+            => profile.Pending.Sort((a, b) =>
+            {
+                int byLevel = RealLevel(a.Level).CompareTo(RealLevel(b.Level));
+                return byLevel != 0 ? byLevel : a.Level.CompareTo(b.Level);
+            });
+
+        internal static int QueueOffers(ProgressionProfile profile, ProgressionContent content, int breed, int oldLevel, int newLevel,
+                                        Random? dice = null)
+        {
+            dice ??= Random.Shared;
+            Migrate(profile, content);
+            var d = content.Dons;
             int queued = 0;
-            for (int level = Math.Max(2, oldLevel + 1); level <= newLevel; level++)
+            for (int level = Math.Max(1, oldLevel + 1); level <= newLevel; level++)
             {
                 string? kind = KindOf(level, content);
-                if (kind == null) continue;
-                if (profile.Dons.Any(d => d.Level == level) || profile.Pending.Any(o => o.Level == level)) continue;
-                var offer = Draw(profile, content, breed, level, kind);
-                if (offer.Cards.Count == 0) continue;
-                profile.Pending.Add(offer);
-                queued++;
-
+                if (kind != null) queued += TryQueue(profile, content, breed, level, level, kind, dice);
                 // An accomplishment (225-300) also brings a spell point, as on Stasis: ten spell
-                // levels and four accomplishments make its fourteen points. It is a second offer of
-                // its own, kept apart under SpellPointLevelOffset + level so that the rule "one
-                // offer a level" still holds for the accomplishment itself.
-                if (kind == KindAccomplishment && level > content.Dons.LastDonLevel)
-                {
-                    int key = SpellPointLevelOffset + level;
-                    if (profile.Dons.Any(d => d.Level == key) || profile.Pending.Any(o => o.Level == key)) continue;
-                    var spell = Draw(profile, content, breed, level, KindSpell);
-                    if (spell.Cards.Count == 0) continue;
-                    spell.Level = key;
-                    profile.Pending.Add(spell);
-                    queued++;
-                }
+                // levels and four accomplishments make its fourteen points.
+                if (kind == KindAccomplishment && level > d.LastDonLevel)
+                    queued += TryQueue(profile, content, breed, SpellPointLevelOffset + level, level, KindSpell, dice);
+                if (d.PassiveLevel > 0 && level == d.PassiveLevel)
+                    queued += TryQueue(profile, content, breed, PassiveLevelOffset + level, level, KindPassive, dice);
+                if (PensionDonAt(level, content) != null)
+                    queued += TryQueue(profile, content, breed, PensionLevelOffset + level, level, KindPension, dice);
             }
-            profile.Pending.Sort((a, b) => a.Level.CompareTo(b.Level));
+            SortPending(profile);
             return queued;
+        }
+
+        /// <summary>
+        /// What a character of <paramref name="level"/> should have and may lack, given at login
+        /// and whenever the window asks: the starting offer (new characters, and the older ones
+        /// made before it existed), the class passives once past their level, the dons «Pension»
+        /// past theirs unless the account's pension already gave them
+        /// (<paramref name="pensionGiven"/>: a pension offer for a gift already given is dropped).
+        /// The number of offers added or dropped.
+        /// </summary>
+        internal static int EnsureOffers(ProgressionProfile profile, ProgressionContent content, int breed, int level,
+                                         Func<int, bool>? pensionGiven = null, Random? dice = null)
+        {
+            dice ??= Random.Shared;
+            int changed = Migrate(profile, content);
+            var d = content.Dons;
+            if (d.StartingLevel > 0 && level >= d.StartingLevel)
+                changed += TryQueue(profile, content, breed, d.StartingLevel, d.StartingLevel, KindStart, dice);
+            if (d.PassiveLevel > 0 && level >= d.PassiveLevel)
+                changed += TryQueue(profile, content, breed, PassiveLevelOffset + d.PassiveLevel, d.PassiveLevel, KindPassive, dice);
+            foreach (var pension in d.Pension)
+            {
+                if (level < pension.Level) continue;
+                int key = PensionLevelOffset + pension.Level;
+                if (profile.Dons.Any(x => x.Level == key)) continue;
+                if (pensionGiven?.Invoke(pension.Level) == true)
+                {
+                    changed += profile.Pending.RemoveAll(o => o.Level == key);
+                    continue;
+                }
+                changed += TryQueue(profile, content, breed, key, pension.Level, KindPension, dice);
+            }
+            if (changed > 0) SortPending(profile);
+            return changed;
+        }
+
+        /// <summary>
+        /// The passive used to be the offer OF level 50; it is now an extra offer of that level
+        /// (50 is a spell level, as on Stasis). A profile of before has its passive moved to its
+        /// new place. The number of rows moved.
+        /// </summary>
+        internal static int Migrate(ProgressionProfile profile, ProgressionContent content)
+        {
+            int at = content.Dons.PassiveLevel, key = PassiveLevelOffset + at, moved = 0;
+            if (at <= 0 || Has(profile, key)) return 0;
+            foreach (var don in profile.Dons)
+                if (don.Level == at && IsPassiveCard(don.Card, content)) { don.Level = key; moved++; break; }
+            if (moved == 0)
+                foreach (var offer in profile.Pending)
+                    if (offer.Level == at && offer.Kind == KindPassive) { offer.Level = key; moved++; break; }
+            if (moved > 0) SortPending(profile);
+            return moved;
         }
 
         // ─── The offers ─────────────────────────────────────────────────────────────────
 
-        /// <summary>Which offer a level earns, or null for none.</summary>
+        /// <summary>Which offer a level earns on the main track, or null for none.</summary>
         internal static string? KindOf(int level, ProgressionContent content)
         {
             var d = content.Dons;
             if (d.AccomplishmentLevels.Contains(level)) return KindAccomplishment;
-            if (level < 2 || level > d.LastDonLevel) return null;
-            if (level == d.PassiveLevel) return KindPassive;
+            if (level < 1 || level > d.LastDonLevel) return null;
+            if (level == d.StartingLevel) return KindStart;
+            if (level < 2) return null;
             if (d.SpellLevels.Contains(level)) return KindSpell;
             if (d.AdventureEvery > 0 && level % d.AdventureEvery == 0) return KindAdventure;
             return KindLevel;
         }
 
-        /// <summary>How many cards an offer shows: the file's, plus the Quatrième carte research.</summary>
+        /// <summary>Whether an offer of this kind may be rerolled (combat, adventure, spell; not the starting offer, passives, Pension, accomplishments).</summary>
+        internal static bool IsRerollable(string kind) => kind is KindLevel or KindAdventure or KindSpell;
+
+        /// <summary>How many cards a standard offer shows: the file's, plus the Quatrième carte research.</summary>
         internal static int CardsPerOffer(ProgressionProfile profile, ProgressionContent content)
             => Math.Max(1, content.Dons.CardsPerOffer + Ascension.ResearchSum(profile, content, "cards"));
 
-        /// <summary>What the characteristic card gives now: the file's, plus the Polyvalence research.</summary>
-        internal static int CaracAmount(ProgressionProfile profile, ProgressionContent content)
-            => content.Dons.CharacteristicCard.Amount + Ascension.ResearchSum(profile, content, "caracAmount");
+        /// <summary>What the characteristic card gives at a rarity: the file's, plus the Polyvalence research.</summary>
+        internal static int CaracAmount(ProgressionProfile profile, ProgressionContent content, int rarity = Commun)
+        {
+            var c = content.Dons.CharacteristicCard;
+            int amount = rarity switch
+            {
+                >= Legendaire => c.AmountLegendaire ?? c.AmountRare ?? c.Amount,
+                Rare => c.AmountRare ?? c.Amount,
+                _ => c.Amount,
+            };
+            return amount + Ascension.ResearchSum(profile, content, "caracAmount");
+        }
 
         internal static IReadOnlyList<DonCard> PassivesOf(int breed, ProgressionContent content)
             => content.Dons.Passives.TryGetValue(breed.ToString(), out var own) && own.Count > 0 ? own
@@ -248,52 +380,154 @@ namespace Jondo.Unity.Server.Managers
         internal static int RankOf(ProgressionProfile profile, string card)
             => profile.Dons.Count(d => string.Equals(d.Card, card, StringComparison.OrdinalIgnoreCase));
 
-        /// <summary>A new offer for a level: its cards drawn at random among those it may still give.</summary>
-        internal static DonOffer Draw(ProgressionProfile profile, ProgressionContent content, int breed, int level, string kind)
+        internal static bool IsCharacteristicCard(string card, ProgressionContent content)
+            => string.Equals(card, content.Dons.CharacteristicCard.Id, StringComparison.OrdinalIgnoreCase);
+
+        internal static bool IsPassiveCard(string card, ProgressionContent content)
+            => content.Dons.Passives.Values.Any(list => list.Any(c => string.Equals(c.Id, card, StringComparison.OrdinalIgnoreCase)));
+
+        /// <summary>The breed whose passive list holds a card, or 0.</summary>
+        internal static int PassiveBreedOf(string card, ProgressionContent content)
         {
+            foreach (var (breed, list) in content.Dons.Passives)
+                if (list.Any(c => string.Equals(c.Id, card, StringComparison.OrdinalIgnoreCase)))
+                    return int.TryParse(breed, out int id) ? id : 0;
+            return 0;
+        }
+
+        /// <summary>The don «Pension» of a level, or null.</summary>
+        internal static PensionDon? PensionDonAt(int level, ProgressionContent content)
+            => content.Dons.Pension.FirstOrDefault(p => p.Level == level && p.Choices.Count > 0);
+
+        private const string PensionPetPrefix = "pension_familier_", PensionMountPrefix = "pension_monture_";
+
+        /// <summary>A Pension card's egg: pet (the pet item id) or mount (the species id). Null for any other card.</summary>
+        internal static (string Kind, int Choice)? PensionChoiceOf(string card)
+        {
+            if (card.StartsWith(PensionPetPrefix, StringComparison.Ordinal) && int.TryParse(card.AsSpan(PensionPetPrefix.Length), out int pet))
+                return (Pension.KindPet, pet);
+            if (card.StartsWith(PensionMountPrefix, StringComparison.Ordinal) && int.TryParse(card.AsSpan(PensionMountPrefix.Length), out int species))
+                return (Pension.KindMount, species);
+            return null;
+        }
+
+        /// <summary>Whether a card may still be offered: not retired, and under its rank cap (0: no cap).</summary>
+        private static bool Offerable(ProgressionProfile profile, DonCard card)
+            => !card.Retired && (card.MaxRank <= 0 || RankOf(profile, card.Id) < card.MaxRank);
+
+        /// <summary>The cards of the last <paramref name="window"/> dons of the main track, newest first.</summary>
+        internal static HashSet<string> RecentCards(ProgressionProfile profile, int window)
+            => profile.Dons.Where(d => d.Level < SpellPointLevelOffset).OrderByDescending(d => d.Level)
+                      .Take(Math.Max(0, window)).Select(d => d.Card).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>The rare and legendary chances (0-1): the file's, or the Fortune research's rank's.</summary>
+        internal static (double Rare, double Legendary) RarityChances(ProgressionProfile profile, ProgressionContent content)
+        {
+            var r = content.Dons.Rarity;
+            double rare = r.Rare, legendary = r.Legendaire;
+            int rank = string.IsNullOrEmpty(r.Research) ? 0 : profile.RankOf(r.Research);
+            if (rank > 0 && r.RareByRank.Count > 0) rare = r.RareByRank[Math.Min(rank, r.RareByRank.Count) - 1];
+            if (rank > 0 && r.LegendaireByRank.Count > 0) legendary = r.LegendaireByRank[Math.Min(rank, r.LegendaireByRank.Count) - 1];
+            return (Math.Clamp(rare / 100.0, 0, 1), Math.Clamp(legendary / 100.0, 0, 1));
+        }
+
+        internal static bool HasRarity(string kind, ProgressionContent content)
+            => content.Dons.Rarity.Kinds.Contains(kind, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>A new offer for a level: its cards drawn among those it may still give.</summary>
+        internal static DonOffer Draw(ProgressionProfile profile, ProgressionContent content, int breed, int level, string kind,
+                                      Random? dice = null)
+        {
+            dice ??= Random.Shared;
             var d = content.Dons;
             int count = CardsPerOffer(profile, content);
             var cards = new List<string>();
-            IEnumerable<DonCard> pool;
             switch (kind)
             {
                 case KindPassive:
                     // All of them: a choice of two or three, and a reroll would change nothing.
                     cards.AddRange(PassivesOf(breed, content).Select(c => c.Id));
                     return new DonOffer { Level = level, Kind = kind, Cards = cards };
-                case KindAdventure:
-                    pool = d.Adventure.Where(c => RankOf(profile, c.Id) < Math.Max(1, c.MaxRank));
-                    break;
+                case KindPension:
+                    if (PensionDonAt(level, content) is { } pension)
+                        cards.AddRange(pension.Choices.Select(c => (pension.Kind == Pension.KindPet ? PensionPetPrefix : PensionMountPrefix) + c));
+                    return new DonOffer { Level = level, Kind = kind, Cards = cards };
                 case KindAccomplishment:
-                    pool = d.Accomplishments.Where(c => RankOf(profile, c.Id) < Math.Max(1, c.MaxRank));
-                    break;
+                    cards.AddRange(d.Accomplishments.Where(c => Offerable(profile, c)).OrderBy(_ => dice.Next()).Take(count).Select(c => c.Id));
+                    return new DonOffer { Level = level, Kind = kind, Cards = cards };
                 case KindSpell:
-                    // The spell dons of his class (SpellDons): three of those he may still take at
-                    // this level -- a new one or the next rank of one he has -- every Stasis cap
+                    // The spell dons of his class (SpellDons): those he may still take at this
+                    // level -- a new one or the next rank of one he has -- every Stasis cap
                     // considered. When none is left (all taken, every cap reached, or a class the
-                    // file does not list) the old spell card comes back: Dofus 3 has no spell points,
-                    // and +6 Puissance is what a spell level gave before the spell dons.
+                    // file does not list) the old spell card comes back, with combat dons.
                     var spellDons = SpellDons.Takeable(profile, content, breed, level);
                     if (spellDons.Count > 0)
                     {
-                        cards.AddRange(spellDons.OrderBy(_ => Random.Shared.Next()).Take(count).Select(s => s.Id));
+                        cards.AddRange(spellDons.OrderBy(_ => dice.Next()).Take(count).Select(s => s.Id));
                         return new DonOffer { Level = level, Kind = kind, Cards = cards };
                     }
                     cards.Add(d.SpellCard.Id);
                     cards.Add(d.CharacteristicCard.Id);
-                    pool = d.Level;
-                    break;
-                default:
-                    if (Random.Shared.NextDouble() < d.CharacteristicCard.FirstChance) cards.Add(d.CharacteristicCard.Id);
-                    pool = d.Level;
-                    break;
+                    foreach (var card in d.Level.Where(c => Offerable(profile, c) && !cards.Contains(c.Id)).OrderBy(_ => dice.Next()))
+                    {
+                        if (cards.Count >= count) break;
+                        cards.Add(card.Id);
+                    }
+                    return new DonOffer { Level = level, Kind = kind, Cards = cards };
             }
-            foreach (var card in pool.Where(c => !cards.Contains(c.Id)).OrderBy(_ => Random.Shared.Next()))
+            return DrawStandard(profile, content, level, kind, count, dice);
+        }
+
+        /// <summary>
+        /// A starting, combat or adventure offer: first card almost always the characteristic of
+        /// one's choice (not for adventure), last card a don not taken recently, a rarity per
+        /// card, and the pity after five offers without a Légendaire.
+        /// </summary>
+        private static DonOffer DrawStandard(ProgressionProfile profile, ProgressionContent content, int level, string kind, int count, Random dice)
+        {
+            var d = content.Dons;
+            string carac = d.CharacteristicCard.Id;
+            bool adventure = kind == KindAdventure;
+            var pool = (adventure ? d.Adventure : d.Level).Where(c => Offerable(profile, c)).ToList();
+            var cards = new List<string>();
+            if (!adventure && dice.NextDouble() < d.CharacteristicCard.FirstChance) cards.Add(carac);
+
+            // The last card: one not among the last dons kept, else the one kept longest ago.
+            var recent = RecentCards(profile, d.RecentWindow);
+            string? last = null;
+            var fresh = pool.Where(c => !recent.Contains(c.Id)).ToList();
+            if (fresh.Count > 0) last = fresh[dice.Next(fresh.Count)].Id;
+            else if (pool.Count > 0)
+                last = pool.OrderBy(c => profile.Dons.Where(x => string.Equals(x.Card, c.Id, StringComparison.OrdinalIgnoreCase))
+                                                     .Select(x => x.Level).DefaultIfEmpty(-1).Max())
+                           .ThenBy(_ => dice.Next()).First().Id;
+
+            int middle = count - (last == null ? 0 : 1);
+            foreach (var card in pool.OrderBy(_ => dice.Next()))
             {
-                if (cards.Count >= count) break;
+                if (cards.Count >= middle) break;
+                if (card.Id == last || cards.Contains(card.Id)) continue;
                 cards.Add(card.Id);
             }
-            return new DonOffer { Level = level, Kind = kind, Cards = cards };
+            if (last != null && !cards.Contains(last)) cards.Add(last);
+            // A pool too small for the offer: the characteristic card fills it.
+            if (cards.Count < count && !adventure && !cards.Contains(carac)) cards.Insert(0, carac);
+
+            var offer = new DonOffer { Level = level, Kind = kind, Cards = cards };
+            if (HasRarity(kind, content) && cards.Count > 0)
+            {
+                var (rare, legendary) = RarityChances(profile, content);
+                for (int i = 0; i < cards.Count; i++)
+                {
+                    double roll = dice.NextDouble();
+                    offer.Rarities.Add(roll < legendary ? Legendaire : roll < legendary + rare ? Rare : Commun);
+                }
+                int pity = d.Rarity.PityAfter;
+                if (pity > 0 && !offer.Rarities.Contains(Legendaire) && profile.NoLegendaryStreak >= pity)
+                    offer.Rarities[dice.Next(offer.Rarities.Count)] = Legendaire;
+                profile.NoLegendaryStreak = offer.Rarities.Contains(Legendaire) ? 0 : profile.NoLegendaryStreak + 1;
+            }
+            return offer;
         }
 
         /// <summary>
@@ -307,16 +541,16 @@ namespace Jondo.Unity.Server.Managers
             var offer = profile.Pending[0];
             if (index < 1 || index > offer.Cards.Count) return "carte-inconnue";
             string card = offer.Cards[index - 1];
-            var don = new ChosenDon { Level = offer.Level, Card = card };
+            var don = new ChosenDon { Level = offer.Level, Card = card, Rarity = offer.RarityAt(index - 1) };
             var carac = content.Dons.CharacteristicCard;
-            if (string.Equals(card, carac.Id, StringComparison.OrdinalIgnoreCase))
+            if (IsCharacteristicCard(card, content))
             {
                 string wanted = Normalize(stat);
                 if (wanted.Length == 0 || !carac.Stats.Contains(wanted, StringComparer.OrdinalIgnoreCase)
                     || !StatIds.TryGetValue(wanted, out int id))
                     return "carac-requise";
                 don.Stat = id;
-                don.Amount = CaracAmount(profile, content);
+                don.Amount = CaracAmount(profile, content, don.Rarity);
             }
             var spellDon = SpellDons.DefinitionOf(card, content);
             // Offers queue, and two spell offers drawn before either was answered may both hold a
@@ -341,10 +575,12 @@ namespace Jondo.Unity.Server.Managers
             {
                 var waiting = profile.Pending[i];
                 if (waiting.Kind != KindSpell) continue;
+                int level = RealLevel(waiting.Level);
                 bool stale = waiting.Cards.Any(c => SpellDons.DefinitionOf(c, content) is { } s
-                                                    && !SpellDons.CanTake(s.Don, profile, content, waiting.Level));
+                                                    && !SpellDons.CanTake(s.Don, profile, content, level));
                 if (!stale) continue;
-                var fresh = Draw(profile, content, breed, waiting.Level, KindSpell);
+                var fresh = Draw(profile, content, breed, level, KindSpell);
+                fresh.Level = waiting.Level;
                 fresh.Rerolled = waiting.Rerolled;
                 profile.Pending[i] = fresh;
             }
@@ -369,7 +605,7 @@ namespace Jondo.Unity.Server.Managers
         internal static int RepicksLeft(ProgressionProfile profile, ProgressionContent content)
             => Math.Max(0, 1 + Ascension.ResearchSum(profile, content, "repicks") - profile.RepicksUsed);
 
-        /// <summary>What rerolling the offer of a level costs in kamas when no free reroll is left.</summary>
+        /// <summary>What rerolling the offer of a level costs (kamas-equivalent, OrbePrice turns it into Orbes) when no free reroll is left.</summary>
         internal static long RerollCost(int level, ProgressionContent content) => Math.Max(0, content.Dons.RerollKamasPerLevel * level);
 
         /// <summary>
@@ -382,8 +618,8 @@ namespace Jondo.Unity.Server.Managers
             paid = 0;
             if (profile.Pending.Count == 0) return "aucune-offre";
             var offer = profile.Pending[0];
+            if (!IsRerollable(offer.Kind)) return "non-relancable";
             if (offer.Rerolled) return "deja-relancee";
-            if (offer.Kind == KindPassive) return "non-relancable";
             bool free = RerollsLeft(profile, content) > 0;
             if (!free)
             {
@@ -411,8 +647,7 @@ namespace Jondo.Unity.Server.Managers
             if (a.Length == 0 || b.Length == 0 || a == b) return "carac-requise";
             if (RepicksLeft(profile, content) <= 0) return "plus-de-refonte";
             int fromId = StatIds[a], toId = StatIds[b];
-            var carac = content.Dons.CharacteristicCard.Id;
-            var dons = profile.Dons.Where(d => string.Equals(d.Card, carac, StringComparison.OrdinalIgnoreCase) && d.Stat == fromId).ToList();
+            var dons = profile.Dons.Where(d => IsCharacteristicCard(d.Card, content) && d.Stat == fromId).ToList();
             if (dons.Count == 0) return "rien-a-refondre";
             foreach (var don in dons)
             {
@@ -423,29 +658,144 @@ namespace Jondo.Unity.Server.Managers
             return "ok";
         }
 
-        // ─── Texts ──────────────────────────────────────────────────────────────────────
+        // ─── Texts and icons ────────────────────────────────────────────────────────────
 
-        /// <summary>A card's name and what it gives, in French, as the window and the commands show it.</summary>
-        internal static (string Name, string Description) Describe(string cardId, ProgressionProfile profile, ProgressionContent content)
+        /// <summary>How the window shows an item's name (a pet of a don «Pension»); the handlers set the database's.</summary>
+        internal static Func<int, string> ItemNameOf = gid => "#" + gid;
+
+        internal static string RarityKey(int rarity) => rarity switch { >= Legendaire => "legendaire", Rare => "rare", _ => "commun" };
+
+        internal static string RarityLabel(int rarity) => rarity switch { >= Legendaire => "Légendaire", Rare => "Rare", _ => "Commun" };
+
+        /// <summary>«+20 Vitalité, +1 PM»: a card's effects at a rarity; null when one of them has no label.</summary>
+        internal static string? EffectsText(DonCard card, int rarity)
+        {
+            if (card.Effects.Count == 0) return null;
+            var parts = new List<string>();
+            foreach (var effect in card.Effects)
+            {
+                if (!EffectLabels.TryGetValue(effect.Stat, out var label)) return null;
+                long value = effect.ValueAt(rarity);
+                parts.Add($"{(value >= 0 ? "+" : "")}{value} {label}");
+            }
+            return string.Join(", ", parts);
+        }
+
+        /// <summary>A card's name and what it gives at a rarity, in French, as the window and the commands show it.</summary>
+        internal static (string Name, string Description) Describe(string cardId, ProgressionProfile profile, ProgressionContent content,
+                                                                   int rarity = Commun)
         {
             var carac = content.Dons.CharacteristicCard;
-            if (string.Equals(cardId, carac.Id, StringComparison.OrdinalIgnoreCase))
-                return (carac.Name, string.Format(carac.Description, CaracAmount(profile, content)));
+            if (IsCharacteristicCard(cardId, content))
+                return (carac.Name, string.Format(carac.Description, CaracAmount(profile, content, rarity)));
             if (SpellDons.DefinitionOf(cardId, content) is { } spellDon)
                 return SpellDons.Describe(spellDon.Don, profile);
+            if (PensionChoiceOf(cardId) is { } egg)
+                return egg.Kind == Pension.KindPet
+                    ? ($"Familier : {ItemNameOf(egg.Choice)}", "Un œuf de ce familier, déposé dans la Pension du compte (à incuber).")
+                    : ($"Œuf de {MountName(egg.Choice)}", $"Un œuf de {MountName(egg.Choice)} génération 1, déposé dans la Pension du compte (à incuber).");
             var card = content.CardOf(cardId);
             if (card == null) return (cardId, "");
-            string rank = card.MaxRank > 1 ? $" (rang {RankOf(profile, card.Id)}/{card.MaxRank})" : "";
-            return (card.Name + rank, card.Description);
+            string rank = card.MaxRank > 1 ? $" (rang {RankOf(profile, card.Id) + 1}/{card.MaxRank})" : "";
+            bool generated = content.Dons.Level.Contains(card) || content.Dons.Adventure.Contains(card);
+            string description = generated ? EffectsText(card, rarity) ?? card.Description : card.Description;
+            return (card.Name + rank, description);
+        }
+
+        private static string MountName(int species) => species switch
+        {
+            1 => "Dragodinde", 2 => "Muldo", 3 => "Volkorne",
+            _ => Pension.Content.Species.TryGetValue(species.ToString(), out var name) ? name : $"monture {species}",
+        };
+
+        /// <summary>What kind of don a card is, for the label on the card.</summary>
+        internal static string CardKindLabel(string cardId, ProgressionContent content)
+        {
+            if (IsCharacteristicCard(cardId, content)) return "Caractéristique";
+            if (SpellDons.DefinitionOf(cardId, content) != null) return "Point de sort";
+            if (PensionChoiceOf(cardId) != null) return "Don Pension";
+            if (string.Equals(cardId, content.Dons.SpellCard.Id, StringComparison.OrdinalIgnoreCase)) return "Don de sort";
+            if (IsPassiveCard(cardId, content)) return "Passif de classe";
+            if (content.Dons.Accomplishments.Any(c => string.Equals(c.Id, cardId, StringComparison.OrdinalIgnoreCase))) return "Accomplissement";
+            if (content.Dons.Adventure.Any(c => string.Equals(c.Id, cardId, StringComparison.OrdinalIgnoreCase))) return "Don d'aventure";
+            return "Don de combat";
+        }
+
+        /// <summary>
+        /// The icon the window draws on a card, resolved by the client from its own data: "stat"
+        /// (a characteristic id: the sheet's picture of it), "spell" (a spell id: its icon),
+        /// "item" (an item id: its icon), "class" (a breed: its symbol), or only "glyph" (one of
+        /// the client's FigmaIcons). The glyph is also the fallback of the others.
+        /// </summary>
+        internal static (string Kind, int Id, string Glyph) IconOf(string cardId, ProgressionContent content)
+        {
+            if (IsCharacteristicCard(cardId, content)) return ("glyph", 0, "character");
+            if (SpellDons.DefinitionOf(cardId, content) is { } spellDon) return ("spell", spellDon.Don.Spell, "spell");
+            if (PensionChoiceOf(cardId) is { } egg)
+                return egg.Kind == Pension.KindPet ? ("item", egg.Choice, "familiar") : ("item", MountItemOf(egg.Choice), "dragoturkey");
+            int breed = PassiveBreedOf(cardId, content);
+            if (breed > 0) return ("class", breed, "shield");
+            var card = content.CardOf(cardId);
+            if (card == null) return ("glyph", 0, "star");
+            if (card.Icon.Length > 0) return ("glyph", 0, card.Icon);
+            foreach (var effect in card.Effects)
+            {
+                if (!StatIds.TryGetValue(effect.Stat, out int id)) continue;
+                return id switch
+                {
+                    XpPercent => ("glyph", 0, "experience"),
+                    SpeedPercentStat => ("glyph", 0, "starBoot"),
+                    AnimationPercentStat => ("glyph", 0, "hourglass"),
+                    _ => ("stat", id, StatGlyph(id)),
+                };
+            }
+            return ("glyph", 0, "star");
+        }
+
+        /// <summary>The FigmaIcons glyph standing for a characteristic when the client has no picture of it.</summary>
+        internal static string StatGlyph(int id) => id switch
+        {
+            Stat.Strength or 88 or 33 => "earth",
+            Stat.Intelligence or 89 or 34 => "fire",
+            Stat.Chance or 90 or 35 => "water",
+            Stat.Agility or 91 or 36 => "wind",
+            92 or 37 => "neutral",
+            Stat.Vitality => "heart",
+            Stat.Wisdom => "experience",
+            Stat.Initiative => "initiative",
+            Stat.Heals => "heal",
+            Stat.Pods => "weight",
+            Stat.Prospecting => "treasureMap",
+            Stat.Range => "target",
+            Stat.Summons => "creature",
+            Stat.Critical or 86 => "dice",
+            Stat.Lock or Stat.Escape => "move",
+            _ => "star",
+        };
+
+        /// <summary>A generation-1 ride item of a species, for its icon; 0 when the client data has none.</summary>
+        private static int MountItemOf(int species)
+        {
+            try
+            {
+                return Breeding.AllRides.Where(r => r.Species == species && r.Generation == 1 && r.Item > 0)
+                               .OrderBy(r => r.Id).Select(r => r.Item).FirstOrDefault();
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         internal static string KindLabel(string kind) => kind switch
         {
-            KindSpell => "Don de sort",
+            KindSpell => "Point de sort",
             KindAdventure => "Don d'aventure",
             KindPassive => "Passif de classe",
             KindAccomplishment => "Accomplissement",
-            _ => "Don de niveau",
+            KindStart => "Offre de départ",
+            KindPension => "Don Pension",
+            _ => "Don de combat",
         };
 
         internal static string RefusalText(string reason) => reason switch
@@ -455,7 +805,7 @@ namespace Jondo.Unity.Server.Managers
             "carac-requise" => "Précisez la caractéristique : force, intelligence, chance, agilite, vitalite ou sagesse.",
             "sort-plafond" => "Ce don de sort n'est plus possible (points, familles ou rang au maximum).",
             "deja-relancee" => "Cette offre a déjà été relancée.",
-            "non-relancable" => "Les passifs de classe se choisissent tels quels : pas de relance.",
+            "non-relancable" => "Cette offre ne se relance pas (offre de départ, passif, don Pension ou accomplissement).",
             "kamas" => "Pas assez d'Orbes (Jondo Coins) pour relancer.",
             "plus-de-refonte" => "Plus de refonte disponible pour ce cycle d'Ascension.",
             "rien-a-refondre" => "Aucun point de don dans cette caractéristique.",

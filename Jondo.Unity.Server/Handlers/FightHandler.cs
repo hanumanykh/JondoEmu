@@ -13204,6 +13204,8 @@ namespace Jondo.Unity.Server.Handlers
 
             // And the Stasis events' scores (Time Attack, Poutch) and the Fissure's wave won or lost.
             await Managers.StasisEvents.FightEndedAsync(session, fight, won);
+            // And an Éveil challenge won: the stasified Dofus (Managers/Stasis/Eveil.cs).
+            await Managers.Eveil.FightEndedAsync(session, fight, won);
 
             // And this is where it is applied. On the wire it does NOT travel broken down: the
             // percentage only exists inside the placement's ldd, and the final figure arrives with
@@ -14552,6 +14554,8 @@ namespace Jondo.Unity.Server.Handlers
                 var table = DatabaseManager.GetMonsterDrops(monster.MonsterId, monster.GradeIndex);
                 foreach (var drop in Enumerable.Repeat(table, passes).SelectMany(t => t))
                 {
+                    // A boss's Dofus falls at its fixed Stasis rate, below, not at the table's (Managers.DofusDrops).
+                    if (Managers.DofusDrops.IsFixed(drop.ObjectId)) continue;
                     // A quest's item to whoever is on it.
                     if (!SeLoLleva(fight, drop.ReceiverCriterion, Held, monster.MonsterId)) continue;
 
@@ -14580,6 +14584,7 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     // The anomaly fragment's row is the client's display of it: rolled below instead.
                     if (drop.ObjectId == Managers.AnomalyLoot.Fragment) continue;
+                    if (Managers.DofusDrops.IsFixed(drop.ObjectId)) continue;
                     if (!SeLoLleva(fight, drop.ReceiverCriterion, Held, monster.MonsterId)) continue;
 
                     double probabilidad = extra > 0
@@ -14590,6 +14595,15 @@ namespace Jondo.Unity.Server.Handlers
                     loot.TryGetValue(drop.ObjectId, out int q);
                     loot[drop.ObjectId] = q + 1;
                     Own(drop.ReceiverCriterion, drop.ObjectId);
+                }
+
+                // And the boss's Dofus (docs/stasis-gameplay-spec.md §13): a fixed base rate at every
+                // grade, raised by prospecting only -- no challenge, Almanax, second pass or bonus.
+                foreach (var dofus in Managers.DofusDrops.For(monster.MonsterId))
+                {
+                    if (TirarPorcentaje() >= Managers.DofusDrops.Chance(dofus, prospecting)) continue;
+                    loot.TryGetValue(dofus.Item, out int q);
+                    loot[dofus.Item] = q + 1;
                 }
 
                 // And an anomaly fragment, at its own rate and nothing else's -- no challenge, no

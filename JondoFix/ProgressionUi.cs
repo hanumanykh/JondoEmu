@@ -80,7 +80,8 @@ namespace JondoFix
             }
 
             float now = UnityEngine.Time.unscaledTime;
-            if (_window == null && !_polling && now - _lastPoll >= PollEvery)
+            // The offers open DonPopup by themselves now; this window only opens on F9.
+            if (_window == null && !_polling && !DonPopup.HandlesOffers && now - _lastPoll >= PollEvery)
             {
                 _lastPoll = now;
                 _polling = true;
@@ -134,6 +135,8 @@ namespace JondoFix
                 window.style.left = new StyleLength(float.IsNaN(lw) || lw <= 0 ? 470f : Math.Max(0f, (lw - Width) / 2f));
                 window.style.top = new StyleLength(float.IsNaN(lh) || lh <= 0 ? 190f : Math.Max(0f, (lh - Height) / 2f));
 
+                // The header bar: level, Éclats, Jondo Coins (ProgressionUi.Panels.cs).
+                window.Add(TopBar());
                 var tabs = AdminItemsUi.Row();
                 tabs.style.paddingLeft = new StyleLength(24f);
                 tabs.style.paddingTop = new StyleLength(12f);
@@ -144,6 +147,7 @@ namespace JondoFix
                 tabs.Add(Button("Missions", false, () => ShowTab("missions")));
                 tabs.Add(Button("Pension", false, () => ShowTab("pension")));
                 tabs.Add(Button("Cartes", false, () => ShowTab("cartes")));
+                tabs.Add(Button("Éveil", false, () => ShowTab("eveil")));
                 // The farming and endgame tabs (/api/stasis/panel, ShowPanel): each is the server's commands' own answer.
                 tabs.style.flexWrap = new StyleEnum<Wrap>(Wrap.Wrap);
                 foreach (var (key, label) in PanelTabs) tabs.Add(Button(label, false, () => ShowTab(key)));
@@ -200,6 +204,7 @@ namespace JondoFix
             // progress shown is the server's of now, not that of the last visit.
             if (tab == "missions") AskMissions("stasis/missions", new Dictionary<string, object>());
             if (tab == "pension" || tab == "cartes") AskPension("pension/state", new Dictionary<string, object>());
+            if (tab == "eveil") AskEveil("");
             if (IsPanelTab(tab)) AskPanel("stasis/panel", new Dictionary<string, object> { ["tab"] = tab });
         }
 
@@ -217,16 +222,17 @@ namespace JondoFix
             _state = root;
             if (_page == null) return;
             _page.Clear();
-            _page.Add(Summary(root));
+            UpdateTopBar(root);
             switch (_tab)
             {
-                case "recherche": ShowResearch(root); break;
-                case "ascension": ShowRebirths(root); break;
-                case "sanctuaire": ShowHub(); break;
-                case "missions": ShowMissions(); break;
-                case "pension": ShowPension(); break;
-                case "cartes": ShowCards(); break;
-                case var panel when IsPanelTab(panel): ShowPanel(); break;
+                case "recherche": ShowResearchKit(root); break;
+                case "ascension": ShowRebirthsKit(root); break;
+                case "sanctuaire": ShowHubKit(); break;
+                case "missions": ShowMissionsKit(); break;
+                case "pension": ShowPensionKit(); break;
+                case "cartes": ShowCardsKit(); break;
+                case "eveil": ShowEveilKit(); break;
+                case var panel when IsPanelTab(panel): ShowPanelKit(); break;
                 default: ShowOffer(root); break;
             }
         }
@@ -255,6 +261,7 @@ namespace JondoFix
                 return;
             }
             int pending = Int(root, "pending");
+            if (DonPopup.HandlesOffers) _page.Add(Button("Ouvrir le choix de don", true, DonPopup.Open));
             _page.Add(Title($"{offer.GetProperty("kindLabel").GetString()} — niveau {(offer.TryGetProperty("shownLevel", out _) ? Int(offer, "shownLevel") : Int(offer, "level"))}" +
                             (pending > 1 ? $" ({pending} offres en attente)" : "")));
 
@@ -281,7 +288,7 @@ namespace JondoFix
             if (!root.TryGetProperty("spellPoints", out var points) || points.ValueKind != JsonValueKind.Object) return;
             _page.Add(Title($"Dons de sorts — {Int(points, "spent")}/{Int(points, "max")} points"));
             _page.Add(Hint($"Familles de sorts : {Int(points, "families")}/{Int(points, "maxFamilies")} · " +
-                           $"au plus {Int(points, "perFamily")} point(s) par famille à ce niveau. Offerts aux niveaux de sort (10, 30, 70...)."));
+                           $"au plus {Int(points, "perFamily")} point(s) par famille à ce niveau. Offerts aux niveaux 10, 30, 50 ... 190 et aux accomplissements."));
             foreach (var owned in points.GetProperty("owned").EnumerateArray())
             {
                 int maxRank = Int(owned, "maxRank");
@@ -318,6 +325,9 @@ namespace JondoFix
                 if (maxRank > 1) box.Add(AdminItemsUi.Label($"Rang {Int(card, "rank") + 1}/{maxRank}"));
             }
             else box.Add(AdminItemsUi.Label(card.GetProperty("name").GetString(), true));
+            // Kind and rarity (older servers send neither).
+            string tag = (Text(card, "cardKind") + " " + Text(card, "rarityLabel")).Trim();
+            if (tag.Length > 0) box.Add(Hint(tag));
             var description = AdminItemsUi.Label(card.GetProperty("description").GetString());
             description.style.marginTop = new StyleLength(6f);
             description.style.marginBottom = new StyleLength(10f);
@@ -384,8 +394,9 @@ namespace JondoFix
             Ask("stasis/hub", new Dictionary<string, object> { ["command"] = command, ["args"] = args }, r =>
             {
                 _hub = r;
+                NoteCoins(r);
                 if (_state is JsonElement s) Show(s);
-                string text = Text(r, "text");
+                string text = Clean(Text(r, "text"));
                 if (text.Length > 0) Say(text.Length > 160 ? text.Substring(0, 157) + "..." : text);
             });
         }
@@ -543,7 +554,7 @@ namespace JondoFix
                 if (root.TryGetProperty("missions", out var inner) && inner.ValueKind == JsonValueKind.Object)
                 {
                     _missions = inner.Clone();
-                    Say(Text(root, "said"));
+                    Say(Clean(Text(root, "said")));
                 }
                 else _missions = root;
                 if (_tab == "missions" && _state is JsonElement s) Show(s);
@@ -642,7 +653,7 @@ namespace JondoFix
         private static readonly (string Key, string Label)[] PanelTabs =
         {
             ("jauge", "Jauge"), ("comptoir", "Comptoir"), ("maree", "Marées"),
-            ("paliers", "Paliers"), ("event", "Événements"), ("fissure", "Fissure"),
+            ("paliers", "Paliers"), ("event", "Événements"), ("fissure", "Fissure"), ("stasis", "Forge Stasis"),
         };
 
         private static JsonElement? _panel;
@@ -653,15 +664,17 @@ namespace JondoFix
         private static void AskPanel(string route, Dictionary<string, object> body)
         {
             string asked = _tab;
+            body["structured"] = "1";
             Ask(route, body, root =>
             {
                 if (Text(root, "tab") != asked) return;
                 _panel = root;
+                NoteCoins(root);
                 if (_tab == asked && _state is JsonElement state) Show(state);
                 var said = new List<string>();
                 if (root.TryGetProperty("said", out var s) && s.ValueKind == JsonValueKind.Array)
                     foreach (var line in s.EnumerateArray()) said.Add(line.GetString() ?? "");
-                if (said.Count > 0) Say(string.Join(" ", said));
+                if (said.Count > 0) Say(Clean(string.Join(" ", said)));
             });
         }
 

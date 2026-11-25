@@ -149,7 +149,7 @@ namespace Jondo.Unity.Server.Managers
             var command = connection.CreateCommand();
             command.CommandText = "SELECT Text FROM Translations WHERE Key = $key;";
             command.Parameters.AddWithValue("$key", key.ToString(CultureInfo.InvariantCulture));
-            return command.ExecuteScalar() as string ?? "";
+            return GameText.Of(key, command.ExecuteScalar() as string);
         }
 
         /// <summary>Lower case and without accents: "Barrio de los artesanos" is found by "artesano".</summary>

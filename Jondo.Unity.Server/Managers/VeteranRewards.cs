@@ -132,7 +132,7 @@ namespace Jondo.Unity.Server.Managers
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT Text FROM Translations WHERE Key = $key;";
             command.Parameters.AddWithValue("$key", TitleKey.ToString());
-            return command.ExecuteScalar() as string ?? "";
+            return GameText.Of(Convert.ToInt64(TitleKey), command.ExecuteScalar() as string);
         }
 
         private static void EnsureTable()

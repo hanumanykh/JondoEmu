@@ -19,6 +19,12 @@ namespace Jondo.Unity.Server.Managers
         public int MinFamilySize { get; set; } = 3;
         public int MaxFamilySize { get; set; } = 40;
         public List<DonEffect> FamilyBonuses { get; set; } = new();
+        /// <summary>The level a card's monster needs for each rarity: Commune, Rare, Épique, Légendaire.</summary>
+        public List<int> RarityMinLevels { get; set; } = new() { 1, 60, 120, 180 };
+        /// <summary>The Raffineur: at most this many cards in one lot.</summary>
+        public int RefinerMaxCards { get; set; } = 10;
+        /// <summary>The Raffineur's best chance, in %, for a card of Rare, Épique, Légendaire.</summary>
+        public List<double> RefinerCaps { get; set; } = new() { 75, 45, 25 };
     }
 
     /// <summary>A card: one monster of a family (a monster race).</summary>
@@ -232,8 +238,73 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>For the tests: the account a character belongs to.</summary>
         internal static void Bind(long characterId, long accountId) => _accountOf[characterId] = accountId;
 
+        // ─── Raffineur de cartes ──────────────────────────────────────────────────────────
+
+        internal static readonly string[] RarityNames = { "Commune", "Rare", "Épique", "Légendaire" };
+
+        /// <summary>A card's rarity, 0 (Commune) to 3 (Légendaire), by its monster's level.</summary>
+        internal static int RarityOf(CardMonster card, CardsFile content)
+        {
+            int rarity = 0;
+            var levels = content.RarityMinLevels;
+            for (int i = 1; i < Math.Min(levels.Count, RarityNames.Length); i++)
+                if (card.Level >= levels[i]) rarity = i;
+            return rarity;
+        }
+
+        internal static string RarityName(int rarity) => RarityNames[Math.Clamp(rarity, 0, RarityNames.Length - 1)];
+
+        /// <summary>
+        /// The Raffineur's chance, in %, that a lot of <paramref name="count"/> copies of
+        /// <paramref name="card"/> gives one card of the next rarity: the rarity's cap (Rare 75,
+        /// Épique 45, Légendaire 25) times the lot's worth against a full lot of the next rarity's
+        /// weakest cards (RefinerMaxCards x their sell price). 0 for a Légendaire or an empty lot.
+        /// </summary>
+        internal static double RefineChance(CardMonster card, int count, CardsFile content)
+        {
+            int target = RarityOf(card, content) + 1;
+            if (count <= 0 || target >= RarityNames.Length || target - 1 >= content.RefinerCaps.Count) return 0;
+            count = Math.Min(count, Math.Max(1, content.RefinerMaxCards));
+            double cap = content.RefinerCaps[target - 1];
+            int floor = target < content.RarityMinLevels.Count ? content.RarityMinLevels[target] : card.Level;
+            double full = Math.Max(1, content.RefinerMaxCards) * (double)(content.SellBaseOrbes + content.SellPerLevelOrbes * floor);
+            double lot = count * (double)SellPrice(card, content);
+            return full <= 0 ? cap : Math.Round(cap * Math.Min(1.0, lot / full), 2);
+        }
+
+        /// <summary>
+        /// The Raffineur: stakes <paramref name="count"/> duplicates (1 to RefinerMaxCards) of a card;
+        /// on success one card of the next rarity (of its family when it has one) comes into hand,
+        /// on failure the lot is lost. Result "ok"/"echec" with the card won, or why not (nothing taken).
+        /// </summary>
+        internal static (string Result, int Won, double Chance) Refine(CardAccount account, int monsterId, int count,
+            IReadOnlyList<CardFamily> families, CardsFile content, Random dice)
+        {
+            var card = families.SelectMany(f => f.Monsters).FirstOrDefault(m => m.Id == monsterId);
+            if (card == null) return ("carte-inconnue", 0, 0);
+            if (count < 1 || count > Math.Max(1, content.RefinerMaxCards)) return ("lot-taille", 0, 0);
+            int target = RarityOf(card, content) + 1;
+            if (target >= RarityNames.Length) return ("legendaire", 0, 0);
+            if (Duplicates(account, monsterId) < count) return ("doublons", 0, 0);
+            var pool = families.Where(f => f.Race == card.Family).SelectMany(f => f.Monsters)
+                               .Where(m => RarityOf(m, content) == target).ToList();
+            if (pool.Count == 0) pool = families.SelectMany(f => f.Monsters).Where(m => RarityOf(m, content) == target)
+                                                .GroupBy(m => m.Id).Select(g => g.First()).ToList();
+            if (pool.Count == 0) return ("aucune-cible", 0, 0);
+            double chance = RefineChance(card, count, content);
+            Take(account, monsterId, count);
+            if (dice.NextDouble() * 100.0 >= chance) return ("echec", 0, chance);
+            int won = pool[dice.Next(pool.Count)].Id;
+            AddLoose(account, new[] { won });
+            return ("ok", won, chance);
+        }
+
         internal static string RefusalText(string reason) => reason switch
         {
+            "lot-taille" => $"Le Raffineur prend de 1 à {Math.Max(1, Content.RefinerMaxCards)} cartes.",
+            "legendaire" => "Une carte Légendaire ne se raffine pas.",
+            "aucune-cible" => "Aucune carte de la rareté supérieure n'existe.",
+            "doublons" => "Pas assez de doublons de cette carte : seuls les doublons se misent (pas l'exemplaire à coller).",
             "carte-absente" => "Vous n'avez pas cette carte (voir .cartes).",
             "deja-collee" => "Cette carte est déjà dans le classeur : le doublon se vend (.cartes vendre).",
             "aucun-paquet" => "Vous n'avez aucun paquet de cartes.",

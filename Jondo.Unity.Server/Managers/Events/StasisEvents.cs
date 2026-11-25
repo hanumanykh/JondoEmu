@@ -46,8 +46,10 @@ namespace Jondo.Unity.Server.Managers
     /// dungeon brackets by category are not enforced; the category is the character's.
     /// </para>
     /// <para>
-    /// POUTCH. A punching bag (<see cref="MobSpawnManager.PunchingBag"/>) is planted on the Kanojedo
-    /// map (99090957, whose fights follow the training rulebook: no loot, the bag stays). A solo
+    /// POUTCH. A punching bag (<see cref="MobSpawnManager.PunchingBag"/>) is planted on «poutch.map»,
+    /// the inner hall of the Pandawushu Dojo (209455110), a room no quest, NPC or monster uses; its
+    /// fights follow the kanojedo's training rulebook (<see cref="IsPoutchRoom"/>: no loot, the bag
+    /// stays) and are held on its twin board 209585672 (content/fights/arenas.json). A solo
     /// fight there against it scores the damage dealt (FightStatistics.TotalDamage), counted whole
     /// when it took at most «maxTurns» turns and brought back to «maxTurns» turns' worth otherwise
     /// (<see cref="PoutchScore"/>), times the class coefficient of the spec. The fight ends however
@@ -131,6 +133,13 @@ namespace Jondo.Unity.Server.Managers
 
         public static Settings Current => _settings;
         public static Running? Now => _running;
+
+        /// <summary>
+        /// Whether a map is the Concours Poutch's training room («poutch.map»). Its fights follow the
+        /// kanojedo's training rulebook (Kanojedo.IsDojo): the room has no master puch to say so.
+        /// </summary>
+        public static bool IsPoutchRoom(long mapId)
+            => mapId > 0 && _settings.Events.TryGetValue(Poutch, out var def) && def.Map == mapId;
 
         // ─── Reading ────────────────────────────────────────────────────────────────────────
 
@@ -483,10 +492,21 @@ namespace Jondo.Unity.Server.Managers
 
         // ─── The Traque ─────────────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Whether a map may hide one of the Traque's NPCs: outdoors, on the Twelve's own world map
+        /// (worldMap 1) and not a fight board. Without the world map a third of the subareas drawn
+        /// were somewhere else -- the dream lands (Valdi's Nightmare, worldMap 19), Frigost's island,
+        /// the dimensions, the Koliseo's boards at [-13,-29] --, out of most players' reach and with
+        /// [x,y] clues that point at a square of Amakna's world instead.
+        /// </summary>
+        internal static bool TraqueGround(MapInfo m)
+            => m.Outdoor && m.SubAreaId > 0 && m.WorldMap == 1
+               && m.Flags != MapManager.ArenaFlags && m.Flags != MapManager.RaidArenaFlags;
+
         private static bool DrawSpots(Running run, EventDef def)
         {
             var bySubarea = MapManager.Maps.Values
-                .Where(m => m.Outdoor && m.SubAreaId > 0 && Interactives.LevelOfSubArea(m.SubAreaId) >= def.MinSubareaLevel)
+                .Where(m => TraqueGround(m) && Interactives.LevelOfSubArea(m.SubAreaId) >= def.MinSubareaLevel)
                 .GroupBy(m => m.SubAreaId)
                 .Where(g => g.Count() >= def.Hidden * 2)
                 .ToList();

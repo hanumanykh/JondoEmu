@@ -188,7 +188,8 @@ namespace Jondo.Unity.Server.Handlers
                 else
                 {
                     string rarity = Pension.HatchRarity(egg.Rarity, content, Random.Shared);
-                    gid = Pension.DrawPet(rarity, content, Random.Shared);
+                    // A pet chosen in a don «Pension» (Dons) hatches as itself; the others are drawn.
+                    gid = egg.Species > 0 ? egg.Species : Pension.DrawPet(rarity, content, Random.Shared);
                     if (gid == 0) continue;
                     effects = Pets.Fresh(gid);
                     what = $"{ItemName(gid)} ({Pension.RarityLabel(rarity)}" + (rarity != egg.Rarity ? ", rareté augmentée !" : "") + ")";
@@ -364,6 +365,31 @@ namespace Jondo.Unity.Server.Handlers
                     if (session.Stream != null) await PayOrbesAsync(session.Stream, price);
                     return $"{count} doublon(s) de {name} vendu(s) pour {price:N0} {OrbeLabel}.";
                 }
+                case "raffiner":
+                {
+                    // The Raffineur (§14): n duplicates of one card for a chance at the next rarity.
+                    var words = args.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+                    int count = 1;
+                    if (words.Count > 1 && int.TryParse(words[^1], out int n)) { count = n; words.RemoveAt(words.Count - 1); }
+                    string result, staked;
+                    int won;
+                    double chance;
+                    lock (binder.Gate)
+                    {
+                        if (CardIdOf(string.Join(' ', words), binder) is not int id || MonsterCards.CardOf(id) is not { } card)
+                            return MonsterCards.RefusalText("carte-inconnue");
+                        (result, won, chance) = MonsterCards.Refine(binder, id, count, MonsterCards.Families, content, Random.Shared);
+                        staked = $"{count} × {card.Name} ({MonsterCards.RarityName(MonsterCards.RarityOf(card, content))})";
+                    }
+                    if (result != "ok" && result != "echec") return MonsterCards.RefusalText(result);
+                    MonsterCards.Save(binder);
+                    if (result == "echec")
+                        return $"Raffinage raté ({chance:0.##} % de chance) : le lot {staked} est perdu.";
+                    var prize = MonsterCards.CardOf(won);
+                    return $"Raffinage réussi ({chance:0.##} % de chance) ! {staked} donne {prize?.Name ?? won.ToString()}" +
+                           (prize != null ? $" ({MonsterCards.RarityName(MonsterCards.RarityOf(prize, content))})" : "") +
+                           ". Collez-la avec .cartes coller.";
+                }
                 case "acheter":
                     if (!EventTokens.TrySpend(session.CharacterId, content.PackTokens)) return MonsterCards.RefusalText("jetons");
                     lock (binder.Gate) binder.Packs.Add(session.State.CharacterLevel);
@@ -533,7 +559,7 @@ namespace Jondo.Unity.Server.Handlers
                     }).ToList(),
                     animals = animals.Select(a => new
                     {
-                        uid = a.Uid, name = ItemName(a.Template), level = AnimalLevel(a), mount = Rides.IsRide(a.Template),
+                        uid = a.Uid, gid = a.Template, name = ItemName(a.Template), level = AnimalLevel(a), mount = Rides.IsRide(a.Template),
                         generation = Breeding.RideByItem(a.Template)?.Generation ?? 0,
                         litters = Breeding.RideByItem(a.Template) is { } r ? Pension.LittersLeft(account, a.Uid, r.Generation, content) : 0,
                         studied = account.Study.Contains(a.Uid), worn = a.Position == Mounts.Slot,
@@ -554,10 +580,21 @@ namespace Jondo.Unity.Server.Handlers
                             var bonus = MonsterCards.BonusOf(f, MonsterCards.Content);
                             return new { name = f.Name, glued = g, total = t, bonus = bonus == null ? "" : $"+{bonus.Value} {bonus.Stat}" };
                         }).ToList(),
-                    loose = binder.Loose.Select(kv => new
+                    refinerMax = MonsterCards.Content.RefinerMaxCards,
+                    loose = binder.Loose.Select(kv =>
                     {
-                        id = kv.Key, name = MonsterCards.CardOf(kv.Key)?.Name ?? kv.Key.ToString(), count = kv.Value,
-                        glued = binder.Glued.Contains(kv.Key),
+                        var card = MonsterCards.CardOf(kv.Key);
+                        int rarity = card == null ? 0 : MonsterCards.RarityOf(card, MonsterCards.Content);
+                        // The Raffineur's lot: every duplicate, up to its maximum, and that lot's chance.
+                        int lot = Math.Min(MonsterCards.Duplicates(binder, kv.Key), Math.Max(1, MonsterCards.Content.RefinerMaxCards));
+                        return new
+                        {
+                            id = kv.Key, name = card?.Name ?? kv.Key.ToString(), count = kv.Value,
+                            glued = binder.Glued.Contains(kv.Key),
+                            rarity = MonsterCards.RarityName(rarity),
+                            refineLot = card == null || rarity >= MonsterCards.RarityNames.Length - 1 ? 0 : lot,
+                            refineChance = card == null || lot <= 0 ? 0.0 : MonsterCards.RefineChance(card, lot, MonsterCards.Content),
+                        };
                     }).ToList(),
                 };
             }

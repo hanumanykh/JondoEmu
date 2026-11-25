@@ -42,6 +42,13 @@ namespace Jondo.Unity.Server.Managers
     /// his heroes and companion), not to those who join during placement.
     /// </para>
     /// <para>
+    /// THE ARENA. «arenaMap» is 202901510, the Dimensional Voyagers' Tower of the «Futuro no
+    /// previsto» (subarea 935): the rift-watchers' tower seen in a future that never came, a map no
+    /// quest, NPC, door or border uses, fought on its twin board 202903046 (content/fights/arenas.json).
+    /// Nothing leads in or out of it, so the party's other members come with «.fissure rejoindre» and
+    /// everyone leaves with «.fissure quitter» (CommandHandler.Events), back where they came from.
+    /// </para>
+    /// <para>
     /// THE DOFUS. Every won wave adds to the character's count; the ELIGIBLE ones (spec: waves of 5
     /// and over in Abîme, «dofus.eligibleBands» and «eligibleFromWave») to the count towards the
     /// Dofus: one is owed every <see cref="DofusRules.WavesNeeded"/> of them and claimed with

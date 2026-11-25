@@ -690,6 +690,15 @@ namespace Jondo.Unity.Server.Managers
         private readonly ConcurrentDictionary<int, string> _monsterNames = new();
         private readonly object _gate = new();
 
+        /// <summary>A monster a farm mission may send the player after: not a boss, mini-boss nor quest monster.</summary>
+        private static bool IsHuntable(int monsterId)
+        {
+            long flags = MonsterFlags.Of(monsterId);
+            if (flags < 0) return true;
+            const long boss = 4, miniBoss = 8, quest = 16;
+            return (flags & (boss | miniBoss | quest)) == 0;
+        }
+
         public IReadOnlyList<(int SubArea, int Level)> Zones
         {
             get
@@ -698,8 +707,10 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (_zones != null) return _zones;
                     var list = new List<(int, int)>();
+                    // Hunting zones only: a subarea whose monsters include a quest monster or a
+                    // boss (Rocher des Sacrifiés and the like) is a quest or story place, not a farm.
                     foreach (var (subArea, roster) in Economy.Zones.Rosters)
-                        if (roster.Count > 0) list.Add((subArea, Economy.Zones.LevelOf(roster)));
+                        if (roster.Count > 0 && roster.All(IsHuntable)) list.Add((subArea, Economy.Zones.LevelOf(roster)));
                     return _zones = list;
                 }
             }

@@ -17,7 +17,7 @@ namespace JondoFix
             => Ask(route, body, root =>
             {
                 _pension = root;
-                string said = Text(root, "message");
+                string said = Clean(Text(root, "message"));
                 if (said.Length > 0) Say(said);
                 if ((_tab == "pension" || _tab == "cartes") && _state is JsonElement s) Show(s);
             }, quiet: route == "pension/state");
@@ -116,13 +116,27 @@ namespace JondoFix
                                (Text(f, "bonus").Length > 0 ? $" · bonus {Text(f, "bonus")}" + (glued == total ? " (actif)" : "") : "")));
             }
             _page.Add(Title("En main"));
+            _page.Add(Hint($"Raffineur de cartes : misez de 1 à {System.Math.Max(1, Int(c, "refinerMax"))} doublons d'une carte pour une carte de la rareté supérieure " +
+                           "(max Rare 75 %, Épique 45 %, Légendaire 25 %, selon la valeur du lot) ; échec = lot perdu. .cartes raffiner <carte> <n>"));
             foreach (var card in c.GetProperty("loose").EnumerateArray())
             {
                 string id = Int(card, "id").ToString();
                 bool already = card.GetProperty("glued").GetBoolean();
-                _page.Add(Line($"{Text(card, "name")} x{Int(card, "count")}" + (already ? " (déjà collée)" : ""),
+                string rarity = Text(card, "rarity");
+                var buttons = new System.Collections.Generic.List<(string, bool, System.Action)>
+                {
                     already ? ("Vendre un doublon", false, () => PensionDo("cartes", "vendre " + id))
-                            : ("Coller", true, () => PensionDo("cartes", "coller " + id))));
+                            : ("Coller", true, () => PensionDo("cartes", "coller " + id)),
+                };
+                // The Raffineur (§14): every duplicate up to the lot's maximum, at the chance the server reckons.
+                int lot = Int(card, "refineLot");
+                if (lot > 0)
+                {
+                    double chance = card.TryGetProperty("refineChance", out var rc) && rc.ValueKind == JsonValueKind.Number ? rc.GetDouble() : 0;
+                    buttons.Add(($"Raffiner {lot} ({chance:0.#} %)", false, () => PensionDo("cartes", $"raffiner {id} {lot}")));
+                }
+                _page.Add(Line($"{Text(card, "name")} x{Int(card, "count")}" + (rarity.Length > 0 ? $" · {rarity}" : "") +
+                               (already ? " (déjà collée)" : ""), buttons.ToArray()));
             }
         }
     }

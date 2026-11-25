@@ -15,11 +15,11 @@
   "rotation": [ "timeattack", "poutch", "traque" ],
   "shop": [
     { "id": "rune", "name": "Rune Do Sort cumulable (+1 % dégâts, 4 % max par objet)", "price": 250, "rune": true },
-    { "id": "rappel", "name": "Pócima de recuerdo x5", "price": 10, "item": 548, "quantity": 5 },
-    { "id": "orbe", "name": "Orbe regenerativo", "price": 40, "item": 17273, "quantity": 1 },
-    { "id": "wab", "name": "Gorro de black wab (apparence)", "price": 60, "item": 9567, "quantity": 1 },
-    { "id": "kalipsis", "name": "Gorro Kalipsis (apparence)", "price": 60, "item": 11043, "quantity": 1 },
-    { "id": "krosmaster", "name": "Gorro Krosmaster (apparence)", "price": 60, "item": 13483, "quantity": 1 }
+    { "id": "rappel", "name": "Potion de Rappel x5", "price": 10, "item": 548, "quantity": 5 },
+    { "id": "orbe", "name": "Orbe régénérant", "price": 40, "item": 17273, "quantity": 1 },
+    { "id": "wab", "name": "Coiffe du Black Wab (apparence)", "price": 60, "item": 9567, "quantity": 1 },
+    { "id": "kalipsis", "name": "Chapeau Kalipse (apparence)", "price": 60, "item": 11043, "quantity": 1 },
+    { "id": "krosmaster", "name": "Krosmapeau (apparence)", "price": 60, "item": 13483, "quantity": 1 }
   ],
   "timeattack": {
     "name": "Time Attack",
@@ -37,14 +37,15 @@
     "name": "Concours Poutch",
     "minutes": 60,
     "hour": 17,
-    "map": 99090957,
+    "_map": "209455110 = «Pandawushu Dojo» [20,-31], subarea 951 «Pueblo de Pandala»: the inner hall of the dojo, behind the quest tatami (207622146). No NPC, quest, monster or zaap of its own, 185 walkable cells; its fights are held on its twin board 209585672 (content/fights/arenas.json, 151/151 cells alike) under the kanojedo's training rulebook (StasisEvents.IsPoutchRoom). Was the Amakna kanojedo 99090957, which its master and six puchs already use. See docs/stasis-maps.md.",
+    "map": 209455110,
     "maxTurns": 3,
     "classCoefficients": { "1": 1.25, "7": 1.25, "14": 1.25, "8": 0.8, "18": 0.8 },
     "rewards": { "I": [ 15, 10, 5 ], "II": [ 25, 15, 10 ], "III": [ 40, 30, 20 ] },
     "botCount": 12,
     "botMin": 2500,
     "botMax": 14000,
-    "start": "Concours Poutch ouvert pour {minutes} minutes ! Frappez le Poutch du kanojedo (.event aller) : vos dégâts sur 1 à 3 tours comptent. Classement : .event",
+    "start": "Concours Poutch ouvert pour {minutes} minutes ! Frappez le Poutch du dojo Pandawushu (.event aller) : vos dégâts sur 1 à 3 tours comptent. Classement : .event",
     "end": "Fin du Concours Poutch. Podium : {podium}"
   },
   "traque": {
@@ -54,6 +55,7 @@
     "hidden": 5,
     "clueEveryMinutes": 5,
     "minSubareaLevel": 1,
+    "_maps": "No fixed map: «hidden» outdoor maps of one subarea are drawn each time, only on the Twelve's own world map (worldMap 1), never a fight board (StasisEvents.TraqueGround) -- the dream lands, Frigost's island, the dimensions and the Koliseo's boards are left out, their [x,y] being another world's. 155 subareas qualify. See docs/stasis-maps.md.",
     "rewards": { "I": [ 75, 50, 25 ], "II": [ 75, 50, 25 ], "III": [ 75, 50, 25 ] },
     "botCount": 8,
     "botMin": 0,

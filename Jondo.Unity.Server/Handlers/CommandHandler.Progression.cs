@@ -87,17 +87,62 @@ namespace Jondo.Unity.Server.Handlers
         {
             var profile = ProgressionStore.Of(session.CharacterId);
             string result;
+            ChosenDon? kept;
             lock (profile.Gate)
             {
-                result = Dons.Pick(profile, ProgressionContent.Current, index, stat, out var kept);
+                result = Dons.Pick(profile, ProgressionContent.Current, index, stat, out kept);
                 if (result == "ok")
                 {
                     ProgressionStore.Save(profile);
-                    Console.WriteLine($"[Progression] {session.State.CharacterName} keeps {kept!.Card} at level {kept.Level}.");
+                    Console.WriteLine($"[Progression] {session.State.CharacterName} keeps {kept!.Card} ({Dons.RarityLabel(kept.Rarity)}) at level {kept.Level}.");
                 }
             }
+            // A don «Pension»: its egg goes to the account's pension.
+            if (result == "ok" && kept != null && Dons.PensionChoiceOf(kept.Card) is { } egg)
+                GivePensionDonEgg(session, Dons.RealLevel(kept.Level), egg.Kind, egg.Choice);
             if (result == "ok") await RefreshAfterDonAsync(session);
             return result;
+        }
+
+        /// <summary>The egg of a don «Pension» picked, into the account's pension (once per character and level).</summary>
+        private static void GivePensionDonEgg(GameSession session, int level, string kind, int choice)
+        {
+            if (session.AccountId <= 0) return;
+            var don = Dons.PensionDonAt(level, ProgressionContent.Current);
+            var account = Pension.Of(session.AccountId);
+            PensionEgg? egg;
+            lock (account.Gate) egg = Pension.GiveDonEgg(account, session.CharacterId, level, kind, choice, don?.Rarity ?? Pension.Starter);
+            if (egg == null)
+            {
+                Console.WriteLine($"[Progression] {session.State.CharacterName}: the don «Pension» of level {level} was already given.");
+                return;
+            }
+            Pension.Save(account);
+            Console.WriteLine($"[Progression] {session.State.CharacterName} gets egg #{egg.Id} ({Pension.Describe(egg, Pension.Content)}) from the don «Pension» of level {level}.");
+        }
+
+        /// <summary>
+        /// What the character should have and may lack (Dons.EnsureOffers): the starting offer,
+        /// the passives past 50, the dons «Pension» the account's pension has not given. Asked at
+        /// every look at the dons -- the window's polls, after each fight and at login, and «.dons».
+        /// </summary>
+        internal static void EnsureDonOffers(GameSession session)
+        {
+            if (session.CharacterId <= 0) return;
+            var profile = ProgressionStore.Of(session.CharacterId);
+            var account = session.AccountId > 0 ? Pension.Of(session.AccountId) : null;
+            long character = session.CharacterId;
+            Func<int, bool>? given = account == null ? null : level =>
+            {
+                lock (account.Gate) return Pension.GiftGiven(account, character, level);
+            };
+            lock (profile.Gate)
+            {
+                int changed = Dons.EnsureOffers(profile, ProgressionContent.Current, session.State.Breed, session.State.CharacterLevel, given);
+                if (changed == 0) return;
+                ProgressionStore.Save(profile);
+                Console.WriteLine($"[Progression] {session.State.CharacterName}: {changed} offer(s) of dons given or dropped at a look, {profile.Pending.Count} waiting.");
+            }
         }
 
         /// <summary>Rerolls the oldest offer, free or for kamas. "ok", or the refusal's code.</summary>
@@ -232,10 +277,13 @@ namespace Jondo.Unity.Server.Handlers
         {
             var state = session.State;
             var content = ProgressionContent.Current;
+            Dons.ItemNameOf = ItemName;
+            EnsureDonOffers(session);
             var profile = ProgressionStore.Of(session.CharacterId);
             lock (profile.Gate)
             {
                 var offer = profile.Pending.FirstOrDefault();
+                bool freeReroll = Dons.RerollsLeft(profile, content) > 0;
                 string? cannotAscend = Ascension.CannotAscend(profile, state.CharacterLevel, content);
                 string? cannotEvolve = Ascension.CannotEvolve(profile, state.CharacterLevel, content);
                 int catchUp = (profile.Ascensions > 0 || profile.Evolved) && state.CharacterLevel < profile.BestLevel
@@ -249,6 +297,8 @@ namespace Jondo.Unity.Server.Handlers
                     ascensions = profile.Ascensions,
                     evolved = profile.Evolved,
                     catchUp,
+                    // The popup opens on an offer only out of a fight.
+                    fight = state.IsInFight,
                     discovery = Dons.DiscoveryPercent(profile, content),
                     pending = profile.Pending.Count,
                     freeRerolls = Dons.RerollsLeft(profile, content),
@@ -264,11 +314,16 @@ namespace Jondo.Unity.Server.Handlers
                         kind = offer.Kind,
                         kindLabel = Dons.KindLabel(offer.Kind),
                         rerolled = offer.Rerolled,
-                        canReroll = !offer.Rerolled && offer.Kind != Dons.KindPassive,
-                        rerollCost = Dons.RerollsLeft(profile, content) > 0 ? 0 : OrbePrice(Dons.RerollCost(Dons.RealLevel(offer.Level), content)),
+                        rerollable = Dons.IsRerollable(offer.Kind),
+                        canReroll = !offer.Rerolled && Dons.IsRerollable(offer.Kind),
+                        freeReroll,
+                        rerollCost = freeReroll ? 0 : OrbePrice(Dons.RerollCost(Dons.RealLevel(offer.Level), content)),
                         cards = offer.Cards.Select((card, i) =>
                         {
-                            var (name, description) = Dons.Describe(card, profile, content);
+                            int rarity = offer.RarityAt(i);
+                            bool rated = Dons.HasRarity(offer.Kind, content);
+                            var (name, description) = Dons.Describe(card, profile, content, rarity);
+                            var icon = Dons.IconOf(card, content);
                             // A spell don card carries its spell and its effect apart, for the
                             // window to draw them as a spell card rather than as a line of text.
                             var spellDon = SpellDons.DefinitionOf(card, content)?.Don;
@@ -278,7 +333,15 @@ namespace Jondo.Unity.Server.Handlers
                                 id = card,
                                 name,
                                 description,
-                                characteristic = string.Equals(card, content.Dons.CharacteristicCard.Id, StringComparison.OrdinalIgnoreCase),
+                                // Commun / Rare / Légendaire; "" for the offers without rarity (spell, passive, Pension, accomplishment).
+                                rarity = rated ? Dons.RarityKey(rarity) : "",
+                                rarityLabel = rated ? Dons.RarityLabel(rarity) : "",
+                                cardKind = Dons.CardKindLabel(card, content),
+                                // The icon, resolved by the client from its own data (Dons.IconOf).
+                                iconKind = icon.Kind,
+                                iconId = icon.Id,
+                                iconGlyph = icon.Glyph,
+                                characteristic = Dons.IsCharacteristicCard(card, content),
                                 spell = spellDon?.Spell ?? 0,
                                 spellName = spellDon?.SpellName ?? "",
                                 effect = spellDon == null ? "" : SpellDons.EffectText(spellDon, spellDon.Value),
@@ -297,7 +360,13 @@ namespace Jondo.Unity.Server.Handlers
                         owned = OwnedSpellDons(profile, content).Select(o => new { spellName = o.Don.SpellName, effect = o.Effect, rank = o.Rank, maxRank = o.Don.MaxRank }).ToList(),
                     },
                     characteristics = content.Dons.CharacteristicCard.Stats
-                        .Select(s => new { key = s, label = Dons.StatLabels.GetValueOrDefault(s, s) }).ToList(),
+                        .Select(s => new
+                        {
+                            key = s,
+                            label = Dons.StatLabels.GetValueOrDefault(s, s),
+                            statId = Dons.StatIds.GetValueOrDefault(s),
+                            iconGlyph = Dons.StatGlyph(Dons.StatIds.GetValueOrDefault(s)),
+                        }).ToList(),
                     bonuses = Dons.BonusesOf(profile, content).OrderBy(kv => kv.Key)
                         .Select(kv => new { stat = Dons.StatName(kv.Key), value = kv.Value }).ToList(),
                     research = content.Research.Select(r => new
@@ -333,6 +402,8 @@ namespace Jondo.Unity.Server.Handlers
         {
             var state = session.State;
             var content = ProgressionContent.Current;
+            Dons.ItemNameOf = ItemName;
+            EnsureDonOffers(session);
             var profile = ProgressionStore.Of(session.CharacterId);
             var text = new StringBuilder();
             lock (profile.Gate)
@@ -350,12 +421,14 @@ namespace Jondo.Unity.Server.Handlers
                     return text.ToString();
                 }
                 text.Append($"{profile.Pending.Count} offre(s) en attente. {Dons.KindLabel(offer.Kind)} du niveau {Dons.RealLevel(offer.Level)} :");
+                bool rated = Dons.HasRarity(offer.Kind, content);
                 for (int i = 0; i < offer.Cards.Count; i++)
                 {
-                    var (name, description) = Dons.Describe(offer.Cards[i], profile, content);
-                    text.Append($"\n{i + 1}. {name} — {description}");
+                    var (name, description) = Dons.Describe(offer.Cards[i], profile, content, offer.RarityAt(i));
+                    string rarity = rated ? $" [{Dons.RarityLabel(offer.RarityAt(i))}]" : "";
+                    text.Append($"\n{i + 1}. {name}{rarity} — {description}");
                 }
-                string reroll = offer.Rerolled || offer.Kind == Dons.KindPassive ? "relance indisponible"
+                string reroll = offer.Rerolled || !Dons.IsRerollable(offer.Kind) ? "relance indisponible"
                     : Dons.RerollsLeft(profile, content) > 0 ? "relance gratuite disponible"
                     : $"relance : {OrbePrice(Dons.RerollCost(Dons.RealLevel(offer.Level), content))} {OrbeLabel}";
                 text.Append($"\n.don <n> [caractéristique] pour choisir, .don relance ({reroll}), .don refonte <de> <vers> ({Dons.RepicksLeft(profile, content)} restante(s)).");

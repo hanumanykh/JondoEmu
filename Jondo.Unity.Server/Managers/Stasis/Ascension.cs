@@ -159,8 +159,8 @@ namespace Jondo.Unity.Server.Managers
             profile.Eclats -= a.EvolutionEclats;
             profile.Evolved = true;
             profile.BestLevel = Math.Max(profile.BestLevel, from);
-            profile.Dons.RemoveAll(d => d.Level > a.EvolutionKeepDonsUpTo);
-            profile.Pending.RemoveAll(o => o.Level > a.EvolutionReturnLevel);
+            profile.Dons.RemoveAll(d => Dons.RealLevel(d.Level) > a.EvolutionKeepDonsUpTo);
+            profile.Pending.RemoveAll(o => Dons.RealLevel(o.Level) > a.EvolutionReturnLevel);
             profile.RerollsUsed = 0;
             profile.RepicksUsed = 0;
             ResetCharacteristics(state, a.EvolutionReturnLevel);

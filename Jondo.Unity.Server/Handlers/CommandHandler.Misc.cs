@@ -78,12 +78,16 @@ namespace Jondo.Unity.Server.Handlers
                 ["paliers"] = ("Paliers et donjons", new[] { ".paliers", ".donjons", ".donjon options" }),
                 ["event"] = ("Événements et jetons", new[] { ".event", ".jetons" }),
                 ["fissure"] = ("Fissure", new[] { ".fissure" }),
+                // Widgets only (CommandHandler.PanelViews.cs): no chat answer to show.
+                ["stasis"] = ("Forge Stasis", Array.Empty<string>()),
+                ["alertes"] = ("Alertes", Array.Empty<string>()),
             };
 
         /// <summary>The commands a tab's button may type.</summary>
         internal static readonly HashSet<string> PanelCommands = new(StringComparer.OrdinalIgnoreCase)
         {
             ".jauge", ".comptoir", ".maree", ".paliers", ".donjons", ".donjon", ".event", ".jetons", ".fissure",
+            ".cle", ".hardcore", ".stasis", ".fusion", ".raffiner",
         };
 
         /// <summary>A chat line run as the session, its notices captured. Null stream: nothing runs.</summary>
@@ -117,16 +121,23 @@ namespace Jondo.Unity.Server.Handlers
             command = (command ?? "").Trim();
             if (!command.StartsWith(".", StringComparison.Ordinal)) command = "." + command;
             if (!PanelCommands.Contains(command)) return ("commande", new List<string>());
+            // «.maree aller <sous-zone>»: the window's «Y aller», which the chat's .maree does not have.
+            string[] words = (args ?? "").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (command.Equals(".maree", StringComparison.OrdinalIgnoreCase) && words.Length == 2 && words[0] == "aller"
+                && int.TryParse(words[1], out int tideZone))
+                return ("ok", new List<string> { await TideGoAsync(session, tideZone) });
             string line = (command + " " + (args ?? "").Trim()).Trim();
             return ("ok", await CapturedAsync(session, line));
         }
 
         /// <summary>What a tab shows: its commands' answers, its buttons, the Jondo Coins held.</summary>
-        internal static async Task<object?> PanelViewAsync(GameSession session, string tab, IReadOnlyList<string>? said = null)
+        internal static async Task<object?> PanelViewAsync(GameSession session, string tab, IReadOnlyList<string>? said = null, bool structured = false)
         {
             if (!PanelTabs.TryGetValue(tab ?? "", out var def)) return null;
             var lines = new List<string>();
-            foreach (string command in def.Lines) lines.AddRange(await CapturedAsync(session, command));
+            // JondoFix sends «structured»: it draws the view and the chat answers are not run.
+            if (!structured)
+                foreach (string command in def.Lines) lines.AddRange(await CapturedAsync(session, command));
             return new
             {
                 tab = tab!.ToLowerInvariant(),
@@ -136,6 +147,8 @@ namespace Jondo.Unity.Server.Handlers
                 said = said ?? Array.Empty<string>(),
                 lines,
                 actions = PanelActions(session, tab!.ToLowerInvariant()),
+                // The widgets of the tab (CommandHandler.PanelViews.cs); older clients ignore it.
+                view = PanelStructured(session, tab!.ToLowerInvariant()),
             };
         }
 

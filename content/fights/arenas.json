@@ -28,6 +28,8 @@
   ],
   "twins": [
     { "map": 183241218, "arena": 183243778, "why": "«Examen de paso» (1906): the ailurophile alchemist's cave under the abandoned house [-54,14] (Oscura Jungla), fought on its candles, cushions and milk bowl; the twin is filed under the fight maps' subarea (1036), so the rule took a jungle hut of the subarea (88607750)" },
-    { "map": 183239170, "arena": 183243776, "why": "«Examen de paso» (1906): the Enutrof temple's coffin room down the ladder [-1,-4]; the twin bears the room's name, «Enutrof Temple», which the rule leaves out, and it took an arena of Amakna's village" }
+    { "map": 183239170, "arena": 183243776, "why": "«Examen de paso» (1906): the Enutrof temple's coffin room down the ladder [-1,-4]; the twin bears the room's name, «Enutrof Temple», which the rule leaves out, and it took an arena of Amakna's village" },
+    { "map": 202901510, "arena": 202903046, "why": "The Fissure's arena (content/events/fissure.json): the Dimensional Voyagers' Tower of «Futuro no previsto» (935); its twin bears its name, 157 of its 159 walkable cells alike, and the rule took the subarea's unnamed board 203032070 instead (132 alike)" },
+    { "map": 209455110, "arena": 209585672, "why": "The Concours Poutch's room (content/events/events.json): the Pandawushu Dojo's inner hall [20,-31]; its twin bears its name, 151 of 151 cells alike, and the rule took 207751172, a 50-cell board of the village" }
   ]
 }

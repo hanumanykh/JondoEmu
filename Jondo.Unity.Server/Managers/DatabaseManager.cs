@@ -6368,7 +6368,7 @@ namespace Jondo.Unity.Server
                 translation.CommandText = "SELECT Text FROM Translations WHERE Key = $key;";
                 translation.Parameters.AddWithValue("$key", nameId.GetInt64().ToString());
 
-                return translation.ExecuteScalar() as string ?? "";
+                return GameText.Of(nameId.GetInt64(), translation.ExecuteScalar() as string);
             }
             catch (Exception ex)
             {

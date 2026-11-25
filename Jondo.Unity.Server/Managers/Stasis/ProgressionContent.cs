@@ -102,6 +102,14 @@ namespace Jondo.Unity.Server.Managers
         public int PassiveLevel { get; set; } = 50;
         public List<int> AccomplishmentLevels { get; set; } = new();
         public long RerollKamasPerLevel { get; set; } = 1000;
+        /// <summary>The level of the starting offer (given to a new character, and to an older one lacking it); 0: none.</summary>
+        public int StartingLevel { get; set; } = 1;
+        /// <summary>How many of the last dons kept count as "taken recently" for the last card of an offer.</summary>
+        public int RecentWindow { get; set; } = 10;
+        /// <summary>The card rarities (Commun/Rare/Légendaire): chances, the research that raises them, the pity.</summary>
+        public RarityRules Rarity { get; set; } = new();
+        /// <summary>The dons «Pension»: a pet or mount egg chosen at some levels, given to the account's pension.</summary>
+        public List<PensionDon> Pension { get; set; } = new();
         public CharacteristicCard CharacteristicCard { get; set; } = new();
         public DonCard SpellCard { get; set; } = new() { Id = "sort" };
         public List<DonCard> Level { get; set; } = new();
@@ -144,12 +152,44 @@ namespace Jondo.Unity.Server.Managers
         public int Level { get; set; } = 1;
     }
 
+    /// <summary>
+    /// Per card, a rarity is drawn: Légendaire at <see cref="Legendaire"/> percent, Rare at
+    /// <see cref="Rare"/>, Commun otherwise. The research named <see cref="Research"/> (Fortune)
+    /// replaces both by its rank's values. After <see cref="PityAfter"/> offers in a row without a
+    /// Légendaire, the next has one. Only the offer kinds of <see cref="Kinds"/> draw rarities.
+    /// </summary>
+    internal sealed class RarityRules
+    {
+        public double Commun { get; set; } = 75;
+        public double Rare { get; set; } = 20;
+        public double Legendaire { get; set; } = 5;
+        public int PityAfter { get; set; } = 5;
+        public string Research { get; set; } = "fortune";
+        public List<double> RareByRank { get; set; } = new();
+        public List<double> LegendaireByRank { get; set; } = new();
+        public List<string> Kinds { get; set; } = new() { "depart", "niveau", "aventure" };
+    }
+
+    /// <summary>A don «Pension»: at <see cref="Level"/>, one egg chosen among <see cref="Choices"/>.</summary>
+    internal sealed class PensionDon
+    {
+        public int Level { get; set; }
+        /// <summary>"familier" (choices are pet item ids) or "monture" (choices are Breeding species ids).</summary>
+        public string Kind { get; set; } = "monture";
+        /// <summary>For a pet egg: its rarity in the pension (Starter, Commun...).</summary>
+        public string Rarity { get; set; } = "Starter";
+        public List<int> Choices { get; set; } = new();
+    }
+
     internal sealed class CharacteristicCard
     {
         public string Id { get; set; } = "carac";
         public string Name { get; set; } = "Caractéristique au choix";
         public string Description { get; set; } = "+{0} dans la caractéristique de votre choix.";
         public int Amount { get; set; } = 3;
+        /// <summary>What a Rare / a Légendaire characteristic card gives (the Polyvalence research adds to each); null: <see cref="Amount"/>.</summary>
+        public int? AmountRare { get; set; }
+        public int? AmountLegendaire { get; set; }
         public double FirstChance { get; set; } = 0.9;
         public List<string> Stats { get; set; } = new();
     }
@@ -161,13 +201,29 @@ namespace Jondo.Unity.Server.Managers
         public string Description { get; set; } = "";
         /// <summary>For adventure dons: how many times it can be taken. 1 for the others.</summary>
         public int MaxRank { get; set; } = 1;
+        /// <summary>No longer offered, still counted for the characters who have it (an older file's card).</summary>
+        public bool Retired { get; set; }
+        /// <summary>An icon of the client's (a FigmaIcons name) for a card whose effects say nothing drawable.</summary>
+        public string Icon { get; set; } = "";
         public List<DonEffect> Effects { get; set; } = new();
     }
 
     internal sealed class DonEffect
     {
         public string Stat { get; set; } = "";
+        /// <summary>The Commun value.</summary>
         public long Value { get; set; }
+        /// <summary>The Rare and Légendaire values; null: the rarity below's.</summary>
+        public long? Rare { get; set; }
+        public long? Legendaire { get; set; }
+
+        /// <summary>The value at a rarity (0 Commun, 1 Rare, 2 Légendaire).</summary>
+        public long ValueAt(int rarity) => rarity switch
+        {
+            >= 2 => Legendaire ?? Rare ?? Value,
+            1 => Rare ?? Value,
+            _ => Value,
+        };
     }
 
     internal sealed class ResearchFile

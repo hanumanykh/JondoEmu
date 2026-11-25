@@ -1,0 +1,157 @@
+{
+  // Éveil des Dofus, Partie I (docs/stasis-gameplay-spec.md §13), read by Managers/Stasis/Eveil.cs.
+  // Per character and per Dofus: «.eveil <dofus> commencer» sacrifices the copies (the fragment
+  // and the quest begin), then every dungeon of the route must have its boss beaten -- in HARDCORE
+  // when requireHardcore, and only wins AFTER the start count --, then «.eveil <dofus> defi» opens
+  // the final challenge, alone, against the boss scaled to the Dofus level. Winning it gives the
+  // stasified Dofus: the template's own lines plus «effects» plus «approximated», with a
+  // «Fabricado por» line reading «label» (so it is never taken for an S1-S4 piece, nor sacrificed).
+  //
+  // Dungeons: datos/dungeons.json ids (Spanish client names in the comments), the spec's French
+  // names for display. Bosses: NONE of the six final adversaries exists in this 3.6 client
+  // (no Gwand Viziw Wabbit, Jacquemart, Oracle d'Aerafal, Ignemikal, Thalos-Kyarrelmne nor Dragon
+  // sans nom in MonsterTemplates), so each is stood in for by the nearest existing boss of the
+  // Dofus's own route, scaled to the Dofus level (Dreams.ScaleTo, as the Fissure's waves).
+  //
+  // Effects: item effect ids (124 sagesse, 125 vitalité, 118 force, 126 intelligence, 123 chance,
+  // 119 agilité, 138 puissance, 112 dommages, 160/161 esquive PA/PM, 128 PM, 117 PO,
+  // 422/424/426/428/430 dommages terre/feu/eau/air/neutre, 210-214 % résistances,
+  // 2803 % résistance mêlée, 2812 % dommages aux sorts, 753 tacle). The spec's conditional
+  // effects (per turn, per stack, per adjacent enemy...) have no item effect the engine applies,
+  // so «approximated» gives a flat line in their place; «replaces» says which effect it stands for.
+  "enabled": true,
+  "requireHardcore": true,
+  "repeatable": false,
+  "label": "Stasis Éveil",
+  "dofus": [
+    {
+      "id": "cawotte", "name": "Cawotte", "item": 972, "level": 225, "copies": 25,
+      "dungeons": [
+        { "id": 52,  "name": "Château du Wa Wabbit" },      // Castillo del Wey Wabbit
+        { "id": 17,  "name": "Terrier du Wa Wabbit" },      // Madriguera del Wey Wabbit
+        { "id": 76,  "name": "Palais du roi Nidas" },       // Palacio del Rey Nidas
+        { "id": 98,  "name": "Temple de Koutoulou" },       // Templo de Kutulú
+        { "id": 106, "name": "Manoir des Katrepat" }        // Mansión de Kuatropatas
+      ],
+      // Gwand Viziw Wabbit -> Wey Wabbit (180), the Château's boss.
+      "boss": { "name": "Gwand Viziw Wabbit", "monster": 180, "grade": 5 },
+      "effects": [
+        { "effect": 124, "value": 200 },
+        { "effect": 160, "value": 60 },
+        { "effect": 161, "value": 60 }
+      ],
+      "approximated": [
+        { "effect": 160, "value": 30, "replaces": "1er retrait PA/PM par tour annulé" },
+        { "effect": 161, "value": 30, "replaces": "1er retrait PA/PM par tour annulé" }
+      ]
+    },
+    {
+      "id": "glaces", "name": "Glaces", "item": 7043, "level": 250, "copies": 7,
+      "dungeons": [
+        { "id": 60, "name": "Caverne du Kolosso" },         // Cavernas de Tejossus
+        { "id": 61, "name": "Antichambre des Gloursons" },  // Antecámara de los Golosotes
+        { "id": 69, "name": "Forgefroide de Missiz Frizz" },// Forjafría de Mizz Frizz
+        { "id": 68, "name": "Antre de Klime" },             // Sala Privada de Klim
+        { "id": 67, "name": "Transporteur de Sylargh" },    // Transportador de Sylargh
+        { "id": 70, "name": "Laboratoire de Nileza" },      // Laboratorio de Nileza
+        { "id": 71, "name": "Donjon du Comte Harebourg" }   // Mazmorra del Conde Kontatrás
+      ],
+      // Jacquemart T. de Harebourg -> Conde Kontatrás (3416), the Count himself.
+      "boss": { "name": "Jacquemart T. de Harebourg", "monster": 3416, "grade": 5 },
+      "effects": [
+        { "effect": 422, "value": 100 }, { "effect": 424, "value": 100 }, { "effect": 426, "value": 100 },
+        { "effect": 428, "value": 100 }, { "effect": 430, "value": 100 },
+        { "effect": 210, "value": 8 }, { "effect": 211, "value": 8 }, { "effect": 212, "value": 8 },
+        { "effect": 213, "value": 8 }, { "effect": 214, "value": 8 }
+      ],
+      "approximated": [
+        { "effect": 2812, "value": 4, "replaces": "+2 % dégâts finaux par tour immobile (4 cumuls)" }
+      ]
+    },
+    {
+      "id": "emeraude", "name": "Émeraude", "item": 737, "level": 250, "copies": 7,
+      // The spec's fifth dungeon, the Koulosse's, is not in this client: the route has four.
+      "dungeons": [
+        { "id": 15,  "name": "Repaire du Meulou" },         // Guarida del Maxilubo
+        { "id": 103, "name": "Chambre de Tal Kasha" },      // Cámara de Tal Kasha
+        { "id": 107, "name": "Belvédère d'Ilyzaelle" },     // Mirador de Ilyzaelle
+        { "id": 84,  "name": "Ventre de la Baleine" }       // Vientre de la Ballena
+      ],
+      // Oracle d'Aerafal -> Ilyzaelle (4967).
+      "boss": { "name": "Oracle d'Aerafal", "monster": 4967, "grade": 5 },
+      "effects": [
+        { "effect": 125, "value": 800 },
+        { "effect": 2803, "value": 10 }
+      ],
+      "approximated": [
+        { "effect": 125, "value": 300, "replaces": "bouclier de 250 % du niveau par ennemi au contact" }
+      ]
+    },
+    {
+      "id": "pourpre", "name": "Pourpre", "item": 694, "level": 275, "copies": 8,
+      "dungeons": [
+        { "id": 124, "name": "Fabrique de feux d'artifice" },  // Fábrica de Fux Artificiales
+        { "id": 4,   "name": "Labyrinthe du Minotoror" },      // Centro del Laberinto del Minotauroro
+        { "id": 53,  "name": "Salle du Minotot" },             // Sala del Minotot
+        { "id": 120, "name": "Trône de Sang" },                // Trono de Sangre
+        { "id": 109, "name": "Tour de Solar" },                // Torre de Solar
+        { "id": 136, "name": "Aurore Pourpre" }                // Batalla de la Aurora Púrpura
+      ],
+      // Ignemikal -> Conflicto Eterno (6792), the Aurore Pourpre's boss.
+      "boss": { "name": "Ignemikal", "monster": 6792, "grade": 5 },
+      "effects": [
+        { "effect": 138, "value": 275 }
+      ],
+      "approximated": [
+        { "effect": 2812, "value": 8, "replaces": "+2 % dégâts par attaque subie pendant 3 tours (12 cumuls)" }
+      ]
+    },
+    {
+      "id": "dolmanax", "name": "Dolmanax", "item": 13344, "level": 275, "copies": 7,
+      "dungeons": [
+        { "id": 11,  "name": "Clos des Blops" },               // Enclave de los Blops
+        { "id": 140, "name": "Chambre des maléfices" },        // Cámara de los Maleficios
+        { "id": 49,  "name": "Blop Multicolore Royal" },       // Antro del Blop Multicolor Real
+        { "id": 99,  "name": "Palais de Dantinéa" },           // Palacio de Dientinea
+        { "id": 134, "name": "Souvenir d'Imagiro" },           // Recuerdo de Imagiro
+        { "id": 119, "name": "Sentence de la Balance" },       // Sentencia de la Balanza
+        { "id": 87,  "name": "Œil de Vortex" },                // Ojo de Vórtex
+        { "id": 117, "name": "Arbre de Mort" }                 // Árbol de Muerte
+      ],
+      // Thalos-Kyarrelmne -> Corrupción (6026), the Arbre de Mort's boss. His elemental phases are not reproduced.
+      "boss": { "name": "Thalos-Kyarrelmne", "monster": 6026, "grade": 5 },
+      "effects": [
+        { "effect": 118, "value": 150 }, { "effect": 126, "value": 150 },
+        { "effect": 123, "value": 150 }, { "effect": 119, "value": 150 },
+        { "effect": 112, "value": 25 }
+      ],
+      "approximated": [
+        { "effect": 422, "value": 20, "replaces": "+10 dommages tous éléments par élément frappé (5 cumuls)" },
+        { "effect": 424, "value": 20, "replaces": "+10 dommages tous éléments par élément frappé (5 cumuls)" },
+        { "effect": 426, "value": 20, "replaces": "+10 dommages tous éléments par élément frappé (5 cumuls)" },
+        { "effect": 428, "value": 20, "replaces": "+10 dommages tous éléments par élément frappé (5 cumuls)" },
+        { "effect": 430, "value": 20, "replaces": "+10 dommages tous éléments par élément frappé (5 cumuls)" }
+      ]
+    },
+    {
+      "id": "vulbis", "name": "Vulbis", "item": 6980, "level": 300, "copies": 6,
+      "dungeons": [
+        { "id": 7,   "name": "Antre de Crocabulia" },          // Antro de Cocabulia
+        { "id": 114, "name": "Sanctuaire de Torkélonia" },     // Santuario de Torkelonia
+        { "id": 118, "name": "Fers de la Tyrannie" },          // Cadenas de la Tiranía
+        { "id": 135, "name": "Rituel de Kabahal" },            // Ritual de Kabaal
+        { "id": 111, "name": "Temple du Dieu Kao" }            // Templo del Dios Kao
+      ],
+      // Dragon sans nom -> Cocabulia (854), the route's dragon.
+      "boss": { "name": "Dragon sans nom", "monster": 854, "grade": 5 },
+      "effects": [
+        { "effect": 128, "value": 1 },
+        { "effect": 117, "value": 1 }
+      ],
+      "approximated": [
+        { "effect": 2812, "value": 10, "replaces": "+20 % dégâts si aucun dégât subi depuis le dernier tour" },
+        { "effect": 753, "value": 30, "replaces": "sinon +60 tacle et +10 % résistances" }
+      ]
+    }
+  ]
+}

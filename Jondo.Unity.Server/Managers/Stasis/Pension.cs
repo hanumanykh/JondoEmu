@@ -69,6 +69,12 @@ namespace Jondo.Unity.Server.Managers
         public int Level { get; set; }
         public string Kind { get; set; } = Pension.KindMount;
         public string Rarity { get; set; } = "";
+        /// <summary>
+        /// The gift is a don «Pension» chosen in the level-up offers (Dons, dons.json "pension"):
+        /// <see cref="Pension.GiftsDue"/> leaves it to the offer, which gives it through
+        /// <see cref="Pension.GiveDonEgg"/>.
+        /// </summary>
+        public bool Offer { get; set; }
     }
 
     /// <summary>An egg of the pension: virtual (the client has no mount or mystery egg item).</summary>
@@ -77,7 +83,10 @@ namespace Jondo.Unity.Server.Managers
         public int Id { get; set; }
         /// <summary><see cref="Pension.KindMount"/> or <see cref="Pension.KindPet"/>.</summary>
         public string Kind { get; set; } = Pension.KindMount;
-        /// <summary>For a mount egg: the Breeding species (1 dragoturkey, 2 muldo, 3 volkorne).</summary>
+        /// <summary>
+        /// For a mount egg: the Breeding species (1 dragoturkey, 2 muldo, 3 volkorne). For a pet
+        /// egg: the pet item chosen in a don «Pension», 0 when the pet is drawn at hatching.
+        /// </summary>
         public int Species { get; set; }
         public int Generation { get; set; }
         /// <summary>For a pet egg: Starter, Commun, Rare or Legendaire.</summary>
@@ -354,6 +363,7 @@ namespace Jondo.Unity.Server.Managers
             foreach (var gift in content.Gifts.OrderBy(g => g.Level))
             {
                 if (level < gift.Level) continue;
+                if (gift.Offer) continue;
                 if (!account.Gifts.Add($"{characterId}:{gift.Level}")) continue;
                 var species = SpeciesIds(content);
                 var egg = gift.Kind == KindPet
@@ -365,6 +375,27 @@ namespace Jondo.Unity.Server.Managers
                 eggs.Add(egg);
             }
             return eggs;
+        }
+
+        /// <summary>Whether the don «Pension» of a level was already given to this character.</summary>
+        public static bool GiftGiven(PensionAccount account, long characterId, int level)
+            => account.Gifts.Contains($"{characterId}:{level}");
+
+        /// <summary>
+        /// The egg of a don «Pension» picked in the level-up offers: a pet egg of the chosen pet
+        /// (<paramref name="choice"/> its item) or a generation-1 mount egg of the chosen species.
+        /// Null when that level's gift was already given to the character.
+        /// </summary>
+        public static PensionEgg? GiveDonEgg(PensionAccount account, long characterId, int level, string kind, int choice, string petRarity)
+        {
+            if (!account.Gifts.Add($"{characterId}:{level}")) return null;
+            var egg = kind == KindPet
+                ? new PensionEgg { Kind = KindPet, Rarity = string.IsNullOrEmpty(petRarity) ? Starter : petRarity, Species = choice }
+                : new PensionEgg { Kind = KindMount, Species = choice, Generation = 1 };
+            egg.Gift = true;
+            egg.Id = account.NextEggId();
+            account.Eggs.Add(egg);
+            return egg;
         }
 
         public static string RefusalText(string reason) => reason switch

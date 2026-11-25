@@ -303,6 +303,8 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         internal static void OnFightCreated(FightInstance fight, long leaderId)
         {
+            // An Éveil challenge's boss, scaled to its Dofus level (Eveil.cs).
+            Eveil.OnFightCreated(fight);
             if (fight == null || !DungeonManager.IsRoom(fight.RoleplayMapId) || !WantsHardcore(leaderId)) return;
             var factors = Current.Hardcore;
             _hardcoreFights.AddOrUpdate(fight, new object());
@@ -336,6 +338,8 @@ namespace Jondo.Unity.Server.Managers
                 bool boss = credited != dungeon || DungeonManager.NextRoom(dungeon, fight.RoleplayMapId) == 0
                             || fight.RoleplayMapId == dungeon.LastRoom;
                 if (!boss) return;
+                // The Éveil routes count the same boss rooms, hardcore ones only (Eveil.cs).
+                Eveil.OnDungeonWon(characterId, credited.Id, IsHardcore(fight));
                 RecordCompletion(characterId, credited.Id, IsHardcore(fight));
             }
             catch (Exception ex)

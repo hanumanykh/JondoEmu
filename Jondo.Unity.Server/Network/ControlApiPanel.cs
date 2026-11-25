@@ -27,7 +27,14 @@ namespace Jondo.Unity.Server.Network
         {
             var me = InTheWorld(account);
             if (me == null) return Mal(409, "world");
-            return Bien(new { fight = me.State.IsInFight, percent = OutOfFightWalkPercent });
+            // The base +25 % and the walk speed dons (Vitesse perso, Élan: Managers.Dons.SpeedPercent).
+            long dons = Managers.Dons.SpeedPercent(me.CharacterId);
+            return Bien(new
+            {
+                fight = me.State.IsInFight,
+                percent = OutOfFightWalkPercent + (int)Math.Clamp(dons, 0, 75),
+                animationPercent = (int)Math.Clamp(Managers.Dons.AnimationPercent(me.CharacterId), 0, 100),
+            });
         }
 
         private static Respuesta Panel(string cuerpo, long account) => PanelRun(cuerpo, account, act: false);
@@ -53,7 +60,9 @@ namespace Jondo.Unity.Server.Network
                         if (result != "ok") return Mal(400, "command");
                         said = text;
                     }
-                    return Bien(CommandHandler.PanelViewAsync(me, tab, said).GetAwaiter().GetResult()!);
+                    // «structured»: "1" from a JondoFix that draws the widgets (the chat answers are then not run).
+                    bool structured = (Texto(cuerpo, "structured") ?? "") == "1";
+                    return Bien(CommandHandler.PanelViewAsync(me, tab, said, structured).GetAwaiter().GetResult()!);
                 }
             }
             catch (Exception ex)

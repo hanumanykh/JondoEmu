@@ -81,13 +81,18 @@ namespace Jondo.Unity.Server.Managers
 
                 foreach (var row in DatabaseManager.GetMonsterDrops(member.Monster, Math.Max(0, member.Grade - 1)))
                 {
+                    if (DofusDrops.IsFixed(row.ObjectId)) continue;
                     if (row.ReceiverCriterion.Length > 0 && !receives(row.ReceiverCriterion, member.Monster)) continue;
                     Add(row.ObjectId, ChanceOf(row.PercentDrop, row.NoProspecting, multiplier, bonus));
                 }
 
+                // A boss's Dofus at its fixed Stasis rate (DofusDrops), prospecting only.
+                foreach (var dofus in DofusDrops.For(member.Monster))
+                    Add(dofus.Item, DofusDrops.Chance(dofus, multiplier));
+
                 foreach (var row in DatabaseManager.GetMonsterGlobalDrops(member.Monster))
                 {
-                    if (row.ObjectId == AnomalyLoot.Fragment || row.ReceiverCriterion.Length > 0) continue;
+                    if (row.ObjectId == AnomalyLoot.Fragment || row.ReceiverCriterion.Length > 0 || DofusDrops.IsFixed(row.ObjectId)) continue;
                     Add(row.ObjectId, ChanceOf(row.PercentDrop, true, multiplier, bonus));
                 }
             }

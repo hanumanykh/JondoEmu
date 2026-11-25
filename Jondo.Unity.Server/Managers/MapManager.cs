@@ -17,6 +17,15 @@ namespace Jondo.Unity.Server
         public bool Outdoor { get; set; }
         public string Name { get; set; }
         public long Flags { get; set; }
+
+        /// <summary>
+        /// Which of the client's world maps the map is drawn on (MapTemplates «worldMap»): 1 is the
+        /// Twelve's world (Amakna, Astrub, Bonta, Pandala, Otomaï...), the others are worlds of their
+        /// own -- Frigost's islands (12), the dimensions (13-16), the dream lands (19) -- whose [x,y]
+        /// repeat the main world's; -1 is no world map at all: insides, the Koliseo's and the test
+        /// boards. 1 when the data says nothing.
+        /// </summary>
+        public int WorldMap { get; set; } = 1;
     }
 
     public class MapScrollAction
@@ -217,6 +226,7 @@ namespace Jondo.Unity.Server
                             }
 
                             long flags = 0;
+                            int worldMap = 1;
                             if (!reader.IsDBNull(6))
                             {
                                 try
@@ -225,6 +235,11 @@ namespace Jondo.Unity.Server
                                     if (tDoc.RootElement.TryGetProperty("m_flags", out var fElem))
                                     {
                                         flags = fElem.GetInt64();
+                                    }
+                                    if (tDoc.RootElement.TryGetProperty("worldMap", out var wElem)
+                                        && wElem.ValueKind == System.Text.Json.JsonValueKind.Number)
+                                    {
+                                        worldMap = wElem.GetInt32();
                                     }
                                 }
                                 catch { }
@@ -238,7 +253,8 @@ namespace Jondo.Unity.Server
                                 SubAreaId = subAreaId,
                                 Outdoor = reader.GetInt32(4) == 1,
                                 Name = reader.IsDBNull(5) ? "" : reader.GetString(5),
-                                Flags = flags
+                                Flags = flags,
+                                WorldMap = worldMap
                             };
                             Maps[mapId] = info;
                             infoCount++;

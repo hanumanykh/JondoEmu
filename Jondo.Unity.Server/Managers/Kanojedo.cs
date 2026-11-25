@@ -137,9 +137,15 @@ namespace Jondo.Unity.Server.Managers
         public static bool Owns(long reply)
             => LevelIndexOf(reply) >= 0 || IsBack(reply) || ReadCount(reply) != null;
 
-        /// <summary>Whether this map is a kanojedo: the master stands on it.</summary>
+        /// <summary>
+        /// Whether this map is a kanojedo: the master stands on it -- or it is the Concours Poutch's
+        /// room (StasisEvents.IsPoutchRoom), a dojo with no master whose bag must stay and drop
+        /// nothing as the kanojedo's do.
+        /// </summary>
         public static bool IsDojo(long mapId)
         {
+            if (StasisEvents.IsPoutchRoom(mapId)) return true;
+
             foreach (var spawn in Npcs.Of(mapId))
             {
                 if (spawn.NpcId == MasterNpc) return true;

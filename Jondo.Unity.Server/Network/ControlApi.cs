@@ -97,6 +97,7 @@ namespace Jondo.Unity.Server.Network
                     case Prefijo + "stasis/ascend": return ConSesion(cuerpo, cuenta => ProgressionAscend(cuerpo, cuenta));
                     case Prefijo + "stasis/evolve": return ConSesion(cuerpo, cuenta => ProgressionEvolve(cuerpo, cuenta));
                     case Prefijo + "stasis/hub": return ConSesion(cuerpo, cuenta => Hub(cuerpo, cuenta));
+                    case Prefijo + "stasis/eveil": return ConSesion(cuerpo, cuenta => EveilRoute(cuerpo, cuenta));
                     // The same window's gauge, counter, tides, tiers, events and Fissure tabs: ControlApiPanel.cs.
                     case Prefijo + "stasis/panel": return ConSesion(cuerpo, cuenta => Panel(cuerpo, cuenta));
                     case Prefijo + "stasis/act": return ConSesion(cuerpo, cuenta => PanelAct(cuerpo, cuenta));

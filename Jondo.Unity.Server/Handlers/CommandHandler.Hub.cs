@@ -179,6 +179,44 @@ namespace Jondo.Unity.Server.Handlers
             return $"Acheté : {given} x {NameOfItem(gid)} pour {unit * given:N0} {OrbeLabel}.";
         }
 
+        // ─── The Merchant's shop window ─────────────────────────────────────────────────
+
+        /// <summary>Whether this NPC on this map is the Sanctuary's Merchant selling in Jondo Coins.</summary>
+        internal static bool IsCoinMerchant(int template, long mapId)
+            => JondoCoin.IsOrbe && Sanctuary.RoleOf(template, mapId) == "marchand";
+
+        /// <summary>What the Merchant's window lists for this character: his level band's pieces, then the consumables.</summary>
+        internal static List<int> MerchantWindowCatalogue(SessionState state)
+        {
+            var (min, max) = StasisMerchant.BandOf(state.CharacterLevel);
+            var gids = StasisMerchant.Catalogue(Outfitter.Craftable.Value, min, max)
+                                     .OrderBy(p => p.Level).Select(p => p.Gid).ToList();
+            foreach (var c in Sanctuary.Current.Merchant.Consumables)
+                if (c.Item > 0 && !gids.Contains(c.Item)) gids.Add(c.Item);
+            return gids;
+        }
+
+        /// <summary>The window's prices: each item at the Merchant's price in Jondo Coins, the coin as the currency.</summary>
+        internal static TokenShops.Shop MerchantWindowPricing(IEnumerable<int> gids)
+        {
+            var shop = new TokenShops.Shop { TokenGid = JondoCoin.TemplateId };
+            foreach (int gid in gids) shop.Prices[gid] = Math.Max(1, OrbePrice(StasisMerchant.PriceOf(gid)));
+            return shop;
+        }
+
+        /// <summary>A purchase from the Merchant's window: the same path as «.marchand acheter», told in the chat.</summary>
+        internal static async Task MerchantWindowBuyAsync(GameSession session, int gid, int quantity)
+        {
+            if (session.Stream == null) return;
+            if (!MerchantWindowCatalogue(session.State).Contains(gid))
+            {
+                await NotifyAsync(session.Stream, "Le Marchand ne vend pas cet objet à votre niveau.", 0, 0);
+                return;
+            }
+            string text = await BuyAsync(session, gid.ToString(CultureInfo.InvariantCulture), quantity);
+            await NotifyAsync(session.Stream, text, 0, 0);
+        }
+
         private static async Task<string> BuyRecommendedAsync(GameSession session)
         {
             var pieces = RecommendedFor(session.State, "");
@@ -429,6 +467,7 @@ namespace Jondo.Unity.Server.Handlers
             if (role == null || session.Stream == null) return false;
             string? text = role switch
             {
+                "marchand" when IsCoinMerchant(template, mapId) => null,
                 "marchand" => MerchantHelp(session.State) + " " + RecommendedText(session.State, ""),
                 "raffineur" => RaffineurText(),
                 "comptoir" => "Comptoir de zone : 4 buffs de 30 min valables dans la sous-zone d'achat (Densité, Recrue, Étude, Jauge). " +
@@ -472,6 +511,12 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     gid = p.Gid, name = NameOfItem(p.Gid), level = p.Level, price = OrbePrice(StasisMerchant.PriceOf(p.Gid)),
                 }).ToList(),
+                // The Marchand's consumables, for the window's grid (bought with «.marchand acheter <gid>»).
+                consumables = Sanctuary.Current.Merchant.Consumables.Select(c => new
+                {
+                    gid = c.Item, name = NameOfItem(c.Item), price = OrbePrice(StasisMerchant.PriceOf(c.Item)),
+                }).ToList(),
+                coinItem = JondoCoin.IsOrbe ? JondoCoin.TemplateId : 0,
                 recipes = QuoteList(8).Select(q => new
                 {
                     gid = q.Recipe.Result, name = NameOfItem(q.Recipe.Result), level = q.Recipe.Level, tier = q.Recipe.Tier,

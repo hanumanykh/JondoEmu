@@ -766,6 +766,12 @@ namespace JondoFix
             // The Stasis «Progression» window (dons, research, Ascension): F9, and by itself on an offer.
             try { ProgressionUi.Tick(); }
             catch (Exception ex) { LoggerInstance.Warning($"[JondoFix] Progression window: {ex.Message}"); }
+            // The «Stasis» HUD button and the toasts when something wants attention (ProgressionUi.Hud.cs).
+            try { ProgressionUi.HudTick(); }
+            catch (Exception ex) { LoggerInstance.Warning($"[JondoFix] Stasis HUD: {ex.Message}"); }
+            // The level-up don popup (DonPopup.cs): opens by itself on an offer after a fight and at login, keys 1-5.
+            try { DonPopup.Tick(); }
+            catch (Exception ex) { LoggerInstance.Warning($"[JondoFix] Don popup: {ex.Message}"); }
             try { MovementSpeed.Tick(LoggerInstance); } catch { }   // Stasis +25 % walk out of combat (MovementSpeed.cs)
 
             // The administrator's item window: its key, and what the server answered it.

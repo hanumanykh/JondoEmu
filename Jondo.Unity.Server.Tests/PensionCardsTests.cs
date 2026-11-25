@@ -131,6 +131,10 @@ public sealed class PensionCardsTests
     {
         var c = File_();
         var a = new PensionAccount { AccountId = 1 };
+        // Live, the gifts are dons «Pension» chosen in the level-up offers (Dons): GiftsDue leaves them.
+        Assert.All(c.Gifts, g => Assert.True(g.Offer));
+        Assert.Empty(Pension.GiftsDue(a, c, 7, 60, new Random(1)));
+        foreach (var gift in c.Gifts) gift.Offer = false;
         Assert.Empty(Pension.GiftsDue(a, c, 7, 10, new Random(1)));
         var first = Pension.GiftsDue(a, c, 7, 55, new Random(1));
         Assert.Equal(2, first.Count);

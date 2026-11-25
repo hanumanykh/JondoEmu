@@ -30,5 +30,13 @@
     { "stat": "tacle", "value": 2 },
     { "stat": "fuite", "value": 2 },
     { "stat": "soins", "value": 2 }
-  ]
+  ],
+  // Rareté d'une carte selon le niveau de son monstre : Commune, Rare, Épique, Légendaire (niveau minimum).
+  "rarityMinLevels": [1, 60, 120, 180],
+  // Raffineur de cartes (§14) : .cartes raffiner <carte> <n>, mise de 1 à refinerMaxCards doublons d'une carte
+  // pour une carte de la rareté suivante (de sa famille si possible) ; échec = lot perdu.
+  // Chance = plafond × min(1, valeur du lot / (refinerMaxCards × prix de rachat au niveau minimum de la rareté visée)).
+  "refinerMaxCards": 10,
+  // Plafonds en % pour viser Rare, Épique, Légendaire.
+  "refinerCaps": [75, 45, 25]
 }

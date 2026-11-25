@@ -15,6 +15,8 @@ namespace Jondo.Unity.Server.Managers
         public int Stat { get; set; }
         /// <summary>What the characteristic card gave, fixed when it was taken; 0 for any other card.</summary>
         public int Amount { get; set; }
+        /// <summary>The card's rarity when it was taken: 0 Commun, 1 Rare, 2 Légendaire (older rows: 0).</summary>
+        public int Rarity { get; set; }
     }
 
     /// <summary>An offer waiting for its pick: the level that earned it, its kind and its cards.</summary>
@@ -23,7 +25,35 @@ namespace Jondo.Unity.Server.Managers
         public int Level { get; set; }
         public string Kind { get; set; } = "";
         public List<string> Cards { get; set; } = new();
+        /// <summary>Each card's rarity, by its place in <see cref="Cards"/>: 0 Commun, 1 Rare, 2 Légendaire; missing: Commun.</summary>
+        public List<int> Rarities { get; set; } = new();
         public bool Rerolled { get; set; }
+
+        public int RarityAt(int index) => index >= 0 && index < Rarities.Count ? Rarities[index] : 0;
+
+        /// <summary>The cards as stored: "id" for a Commun, "id@1" / "id@2" for a Rare / a Légendaire.</summary>
+        internal string Stored() => string.Join(",", Cards.Select((c, i) => RarityAt(i) > 0 ? $"{c}@{RarityAt(i)}" : c));
+
+        internal static (List<string> Cards, List<int> Rarities) Parse(string stored)
+        {
+            var cards = new List<string>();
+            var rarities = new List<int>();
+            foreach (string token in (stored ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                int at = token.LastIndexOf('@');
+                if (at > 0 && int.TryParse(token.AsSpan(at + 1), out int rarity))
+                {
+                    cards.Add(token.Substring(0, at));
+                    rarities.Add(Math.Clamp(rarity, 0, 2));
+                }
+                else
+                {
+                    cards.Add(token);
+                    rarities.Add(0);
+                }
+            }
+            return (cards, rarities);
+        }
     }
 
     /// <summary>
@@ -46,6 +76,8 @@ namespace Jondo.Unity.Server.Managers
         public int RerollsUsed { get; set; }
         /// <summary>Characteristic re-picks (refontes) spent in this Ascension cycle.</summary>
         public int RepicksUsed { get; set; }
+        /// <summary>Offers drawn in a row without a Légendaire card (the pity: the next after five has one).</summary>
+        public int NoLegendaryStreak { get; set; }
         public List<ChosenDon> Dons { get; } = new();
         public List<DonOffer> Pending { get; } = new();
         public Dictionary<string, int> Research { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -124,7 +156,7 @@ namespace Jondo.Unity.Server.Managers
                 using var connection = Open();
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = "SELECT Eclats, Ascensions, BestLevel, Evolved, RerollsUsed, RepicksUsed " +
+                    command.CommandText = "SELECT Eclats, Ascensions, BestLevel, Evolved, RerollsUsed, RepicksUsed, NoLegendaryStreak " +
                                           "FROM StasisCharacters WHERE CharacterId = $c;";
                     command.Parameters.AddWithValue("$c", characterId);
                     using var reader = command.ExecuteReader();
@@ -136,17 +168,19 @@ namespace Jondo.Unity.Server.Managers
                         profile.Evolved = reader.GetInt32(3) != 0;
                         profile.RerollsUsed = reader.GetInt32(4);
                         profile.RepicksUsed = reader.GetInt32(5);
+                        profile.NoLegendaryStreak = reader.IsDBNull(6) ? 0 : reader.GetInt32(6);
                     }
                 }
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = "SELECT Level, Card, Stat, Amount FROM StasisDons WHERE CharacterId = $c ORDER BY Level;";
+                    command.CommandText = "SELECT Level, Card, Stat, Amount, Rarity FROM StasisDons WHERE CharacterId = $c ORDER BY Level;";
                     command.Parameters.AddWithValue("$c", characterId);
                     using var reader = command.ExecuteReader();
                     while (reader.Read())
                         profile.Dons.Add(new ChosenDon
                         {
                             Level = reader.GetInt32(0), Card = reader.GetString(1), Stat = reader.GetInt32(2), Amount = reader.GetInt32(3),
+                            Rarity = reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
                         });
                 }
                 using (var command = connection.CreateCommand())
@@ -155,12 +189,14 @@ namespace Jondo.Unity.Server.Managers
                     command.Parameters.AddWithValue("$c", characterId);
                     using var reader = command.ExecuteReader();
                     while (reader.Read())
+                    {
+                        var (cards, rarities) = DonOffer.Parse(reader.GetString(2));
                         profile.Pending.Add(new DonOffer
                         {
-                            Level = reader.GetInt32(0), Kind = reader.GetString(1),
-                            Cards = reader.GetString(2).Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                            Level = reader.GetInt32(0), Kind = reader.GetString(1), Cards = cards, Rarities = rarities,
                             Rerolled = reader.GetInt32(3) != 0,
                         });
+                    }
                 }
                 using (var command = connection.CreateCommand())
                 {
@@ -193,20 +229,20 @@ namespace Jondo.Unity.Server.Managers
                     command.ExecuteNonQuery();
                 }
 
-                Run("INSERT INTO StasisCharacters (CharacterId, Eclats, Ascensions, BestLevel, Evolved, RerollsUsed, RepicksUsed) " +
-                    "VALUES ($c, $e, $a, $b, $v, $r, $p) ON CONFLICT(CharacterId) DO UPDATE SET Eclats = excluded.Eclats, " +
+                Run("INSERT INTO StasisCharacters (CharacterId, Eclats, Ascensions, BestLevel, Evolved, RerollsUsed, RepicksUsed, NoLegendaryStreak) " +
+                    "VALUES ($c, $e, $a, $b, $v, $r, $p, $n) ON CONFLICT(CharacterId) DO UPDATE SET Eclats = excluded.Eclats, " +
                     "Ascensions = excluded.Ascensions, BestLevel = excluded.BestLevel, Evolved = excluded.Evolved, " +
-                    "RerollsUsed = excluded.RerollsUsed, RepicksUsed = excluded.RepicksUsed;",
+                    "RerollsUsed = excluded.RerollsUsed, RepicksUsed = excluded.RepicksUsed, NoLegendaryStreak = excluded.NoLegendaryStreak;",
                     ("$c", p.CharacterId), ("$e", p.Eclats), ("$a", p.Ascensions), ("$b", p.BestLevel),
-                    ("$v", p.Evolved ? 1 : 0), ("$r", p.RerollsUsed), ("$p", p.RepicksUsed));
+                    ("$v", p.Evolved ? 1 : 0), ("$r", p.RerollsUsed), ("$p", p.RepicksUsed), ("$n", p.NoLegendaryStreak));
                 Run("DELETE FROM StasisDons WHERE CharacterId = $c;", ("$c", p.CharacterId));
                 foreach (var don in p.Dons)
-                    Run("INSERT INTO StasisDons (CharacterId, Level, Card, Stat, Amount) VALUES ($c, $l, $k, $s, $a);",
-                        ("$c", p.CharacterId), ("$l", don.Level), ("$k", don.Card), ("$s", don.Stat), ("$a", don.Amount));
+                    Run("INSERT INTO StasisDons (CharacterId, Level, Card, Stat, Amount, Rarity) VALUES ($c, $l, $k, $s, $a, $y);",
+                        ("$c", p.CharacterId), ("$l", don.Level), ("$k", don.Card), ("$s", don.Stat), ("$a", don.Amount), ("$y", don.Rarity));
                 Run("DELETE FROM StasisOffers WHERE CharacterId = $c;", ("$c", p.CharacterId));
                 foreach (var offer in p.Pending)
                     Run("INSERT INTO StasisOffers (CharacterId, Level, Kind, Cards, Rerolled) VALUES ($c, $l, $k, $x, $r);",
-                        ("$c", p.CharacterId), ("$l", offer.Level), ("$k", offer.Kind), ("$x", string.Join(",", offer.Cards)),
+                        ("$c", p.CharacterId), ("$l", offer.Level), ("$k", offer.Kind), ("$x", offer.Stored()),
                         ("$r", offer.Rerolled ? 1 : 0));
                 Run("DELETE FROM StasisResearch WHERE CharacterId = $c;", ("$c", p.CharacterId));
                 foreach (var (id, rank) in p.Research)
@@ -236,13 +272,15 @@ namespace Jondo.Unity.Server.Managers
                         BestLevel   INTEGER NOT NULL DEFAULT 0,
                         Evolved     INTEGER NOT NULL DEFAULT 0,
                         RerollsUsed INTEGER NOT NULL DEFAULT 0,
-                        RepicksUsed INTEGER NOT NULL DEFAULT 0);
+                        RepicksUsed INTEGER NOT NULL DEFAULT 0,
+                        NoLegendaryStreak INTEGER NOT NULL DEFAULT 0);
                     CREATE TABLE IF NOT EXISTS StasisDons (
                         CharacterId INTEGER NOT NULL,
                         Level       INTEGER NOT NULL,
                         Card        TEXT    NOT NULL,
                         Stat        INTEGER NOT NULL DEFAULT 0,
                         Amount      INTEGER NOT NULL DEFAULT 0,
+                        Rarity      INTEGER NOT NULL DEFAULT 0,
                         PRIMARY KEY (CharacterId, Level));
                     CREATE TABLE IF NOT EXISTS StasisOffers (
                         CharacterId INTEGER NOT NULL,
@@ -257,8 +295,26 @@ namespace Jondo.Unity.Server.Managers
                         Rank        INTEGER NOT NULL DEFAULT 0,
                         PRIMARY KEY (CharacterId, ResearchId));";
                 create.ExecuteNonQuery();
+                // The columns later versions added, onto the tables of an older world.db: the
+                // rarity of a don and the pity counter (both 0 for what was there before).
+                AddColumnIfMissing(connection, "StasisCharacters", "NoLegendaryStreak", "INTEGER NOT NULL DEFAULT 0");
+                AddColumnIfMissing(connection, "StasisDons", "Rarity", "INTEGER NOT NULL DEFAULT 0");
                 _tableReady = true;
             }
+        }
+
+        private static void AddColumnIfMissing(SqliteConnection connection, string table, string column, string definition)
+        {
+            using (var info = connection.CreateCommand())
+            {
+                info.CommandText = $"PRAGMA table_info({table});";
+                using var reader = info.ExecuteReader();
+                while (reader.Read())
+                    if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase)) return;
+            }
+            using var alter = connection.CreateCommand();
+            alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition};";
+            alter.ExecuteNonQuery();
         }
 
         private static SqliteConnection Open()

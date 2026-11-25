@@ -676,6 +676,12 @@ namespace JondoFix
             label.AddToClassList("textColor_white_white100");
             if (bold) label.style.unityFontStyleAndWeight = new StyleEnum<UnityEngine.FontStyle>(UnityEngine.FontStyle.Bold);
             label.style.whiteSpace = new StyleEnum<WhiteSpace>(WhiteSpace.Normal);
+            // A wrapped text must grow with its lines: the text class gives a one-line height and a
+            // column would otherwise squeeze it, so the next row was drawn over the long lines.
+            label.style.height = new StyleLength(StyleKeyword.Auto);
+            label.style.minHeight = new StyleLength(StyleKeyword.Auto);
+            label.style.maxHeight = new StyleLength(StyleKeyword.None);
+            label.style.flexShrink = new StyleFloat(0f);
             return label;
         }
 

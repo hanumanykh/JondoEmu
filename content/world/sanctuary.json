@@ -3,6 +3,8 @@
     "The Sanctuary hub (spec §2, §21; Managers/Stasis/Sanctuary.cs; «.sanctuaire» / «.retour»).",
     "Map 211292160 = «Forbidden Inn Great Hall» [23,-32], subarea 960: an indoor client map without",
     "monsters, without NPCs of its own and named by no other content file; 163 walkable cells.",
+    "Checked again (docs/stasis-maps.md): no quest, zaap or dungeon uses it; «cell» 316 and the four",
+    "NPC cells are walkable and on its main floor (MapManager.MainFloor), reached by the Inn's doors.",
     "The NPCs are placed by content/npcs/spawns.json on the same cells as here; talking to the",
     "merchant, the raffineur or the counter answers with their command's text (role), the banker",
     "(Bonta's template 6394) opens the bank as every banker does.",

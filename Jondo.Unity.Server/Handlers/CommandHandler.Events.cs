@@ -74,7 +74,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (GameState.IsInFight) { await NotifyAsync(stream, "Pas en combat.", channel, accountId); return; }
             if (await WorldMoveHandler.TeleportAsync(stream, r.Def.Map) == null)
-                await NotifyAsync(stream, "Le kanojedo est inaccessible pour le moment.", channel, accountId);
+                await NotifyAsync(stream, "Le dojo du Poutch est inaccessible pour le moment.", channel, accountId);
         }
 
         // ─── .jetons ────────────────────────────────────────────────────────────────────────
@@ -170,15 +170,42 @@ namespace Jondo.Unity.Server.Handlers
                     $"Fissure : {p.Waves} vagues gagnées (record {p.Best}), {p.Eligible % settings.Dofus.WavesNeeded}/{settings.Dofus.WavesNeeded} vagues éligibles vers un Dofus garanti" +
                     (owed > 0 ? $", {owed} Dofus à réclamer (.fissure dofus <nom>)" : "") + ". " +
                     (exp != null ? $"Expédition {exp.Band.Name} en cours, vague {exp.Wave} (niveau {Fissure.MonsterLevel(exp.Band, exp.Wave)}). " : "") +
-                    $"Clés : {bands}. .fissure <clé> pour partir, .fissure quitter pour abandonner.", channel, accountId);
+                    $"Clés : {bands}. .fissure <clé> pour partir, .fissure rejoindre pour suivre votre groupe, .fissure quitter pour abandonner et sortir.", channel, accountId);
                 return;
             }
 
-            if (word == "quitter" || word == "abandon")
+            if (word == "quitter" || word == "abandon" || word == "sortir")
             {
                 var closed = Fissure.Close(me);
-                await NotifyAsync(stream, closed == null ? "Aucune expédition en cours."
-                    : $"Expédition {closed.Band.Name} abandonnée après {closed.Cleared} vague(s), qui restent acquises.", channel, accountId);
+                string said = closed == null ? "Aucune expédition en cours."
+                    : $"Expédition {closed.Band.Name} abandonnée après {closed.Cleared} vague(s), qui restent acquises.";
+                // The arena is a map no door or border leads out of: whoever stands on it is taken
+                // back where he came from, or to the Sanctuary when that is not known.
+                if (settings.ArenaMap > 0 && GameState.MapId == settings.ArenaMap && !GameState.IsInFight)
+                {
+                    (long Map, int Cell) back = _fissureOrigins.TryRemove(me, out var o) ? o : (Sanctuary.Current.MapId, Sanctuary.Current.Cell);
+                    if (await TeleportHandler.ToMapAsync(stream, back.Map, back.Cell) < 0)
+                        said += " La sortie est bloquée : utilisez « .sanctuaire » ou une potion de rappel.";
+                }
+                await NotifyAsync(stream, said, channel, accountId);
+                return;
+            }
+
+            if (word == "rejoindre")
+            {
+                // A party member goes to the expedition his party opened: the arena has no way in.
+                var myParty = Parties.Of(me);
+                var theirs = myParty == null ? null
+                    : Parties.MembersOf(myParty).Select(Fissure.Of).FirstOrDefault(e => e != null);
+                if (theirs == null) { await NotifyAsync(stream, "Aucune expédition ouverte dans votre groupe.", channel, accountId); return; }
+                if (GameState.IsInFight) { await NotifyAsync(stream, "Pas en combat.", channel, accountId); return; }
+                if (GameState.MapId == theirs.ArenaMap) { await NotifyAsync(stream, "Vous êtes déjà dans la Fissure.", channel, accountId); return; }
+                long fromMap = GameState.MapId;
+                int fromCell = GameState.CellId;
+                if (await WorldMoveHandler.TeleportAsync(stream, theirs.ArenaMap) == null)
+                    await NotifyAsync(stream, "Impossible de vous emmener dans la Fissure pour le moment.", channel, accountId);
+                else
+                    _fissureOrigins[me] = (fromMap, fromCell);
                 return;
             }
 
@@ -232,13 +259,27 @@ namespace Jondo.Unity.Server.Handlers
             await NotifyAsync(stream, $"Fissure {band.Name} ouverte pour {cost:N0} {OrbeLabel}. Vague 1 (niveau {Fissure.MonsterLevel(band, 1)}) vous attend. " +
                                       $"Bonus de formation ({fighters}) : +{bonus.Ap} PA, +{bonus.Mp} PM, +{bonus.LifePercent} % PV, +{bonus.DamagePercent} % dégâts.",
                               channel, accountId);
+            if (GameState.MapId == opened.ArenaMap) return;
+            long leftMap = GameState.MapId;
+            int leftCell = GameState.CellId;
             if (await WorldMoveHandler.TeleportAsync(stream, opened.ArenaMap) == null)
             {
                 Fissure.Close(me);
                 await PayOrbesAsync(stream, cost);
                 await NotifyAsync(stream, "Impossible de vous emmener dans la Fissure ; l'expédition est annulée et remboursée.", channel, accountId);
+                return;
             }
+            _fissureOrigins[me] = (leftMap, leftCell);
+            if (fighters > 1)
+                await NotifyAsync(stream, "Vos compagnons de groupe vous rejoignent avec « .fissure rejoindre ».", channel, accountId);
         }
+
+        /// <summary>
+        /// Where each character stood before being taken into the Fissure's arena, for «.fissure
+        /// quitter» to take him back: the arena (content/events/fissure.json «arenaMap») is a map no
+        /// door or border leads out of. In memory only; without it the way out is the Sanctuary.
+        /// </summary>
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, (long Map, int Cell)> _fissureOrigins = new();
 
         /// <summary>The first word of a line, «» when there is none.</summary>
         private static string FirstWordOf(string text)

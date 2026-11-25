@@ -128,6 +128,12 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            if (action == Npcs.Talk && CommandHandler.IsCoinMerchant(npc.NpcId, mapId))
+            {
+                await OpenShopAsync(stream, npc);
+                return;
+            }
+
             if (action == Npcs.Talk)
             {
                 // The Sanctuary's Merchant, Raffineur and counter answer with their command's text (CommandHandler.Hub.cs).
@@ -149,6 +155,18 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>The whole catalogue, in one go, which is how the real server sends it.</summary>
         private static async Task OpenShopAsync(NetworkStream stream, Npcs.Spawn npc)
         {
+            // The Sanctuary's Merchant: his level band's catalogue, priced in Jondo Coins (CommandHandler.Hub.cs).
+            if (CommandHandler.IsCoinMerchant(npc.NpcId, SessionContext.State.MapId))
+            {
+                var gids = CommandHandler.MerchantWindowCatalogue(SessionContext.State);
+                if (gids.Count == 0) return;
+                OpenShop = npc.ContextualId;
+                OpenShopNpc = npc.NpcId;
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kbd,
+                    ConnectionProtocol.BuildShop(npc.ContextualId, gids, CommandHandler.MerchantWindowPricing(gids), npc.NpcId)));
+                return;
+            }
+
             var subscribedDays = new Lazy<double>(ShopSubscriptionDays);
             var catalogue = NpcShops.CatalogueFor(npc.NpcId,
                 criterion => PlayerCriteria.Met(criterion, SessionContext.State.MapId), () => subscribedDays.Value);
@@ -2073,6 +2091,13 @@ namespace Jondo.Unity.Server.Handlers
                 Console.WriteLine($"[NPC] Vendor {OpenShopNpc} is not on map " +
                                   $"{SessionContext.State.MapId}: the shop closes.");
                 Forget();
+                return;
+            }
+
+            // The Sanctuary's Merchant sells through «.marchand acheter»'s path: coins, rolls, refunds.
+            if (CommandHandler.IsCoinMerchant(OpenShopNpc, SessionContext.State.MapId))
+            {
+                await CommandHandler.MerchantWindowBuyAsync(SessionContext.Current, gid, (int)quantity);
                 return;
             }
 

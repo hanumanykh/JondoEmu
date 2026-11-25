@@ -250,7 +250,7 @@ namespace Jondo.Unity.Server.Handlers
                 var translation = connection.CreateCommand();
                 translation.CommandText = "SELECT Text FROM Translations WHERE Key = $key;";
                 translation.Parameters.AddWithValue("$key", Convert.ToInt64(key).ToString(CultureInfo.InvariantCulture));
-                return translation.ExecuteScalar() as string is { Length: > 0 } name ? name : gid.ToString(CultureInfo.InvariantCulture);
+                return GameText.Of(Convert.ToInt64(key), translation.ExecuteScalar() as string) is { Length: > 0 } name ? name : gid.ToString(CultureInfo.InvariantCulture);
             }
             catch (Exception)
             {

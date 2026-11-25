@@ -126,6 +126,8 @@ namespace Jondo.Unity.Server.Handlers
                 [".donjons"] = "usage.donjons",
                 [".cle"] = "usage.cle",
                 [".hardcore"] = "usage.hardcore",
+                // The Éveil des Dofus (CommandHandler.Eveil.cs).
+                [".eveil"] = "usage.eveil",
                 // The Sanctuary, its Merchant and Stasis fabrication (CommandHandler.Hub.cs).
                 [".sanctuaire"] = "usage.sanctuaire",
                 [".retour"] = "usage.retour",
@@ -189,6 +191,7 @@ namespace Jondo.Unity.Server.Handlers
                 [".donjons"] = Roles.Jugador,
                 [".cle"] = Roles.Jugador,
                 [".hardcore"] = Roles.Jugador,
+                [".eveil"] = Roles.Jugador,
                 [".sanctuaire"] = Roles.Jugador,
                 [".retour"] = Roles.Jugador,
                 [".marchand"] = Roles.Jugador,
@@ -409,6 +412,7 @@ namespace Jondo.Unity.Server.Handlers
                 case ".donjons":
                 case ".cle":
                 case ".hardcore": await TiersCommandAsync(stream, command, rest, channel, accountId); break;
+                case ".eveil": await EveilChatAsync(stream, rest, channel, accountId); break;
                 case ".sanctuaire":
                 case ".retour":
                 case ".marchand":

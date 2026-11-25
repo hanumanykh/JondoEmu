@@ -9,10 +9,18 @@
     "one key gives (0 = none). Formation bonus by the number of fighters (1 to 4), from the spec.",
     "Every wave won adds to the character's cumulative count; a Dofus is guaranteed every",
     "«dofus.wavesNeeded» ELIGIBLE waves (spec: waves >= 5 in Abîme; set eligibleBands/eligibleFromWave",
-    "to change it), claimed with «.fissure dofus <nom>»."
+    "to change it), claimed with «.fissure dofus <nom>».",
+    "",
+    "«arenaMap» 202901510 = «Dimensional Voyagers' Tower» [-22,-24], subarea 935 «Futuro no previsto»:",
+    "the rift-watchers' tower in a future that never came, a vision map no quest, NPC, monster, zaap,",
+    "door or border uses (none of its four neighbours exists). 159 walkable cells, 261 in fight; the",
+    "fights are held on its twin board 202903046 (content/fights/arenas.json, 157/159 cells alike).",
+    "The teleport lands on cell 296, on its main floor. Nothing leads out: the party's other members",
+    "come with «.fissure rejoindre», everyone leaves with «.fissure quitter». It was Astrub City",
+    "[4,-18] (191104002), the bank's square. See docs/stasis-maps.md."
   ],
   "enabled": true,
-  "arenaMap": 191104002,
+  "arenaMap": 202901510,
   "maxFighters": 4,
   "formation": [
     { "fighters": 1, "ap": 4, "mp": 3, "lifePercent": 25, "damagePercent": 10 },

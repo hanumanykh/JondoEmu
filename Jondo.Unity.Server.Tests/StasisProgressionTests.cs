@@ -46,12 +46,14 @@ public sealed class StasisProgressionTests
     private static ProgressionProfile NewProfile() => new() { CharacterId = Interlocked.Increment(ref _nextId) };
 
     [Theory]
-    [InlineData(1, null)]
+    [InlineData(0, null)]
+    [InlineData(1, Dons.KindStart)]
     [InlineData(2, Dons.KindLevel)]
     [InlineData(5, Dons.KindAdventure)]
     [InlineData(10, Dons.KindSpell)]
     [InlineData(30, Dons.KindSpell)]
-    [InlineData(50, Dons.KindPassive)]
+    [InlineData(50, Dons.KindSpell)]
+    [InlineData(60, Dons.KindAdventure)]
     [InlineData(55, Dons.KindAdventure)]
     [InlineData(199, Dons.KindLevel)]
     [InlineData(200, Dons.KindAdventure)]
@@ -72,9 +74,127 @@ public sealed class StasisProgressionTests
         Assert.All(p.Pending.Single(o => o.Level == 10).Cards, c => Assert.StartsWith("iop-", c));
         Assert.Equal(0, Dons.QueueOffers(p, Content, 8, 1, 12));
 
-        // The class passives: all of the breed's, for the Iop his own.
-        Dons.QueueOffers(p, Content, 8, 49, 50);
-        Assert.Equal(new[] { "iop_terre", "iop_puissance" }, p.Pending.Last().Cards);
+        // Level 50: its spell point, then two extra offers of the level -- the class passives (all
+        // of the breed's, for the Iop his own) and the don «Pension» (a mount egg, one species of three).
+        Assert.Equal(3, Dons.QueueOffers(p, Content, 8, 49, 50));
+        Assert.Equal(new[] { 50, Dons.PassiveLevelOffset + 50, Dons.PensionLevelOffset + 50 }, p.Pending.Where(o => Dons.RealLevel(o.Level) == 50).Select(o => o.Level));
+        Assert.Equal(new[] { "iop_terre", "iop_puissance" }, p.Pending.Single(o => o.Kind == Dons.KindPassive).Cards);
+        Assert.Equal(new[] { "pension_monture_1", "pension_monture_2", "pension_monture_3" }, p.Pending.Single(o => o.Kind == Dons.KindPension).Cards);
+    }
+
+    [Fact]
+    public void Every_standard_card_has_a_rarity_and_a_rare_card_gives_more()
+    {
+        var p = NewProfile();
+        Dons.QueueOffers(p, Content, 8, 1, 10, new Random(3));
+        foreach (var offer in p.Pending.Where(o => o.Kind is Dons.KindLevel or Dons.KindAdventure))
+            Assert.Equal(offer.Cards.Count, offer.Rarities.Count);
+        Assert.Empty(p.Pending.Single(o => o.Kind == Dons.KindSpell).Rarities);
+
+        p.Pending.Clear();
+        p.Pending.Add(new DonOffer { Level = 2, Kind = Dons.KindLevel, Cards = { "carac", "vitalite" }, Rarities = { Dons.Legendaire, Dons.Rare } });
+        Assert.Equal("ok", Dons.Pick(p, Content, 1, "force", out var kept));
+        Assert.Equal((Dons.Legendaire, 6), (kept!.Rarity, kept.Amount));
+        p.Pending.Add(new DonOffer { Level = 3, Kind = Dons.KindLevel, Cards = { "carac", "vitalite" }, Rarities = { Dons.Commun, Dons.Rare } });
+        Assert.Equal("ok", Dons.Pick(p, Content, 2, null, out _));
+        var bonuses = Dons.BonusesOf(p, Content);
+        Assert.Equal(6, bonuses[Stat.Strength]);
+        Assert.Equal(30, bonuses[Stat.Vitality]);
+        Assert.Equal("+30 Vitalité", Dons.Describe("vitalite", p, Content, Dons.Rare).Description);
+
+        // Stored as "id@rarity", read back the same; an old row without rarity is Commun.
+        var (cards, rarities) = DonOffer.Parse(new DonOffer { Cards = { "carac", "pods" }, Rarities = { 2, 0 } }.Stored());
+        Assert.Equal(new[] { "carac", "pods" }, cards);
+        Assert.Equal(new[] { 2, 0 }, rarities);
+        Assert.Equal(new[] { 0 }, DonOffer.Parse("pods").Rarities);
+    }
+
+    [Fact]
+    public void After_five_offers_without_a_legendary_the_next_has_one()
+    {
+        var p = NewProfile();
+        p.NoLegendaryStreak = 5;
+        var offer = Dons.Draw(p, Content, 8, 2, Dons.KindLevel, new Random(1));
+        Assert.Contains(Dons.Legendaire, offer.Rarities);
+        Assert.Equal(0, p.NoLegendaryStreak);
+    }
+
+    [Fact]
+    public void Fortune_raises_the_rarity_chances()
+    {
+        var p = NewProfile();
+        Assert.Equal((0.20, 0.05), Dons.RarityChances(p, Content));
+        p.Research["fortune"] = 3;
+        Assert.Equal((0.25, 0.12), Dons.RarityChances(p, Content));
+    }
+
+    [Fact]
+    public void The_first_card_is_mostly_the_characteristic_and_the_last_one_not_taken_recently()
+    {
+        var p = NewProfile();
+        // Ten combat cards taken in the last levels: the last card is never one of them.
+        int level = 100;
+        foreach (var card in Content.Dons.Level.Where(c => c.Id != "pods").Take(Content.Dons.RecentWindow))
+            p.Dons.Add(new ChosenDon { Level = level--, Card = card.Id });
+        var recent = Dons.RecentCards(p, Content.Dons.RecentWindow);
+        Assert.Equal(Content.Dons.RecentWindow, recent.Count);
+        int caracFirst = 0;
+        for (int i = 0; i < 50; i++)
+        {
+            var offer = Dons.Draw(p, Content, 8, 150, Dons.KindLevel, new Random(i));
+            Assert.Equal(3, offer.Cards.Count);
+            Assert.Equal(offer.Cards.Count, offer.Cards.Distinct().Count());
+            if (offer.Cards[0] == "carac") caracFirst++;
+            Assert.DoesNotContain(offer.Cards[^1], recent);
+        }
+        Assert.True(caracFirst >= 35, $"carac first {caracFirst}/50");
+    }
+
+    [Fact]
+    public void Starting_offer_passive_and_pension_are_given_to_older_characters_and_not_rerolled()
+    {
+        var p = NewProfile();
+        // An older level-70 character: the passive kept at level 50 by the previous rules.
+        p.Dons.Add(new ChosenDon { Level = 50, Card = "iop_terre" });
+        int changed = Dons.EnsureOffers(p, Content, 8, 70, level => level == 60);
+        Assert.Equal(Dons.PassiveLevelOffset + 50, p.Dons.Single(d => d.Card == "iop_terre").Level);
+        Assert.Contains(p.Pending, o => o.Level == 1 && o.Kind == Dons.KindStart);
+        Assert.Contains(p.Pending, o => o.Level == Dons.PensionLevelOffset + 20 && o.Kind == Dons.KindPension);
+        Assert.Contains(p.Pending, o => o.Level == Dons.PensionLevelOffset + 50);
+        Assert.DoesNotContain(p.Pending, o => o.Level == Dons.PensionLevelOffset + 60);   // already given by the pension
+        Assert.DoesNotContain(p.Pending, o => o.Kind == Dons.KindPassive);
+        Assert.Equal(4, changed);
+        Assert.Equal(0, Dons.EnsureOffers(p, Content, 8, 70, level => level == 60));
+
+        // The starting offer comes first and is not rerolled; nor is a Pension offer.
+        Assert.Equal(Dons.KindStart, p.Pending[0].Kind);
+        long kamas = 1_000_000;
+        Assert.Equal("non-relancable", Dons.Reroll(p, Content, 8, ref kamas, out _));
+        Assert.Equal("ok", Dons.Pick(p, Content, 1, "chance", out _));
+        Assert.Equal(Dons.KindPension, p.Pending[0].Kind);
+        Assert.Equal("non-relancable", Dons.Reroll(p, Content, 8, ref kamas, out _));
+        Assert.Equal("ok", Dons.Pick(p, Content, 2, null, out var egg));
+        var choice = Dons.PensionChoiceOf(egg!.Card)!.Value;
+        Assert.Equal((Pension.KindPet, 2075), (choice.Kind, choice.Choice));
+        Assert.Equal("Don Pension", Dons.CardKindLabel(egg.Card, Content));
+    }
+
+    [Fact]
+    public void Speed_dons_are_a_walk_percent_and_each_card_has_an_icon()
+    {
+        var p = NewProfile();
+        p.Dons.Add(new ChosenDon { Level = 5, Card = "aventure_vitesse", Rarity = Dons.Legendaire });
+        p.Dons.Add(new ChosenDon { Level = 10, Card = "aventure_elan", Rarity = Dons.Commun });
+        Assert.Equal(7, Dons.PercentOf(p, Content, Dons.SpeedPercentStat));
+        Assert.Equal(2, Dons.PercentOf(p, Content, Dons.AnimationPercentStat));
+        Assert.Empty(Dons.BonusesOf(p, Content).Keys.Where(k => k < 0));
+
+        Assert.Equal(("stat", Stat.Vitality), (Dons.IconOf("vitalite", Content).Kind, Dons.IconOf("vitalite", Content).Id));
+        Assert.Equal("class", Dons.IconOf("iop_terre", Content).Kind);
+        Assert.Equal(("item", 2074), (Dons.IconOf("pension_familier_2074", Content).Kind, Dons.IconOf("pension_familier_2074", Content).Id));
+        Assert.Equal("glyph", Dons.IconOf("aventure_vitesse", Content).Kind);
+        foreach (var card in Content.Dons.Level.Concat(Content.Dons.Adventure).Concat(Content.Dons.Accomplishments))
+            Assert.NotEqual("", Dons.IconOf(card.Id, Content).Glyph);
     }
 
     [Fact]
@@ -120,20 +240,27 @@ public sealed class StasisProgressionTests
     }
 
     [Fact]
-    public void Adventure_ranks_stack_and_discovery_is_experience_not_a_characteristic()
+    public void Adventure_ranks_stack_with_their_rarity_values_and_retired_cards_still_count()
     {
         var p = NewProfile();
         for (int level = 5; level <= 15; level += 5)
         {
-            p.Pending.Add(new DonOffer { Level = level, Kind = Dons.KindAdventure, Cards = { "aventure_decouverte", "aventure_pods" } });
+            p.Pending.Add(new DonOffer
+            {
+                Level = level, Kind = Dons.KindAdventure, Cards = { "aventure_decouverte", "aventure_pods" },
+                Rarities = { level == 10 ? Dons.Legendaire : Dons.Commun, Dons.Commun },
+            });
             Assert.Equal("ok", Dons.Pick(p, Content, level == 15 ? 2 : 1, null, out _));
         }
         Assert.Equal(2, Dons.RankOf(p, "aventure_decouverte"));
-        Assert.Equal(4, Dons.DiscoveryPercent(p, Content));
         var bonuses = Dons.BonusesOf(p, Content);
+        // Découverte: +1 Sag +2 PP (Commun), +3 Sag +4 PP (Légendaire).
+        Assert.Equal(4, bonuses[Stat.Wisdom]);
+        Assert.Equal(6, bonuses[Stat.Prospecting]);
+        // aventure_pods is retired: no longer offered, still counted.
         Assert.Equal(50, bonuses[Stat.Pods]);
-        Assert.False(bonuses.ContainsKey(Dons.XpPercent));
-        Assert.Equal(1.04, Dons.ExperienceFactor(p, 10, Content), 6);
+        Assert.DoesNotContain("aventure_pods", Dons.Draw(p, Content, 8, 20, Dons.KindAdventure).Cards);
+        Assert.Equal(1.0, Dons.ExperienceFactor(p, 10, Content), 6);
     }
 
     [Fact]
@@ -196,7 +323,7 @@ public sealed class StasisProgressionTests
         var state = new SessionState { CharacterId = p.CharacterId, CharacterLevel = 120, StatStrength = 300, ScrolledStrength = 101, Kamas = 5 };
         p.Dons.Add(new ChosenDon { Level = 2, Card = "carac", Stat = Stat.Strength, Amount = 3 });
         p.Pending.Add(new DonOffer { Level = 3, Kind = Dons.KindLevel, Cards = { "pods" } });
-        p.Research["fortune"] = 1;
+        p.Research["tempo"] = 1;
 
         Assert.Equal("niveau", Ascension.CannotAscend(p, 49, Content));
         Assert.Null(Ascension.CannotAscend(p, 120, Content));
@@ -212,8 +339,8 @@ public sealed class StasisProgressionTests
         Assert.Equal(101, state.ScrolledStrength);
         Assert.Equal(5, state.Kamas);
         Assert.Equal(CharacteristicRules.TotalCapitalForLevel(1), state.CharacterRemainingPoints);
-        // The research stays: Fortune still adds its prospecting.
-        Assert.Equal(10, Dons.BonusesOf(p, Content)[Stat.Prospecting]);
+        // The research stays: Tempo still adds its initiative.
+        Assert.Equal(150, Dons.BonusesOf(p, Content)[Stat.Initiative]);
     }
 
     [Fact]

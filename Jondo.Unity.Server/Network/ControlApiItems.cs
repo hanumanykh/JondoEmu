@@ -41,7 +41,7 @@ namespace Jondo.Unity.Server.Network
             var translation = connection.CreateCommand();
             translation.CommandText = "SELECT Text FROM Translations WHERE Key = $key;";
             translation.Parameters.AddWithValue("$key", nameId.ToString());
-            string name = translation.ExecuteScalar() as string ?? "";
+            string name = GameText.Of(Convert.ToInt64(nameId), translation.ExecuteScalar() as string);
             var spells = new List<(int, int)>();
             if (DatabaseManager.TryGetItemTemplateEffects(gid, out string effects))
                 foreach (var e in Equipment.ParseEffects(effects))

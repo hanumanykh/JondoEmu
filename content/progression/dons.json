@@ -1,135 +1,1035 @@
 {
-  "_comment": "Level-up dons (the Stasis server's gameplay rules, rewritten for Jondo; Managers/Stasis/Dons.cs reads this). Every level gained from 2 to lastDonLevel offers cardsPerOffer cards (research quatrieme_carte adds one) and the player keeps one. Which offer a level gives, first rule that matches: passiveLevel -> the breed's class passives (all of them shown); spellLevels -> three spell dons of the class (spell_dons.json, SpellDons.cs), or when none is left the spell card, the characteristic card and level cards; a multiple of adventureEvery -> adventure dons; otherwise the characteristic card (with characteristicCard.firstChance) and level cards. accomplishmentLevels give an accomplishment offer, past lastDonLevel too. The normal characteristic points of a level are untouched: a don is on top. Stats are the French names Dons.StatIds knows (force, vitalite, puissance, dommagesFeu, resTerre, ...); 'decouverte' is a percent of experience, not a characteristic. Dofus 3 has no spell points (spells come with the level): the spell levels offer spell dons, and the spell card (Puissance) is only their fallback once every spell don is taken or capped. Movement speed is not something this server models, so the Stasis 'Vitesse' adventure don is left out. Adventure dons stack up to maxRank, their effects counted once per rank.",
+  "_comment": "Level-up dons after the Stasis server (docs/stasis-gameplay-spec.md §10; Managers/Stasis/Dons.cs reads this). One offer a level from startingLevel (1, the starting offer, given to new characters and to older ones lacking it) to lastDonLevel (200), first rule that matches: spellLevels -> a spell point (spell dons of the class, spell_dons.json; when none is left the spell card, the characteristic card and combat cards); a multiple of adventureEvery -> adventure dons; otherwise combat dons ('level'). Extra offers: passiveLevel -> the breed's class passives (all shown); pension[] -> a don «Pension», one egg chosen among choices (pet item ids, or Breeding species ids for 'monture'), put in the account's pension; accomplishmentLevels -> an accomplishment, past lastDonLevel too, each with a spell point. A standard offer (depart, niveau, aventure) shows cardsPerOffer cards (+1 with research quatrieme_carte): the first is the characteristic card at characteristicCard.firstChance (not for adventure), the last a don not among the last recentWindow kept. rarity: each card of the kinds listed draws Commun/Rare/Légendaire at these percents (research 'fortune' replaces them by rareByRank/legendaireByRank of its rank); after pityAfter offers in a row without a Légendaire the next has one. An effect's 'value' is the Commun value, 'rare' and 'legendaire' the others (missing: the rarity below's); the characteristic card has amount/amountRare/amountLegendaire. Ranks stack up to maxRank (33). Rerolls: one an offer (niveau, aventure, sort), cost rerollKamasPerLevel x level in kamas-equivalent (OrbePrice turns it into Orbes); starting offers, passives, Pension and accomplishments are not rerolled. Stats are the French names Dons.StatIds knows (force, vitalite, puissance, dommagesFeu, resTerre, ...); 'decouverte' is a percent of experience, 'vitesse' a percent of out-of-combat walk speed (JondoFix MovementSpeed via /api/stasis/speed), 'animation' a percent of animation speed (sent to the client, not drawn yet). 'retired' cards are no longer offered but still count for the characters who have them.",
   "lastDonLevel": 200,
   "cardsPerOffer": 3,
   "adventureEvery": 5,
-  "spellLevels": [10, 30, 70, 90, 110, 130, 150, 170, 190],
+  "spellLevels": [
+    10,
+    30,
+    50,
+    70,
+    90,
+    110,
+    130,
+    150,
+    170,
+    190
+  ],
   "passiveLevel": 50,
-  "accomplishmentLevels": [225, 250, 275, 300],
+  "accomplishmentLevels": [
+    225,
+    250,
+    275,
+    300
+  ],
   "rerollKamasPerLevel": 1000,
+  "startingLevel": 1,
+  "recentWindow": 10,
+  "rarity": {
+    "commun": 75,
+    "rare": 20,
+    "legendaire": 5,
+    "pityAfter": 5,
+    "research": "fortune",
+    "rareByRank": [
+      22,
+      24,
+      25
+    ],
+    "legendaireByRank": [
+      7,
+      9,
+      12
+    ],
+    "kinds": [
+      "depart",
+      "niveau",
+      "aventure"
+    ]
+  },
+  "pension": [
+    {
+      "level": 20,
+      "kind": "familier",
+      "rarity": "Starter",
+      "choices": [
+        2074,
+        2075,
+        2076,
+        2077
+      ]
+    },
+    {
+      "level": 50,
+      "kind": "monture",
+      "choices": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "level": 60,
+      "kind": "monture",
+      "choices": [
+        1,
+        2,
+        3
+      ]
+    }
+  ],
   "characteristicCard": {
     "id": "carac",
     "name": "Caractéristique au choix",
     "description": "+{0} dans la caractéristique de votre choix.",
     "amount": 3,
+    "amountRare": 4,
+    "amountLegendaire": 6,
     "firstChance": 0.9,
-    "stats": ["force", "intelligence", "chance", "agilite", "vitalite", "sagesse"]
+    "stats": [
+      "force",
+      "intelligence",
+      "chance",
+      "agilite",
+      "vitalite",
+      "sagesse"
+    ]
   },
-  "spellCard": { "id": "sort", "name": "Point de sort", "description": "Dofus 3 n'a pas de points de sort : +6 Puissance à la place.", "effects": [{ "stat": "puissance", "value": 6 }] },
+  "spellCard": {
+    "id": "sort",
+    "name": "Point de sort",
+    "description": "Dofus 3 n'a pas de points de sort : +6 Puissance à la place.",
+    "effects": [
+      {
+        "stat": "puissance",
+        "value": 6
+      }
+    ]
+  },
   "level": [
-    { "id": "vitalite", "name": "Robustesse", "description": "+20 Vitalité.", "effects": [{ "stat": "vitalite", "value": 20 }] },
-    { "id": "puissance", "name": "Vigueur", "description": "+4 Puissance.", "effects": [{ "stat": "puissance", "value": 4 }] },
-    { "id": "dommages", "name": "Tranchant", "description": "+1 Dommages.", "effects": [{ "stat": "dommages", "value": 1 }] },
-    { "id": "critiques", "name": "Coup d'oeil", "description": "+3 Dommages critiques.", "effects": [{ "stat": "dommagesCritiques", "value": 3 }] },
-    { "id": "initiative", "name": "Réflexes", "description": "+60 Initiative.", "effects": [{ "stat": "initiative", "value": 60 }] },
-    { "id": "prospection", "name": "Flair", "description": "+3 Prospection.", "effects": [{ "stat": "prospection", "value": 3 }] },
-    { "id": "sagesse", "name": "Érudition", "description": "+4 Sagesse.", "effects": [{ "stat": "sagesse", "value": 4 }] },
-    { "id": "pods", "name": "Dos solide", "description": "+60 Pods.", "effects": [{ "stat": "pods", "value": 60 }] },
-    { "id": "soins", "name": "Main douce", "description": "+1 Soins.", "effects": [{ "stat": "soins", "value": 1 }] },
-    { "id": "tacle", "name": "Poigne", "description": "+1 Tacle.", "effects": [{ "stat": "tacle", "value": 1 }] },
-    { "id": "fuite", "name": "Agilité féline", "description": "+1 Fuite.", "effects": [{ "stat": "fuite", "value": 1 }] },
-    { "id": "resistances", "name": "Carapace", "description": "+1 % de résistance Terre et Feu.", "effects": [{ "stat": "resTerre", "value": 1 }, { "stat": "resFeu", "value": 1 }] },
-    { "id": "resistances2", "name": "Écorce", "description": "+1 % de résistance Eau et Air.", "effects": [{ "stat": "resEau", "value": 1 }, { "stat": "resAir", "value": 1 }] },
-    { "id": "poussee", "name": "Bélier", "description": "+3 Dommages de poussée.", "effects": [{ "stat": "dommagesPoussee", "value": 3 }] }
+    {
+      "id": "vitalite",
+      "name": "Robustesse",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "vitalite",
+          "value": 20,
+          "rare": 30,
+          "legendaire": 40
+        }
+      ]
+    },
+    {
+      "id": "puissance",
+      "name": "Vigueur",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "puissance",
+          "value": 4,
+          "rare": 6,
+          "legendaire": 8
+        }
+      ]
+    },
+    {
+      "id": "dommages",
+      "name": "Tranchant",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "dommages",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        }
+      ]
+    },
+    {
+      "id": "critiques",
+      "name": "Coup d'oeil",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "dommagesCritiques",
+          "value": 3,
+          "rare": 4,
+          "legendaire": 6
+        }
+      ]
+    },
+    {
+      "id": "initiative",
+      "name": "Réflexes",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "initiative",
+          "value": 60,
+          "rare": 90,
+          "legendaire": 120
+        }
+      ]
+    },
+    {
+      "id": "prospection",
+      "name": "Flair",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "prospection",
+          "value": 3,
+          "rare": 4,
+          "legendaire": 6
+        }
+      ]
+    },
+    {
+      "id": "sagesse",
+      "name": "Érudition",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "sagesse",
+          "value": 4,
+          "rare": 6,
+          "legendaire": 8
+        }
+      ]
+    },
+    {
+      "id": "pods",
+      "name": "Dos solide",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "pods",
+          "value": 60,
+          "rare": 90,
+          "legendaire": 120
+        }
+      ]
+    },
+    {
+      "id": "soins",
+      "name": "Main douce",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "soins",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        }
+      ]
+    },
+    {
+      "id": "tacle",
+      "name": "Poigne",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "tacle",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        }
+      ]
+    },
+    {
+      "id": "fuite",
+      "name": "Agilité féline",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "fuite",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        }
+      ]
+    },
+    {
+      "id": "resistances",
+      "name": "Carapace",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "resTerre",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        },
+        {
+          "stat": "resFeu",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        }
+      ]
+    },
+    {
+      "id": "resistances2",
+      "name": "Écorce",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "resEau",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        },
+        {
+          "stat": "resAir",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        }
+      ]
+    },
+    {
+      "id": "poussee",
+      "name": "Bélier",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "dommagesPoussee",
+          "value": 3,
+          "rare": 5,
+          "legendaire": 8
+        }
+      ]
+    }
   ],
   "adventure": [
-    { "id": "aventure_sagesse", "name": "Sagesse", "description": "+3 Sagesse par rang.", "maxRank": 33, "effects": [{ "stat": "sagesse", "value": 3 }] },
-    { "id": "aventure_prospection", "name": "Prospection", "description": "+2 Prospection par rang.", "maxRank": 33, "effects": [{ "stat": "prospection", "value": 2 }] },
-    { "id": "aventure_decouverte", "name": "Découverte", "description": "+2 % d'expérience par rang.", "maxRank": 33, "effects": [{ "stat": "decouverte", "value": 2 }] },
-    { "id": "aventure_elan", "name": "Élan", "description": "+1 Fuite par rang.", "maxRank": 33, "effects": [{ "stat": "fuite", "value": 1 }] },
-    { "id": "aventure_pods", "name": "Pods", "description": "+50 Pods par rang.", "maxRank": 33, "effects": [{ "stat": "pods", "value": 50 }] },
-    { "id": "aventure_initiative", "name": "Initiative", "description": "+40 Initiative par rang.", "maxRank": 33, "effects": [{ "stat": "initiative", "value": 40 }] },
-    { "id": "aventure_soins", "name": "Soins", "description": "+1 Soins par rang.", "maxRank": 33, "effects": [{ "stat": "soins", "value": 1 }] }
+    {
+      "id": "aventure_sagesse",
+      "name": "Sagesse",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "sagesse",
+          "value": 3,
+          "rare": 4,
+          "legendaire": 6
+        }
+      ]
+    },
+    {
+      "id": "aventure_prospection",
+      "name": "Prospection",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "prospection",
+          "value": 4,
+          "rare": 6,
+          "legendaire": 8
+        }
+      ]
+    },
+    {
+      "id": "aventure_vitesse",
+      "name": "Vitesse perso",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "vitesse",
+          "value": 3,
+          "rare": 4,
+          "legendaire": 6
+        }
+      ]
+    },
+    {
+      "id": "aventure_animation",
+      "name": "Vitesse d'animation",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "animation",
+          "value": 4,
+          "rare": 6,
+          "legendaire": 8
+        }
+      ]
+    },
+    {
+      "id": "aventure_decouverte",
+      "name": "Découverte",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "sagesse",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        },
+        {
+          "stat": "prospection",
+          "value": 2,
+          "rare": 3,
+          "legendaire": 4
+        }
+      ]
+    },
+    {
+      "id": "aventure_elan",
+      "name": "Élan",
+      "maxRank": 33,
+      "effects": [
+        {
+          "stat": "vitesse",
+          "value": 1,
+          "rare": 2,
+          "legendaire": 3
+        },
+        {
+          "stat": "animation",
+          "value": 2,
+          "rare": 3,
+          "legendaire": 4
+        }
+      ]
+    },
+    {
+      "id": "aventure_pods",
+      "name": "Pods",
+      "description": "+50 Pods par rang.",
+      "maxRank": 33,
+      "retired": true,
+      "effects": [
+        {
+          "stat": "pods",
+          "value": 50,
+          "rare": 50,
+          "legendaire": 50
+        }
+      ]
+    },
+    {
+      "id": "aventure_initiative",
+      "name": "Initiative",
+      "description": "+40 Initiative par rang.",
+      "maxRank": 33,
+      "retired": true,
+      "effects": [
+        {
+          "stat": "initiative",
+          "value": 40,
+          "rare": 40,
+          "legendaire": 40
+        }
+      ]
+    },
+    {
+      "id": "aventure_soins",
+      "name": "Soins",
+      "description": "+1 Soins par rang.",
+      "maxRank": 33,
+      "retired": true,
+      "effects": [
+        {
+          "stat": "soins",
+          "value": 1,
+          "rare": 1,
+          "legendaire": 1
+        }
+      ]
+    }
   ],
   "passives": {
     "default": [
-      { "id": "passif_puissance", "name": "Polyvalent", "description": "+25 Puissance.", "effects": [{ "stat": "puissance", "value": 25 }] },
-      { "id": "passif_vitalite", "name": "Endurant", "description": "+150 Vitalité.", "effects": [{ "stat": "vitalite", "value": 150 }] }
+      {
+        "id": "passif_puissance",
+        "name": "Polyvalent",
+        "description": "+25 Puissance.",
+        "effects": [
+          {
+            "stat": "puissance",
+            "value": 25
+          }
+        ]
+      },
+      {
+        "id": "passif_vitalite",
+        "name": "Endurant",
+        "description": "+150 Vitalité.",
+        "effects": [
+          {
+            "stat": "vitalite",
+            "value": 150
+          }
+        ]
+      }
     ],
     "1": [
-      { "id": "feca_bouclier", "name": "Rempart", "description": "+5 % de résistance à tous les éléments.", "effects": [{ "stat": "resTerre", "value": 5 }, { "stat": "resFeu", "value": 5 }, { "stat": "resEau", "value": 5 }, { "stat": "resAir", "value": 5 }, { "stat": "resNeutre", "value": 5 }] },
-      { "id": "feca_terre", "name": "Glyphe tellurique", "description": "+15 Dommages Terre.", "effects": [{ "stat": "dommagesTerre", "value": 15 }] }
+      {
+        "id": "feca_bouclier",
+        "name": "Rempart",
+        "description": "+5 % de résistance à tous les éléments.",
+        "effects": [
+          {
+            "stat": "resTerre",
+            "value": 5
+          },
+          {
+            "stat": "resFeu",
+            "value": 5
+          },
+          {
+            "stat": "resEau",
+            "value": 5
+          },
+          {
+            "stat": "resAir",
+            "value": 5
+          },
+          {
+            "stat": "resNeutre",
+            "value": 5
+          }
+        ]
+      },
+      {
+        "id": "feca_terre",
+        "name": "Glyphe tellurique",
+        "description": "+15 Dommages Terre.",
+        "effects": [
+          {
+            "stat": "dommagesTerre",
+            "value": 15
+          }
+        ]
+      }
     ],
     "2": [
-      { "id": "osa_invoc", "name": "Meneur de meute", "description": "+1 Invocation.", "effects": [{ "stat": "invocations", "value": 1 }] },
-      { "id": "osa_feu", "name": "Souffle du dragon", "description": "+15 Dommages Feu.", "effects": [{ "stat": "dommagesFeu", "value": 15 }] }
+      {
+        "id": "osa_invoc",
+        "name": "Meneur de meute",
+        "description": "+1 Invocation.",
+        "effects": [
+          {
+            "stat": "invocations",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "osa_feu",
+        "name": "Souffle du dragon",
+        "description": "+15 Dommages Feu.",
+        "effects": [
+          {
+            "stat": "dommagesFeu",
+            "value": 15
+          }
+        ]
+      }
     ],
     "3": [
-      { "id": "enu_prospection", "name": "Avidité", "description": "+40 Prospection.", "effects": [{ "stat": "prospection", "value": 40 }] },
-      { "id": "enu_eau", "name": "Pelle lourde", "description": "+15 Dommages Eau.", "effects": [{ "stat": "dommagesEau", "value": 15 }] }
+      {
+        "id": "enu_prospection",
+        "name": "Avidité",
+        "description": "+40 Prospection.",
+        "effects": [
+          {
+            "stat": "prospection",
+            "value": 40
+          }
+        ]
+      },
+      {
+        "id": "enu_eau",
+        "name": "Pelle lourde",
+        "description": "+15 Dommages Eau.",
+        "effects": [
+          {
+            "stat": "dommagesEau",
+            "value": 15
+          }
+        ]
+      }
     ],
     "4": [
-      { "id": "sram_air", "name": "Assassin", "description": "+15 Dommages Air.", "effects": [{ "stat": "dommagesAir", "value": 15 }] },
-      { "id": "sram_crit", "name": "Lame cachée", "description": "+20 Dommages critiques.", "effects": [{ "stat": "dommagesCritiques", "value": 20 }] }
+      {
+        "id": "sram_air",
+        "name": "Assassin",
+        "description": "+15 Dommages Air.",
+        "effects": [
+          {
+            "stat": "dommagesAir",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "id": "sram_crit",
+        "name": "Lame cachée",
+        "description": "+20 Dommages critiques.",
+        "effects": [
+          {
+            "stat": "dommagesCritiques",
+            "value": 20
+          }
+        ]
+      }
     ],
     "5": [
-      { "id": "xel_retrait", "name": "Horloger", "description": "+15 Retrait PA.", "effects": [{ "stat": "retraitPA", "value": 15 }] },
-      { "id": "xel_feu", "name": "Sablier ardent", "description": "+15 Dommages Feu.", "effects": [{ "stat": "dommagesFeu", "value": 15 }] }
+      {
+        "id": "xel_retrait",
+        "name": "Horloger",
+        "description": "+15 Retrait PA.",
+        "effects": [
+          {
+            "stat": "retraitPA",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "id": "xel_feu",
+        "name": "Sablier ardent",
+        "description": "+15 Dommages Feu.",
+        "effects": [
+          {
+            "stat": "dommagesFeu",
+            "value": 15
+          }
+        ]
+      }
     ],
     "6": [
-      { "id": "eca_crit", "name": "Chanceux", "description": "+5 % Coups critiques.", "effects": [{ "stat": "critique", "value": 5 }] },
-      { "id": "eca_eau", "name": "Pile ou face", "description": "+15 Dommages Eau.", "effects": [{ "stat": "dommagesEau", "value": 15 }] }
+      {
+        "id": "eca_crit",
+        "name": "Chanceux",
+        "description": "+5 % Coups critiques.",
+        "effects": [
+          {
+            "stat": "critique",
+            "value": 5
+          }
+        ]
+      },
+      {
+        "id": "eca_eau",
+        "name": "Pile ou face",
+        "description": "+15 Dommages Eau.",
+        "effects": [
+          {
+            "stat": "dommagesEau",
+            "value": 15
+          }
+        ]
+      }
     ],
     "7": [
-      { "id": "eni_soins", "name": "Guérisseur", "description": "+20 Soins.", "effects": [{ "stat": "soins", "value": 20 }] },
-      { "id": "eni_feu", "name": "Mot brûlant", "description": "+15 Dommages Feu.", "effects": [{ "stat": "dommagesFeu", "value": 15 }] }
+      {
+        "id": "eni_soins",
+        "name": "Guérisseur",
+        "description": "+20 Soins.",
+        "effects": [
+          {
+            "stat": "soins",
+            "value": 20
+          }
+        ]
+      },
+      {
+        "id": "eni_feu",
+        "name": "Mot brûlant",
+        "description": "+15 Dommages Feu.",
+        "effects": [
+          {
+            "stat": "dommagesFeu",
+            "value": 15
+          }
+        ]
+      }
     ],
     "8": [
-      { "id": "iop_terre", "name": "Colère", "description": "+15 Dommages Terre.", "effects": [{ "stat": "dommagesTerre", "value": 15 }] },
-      { "id": "iop_puissance", "name": "Tête brûlée", "description": "+40 Puissance.", "effects": [{ "stat": "puissance", "value": 40 }] }
+      {
+        "id": "iop_terre",
+        "name": "Colère",
+        "description": "+15 Dommages Terre.",
+        "effects": [
+          {
+            "stat": "dommagesTerre",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "id": "iop_puissance",
+        "name": "Tête brûlée",
+        "description": "+40 Puissance.",
+        "effects": [
+          {
+            "stat": "puissance",
+            "value": 40
+          }
+        ]
+      }
     ],
     "9": [
-      { "id": "cra_po", "name": "Oeil de lynx", "description": "+1 Portée.", "effects": [{ "stat": "po", "value": 1 }] },
-      { "id": "cra_air", "name": "Flèche du vent", "description": "+15 Dommages Air.", "effects": [{ "stat": "dommagesAir", "value": 15 }] }
+      {
+        "id": "cra_po",
+        "name": "Oeil de lynx",
+        "description": "+1 Portée.",
+        "effects": [
+          {
+            "stat": "po",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "cra_air",
+        "name": "Flèche du vent",
+        "description": "+15 Dommages Air.",
+        "effects": [
+          {
+            "stat": "dommagesAir",
+            "value": 15
+          }
+        ]
+      }
     ],
     "10": [
-      { "id": "sadi_invoc", "name": "Jardinier", "description": "+1 Invocation.", "effects": [{ "stat": "invocations", "value": 1 }] },
-      { "id": "sadi_terre", "name": "Ronce", "description": "+15 Dommages Terre.", "effects": [{ "stat": "dommagesTerre", "value": 15 }] }
+      {
+        "id": "sadi_invoc",
+        "name": "Jardinier",
+        "description": "+1 Invocation.",
+        "effects": [
+          {
+            "stat": "invocations",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "sadi_terre",
+        "name": "Ronce",
+        "description": "+15 Dommages Terre.",
+        "effects": [
+          {
+            "stat": "dommagesTerre",
+            "value": 15
+          }
+        ]
+      }
     ],
     "11": [
-      { "id": "sacri_vita", "name": "Sang chaud", "description": "+250 Vitalité.", "effects": [{ "stat": "vitalite", "value": 250 }] },
-      { "id": "sacri_feu", "name": "Douleur partagée", "description": "+15 Dommages Feu.", "effects": [{ "stat": "dommagesFeu", "value": 15 }] }
+      {
+        "id": "sacri_vita",
+        "name": "Sang chaud",
+        "description": "+250 Vitalité.",
+        "effects": [
+          {
+            "stat": "vitalite",
+            "value": 250
+          }
+        ]
+      },
+      {
+        "id": "sacri_feu",
+        "name": "Douleur partagée",
+        "description": "+15 Dommages Feu.",
+        "effects": [
+          {
+            "stat": "dommagesFeu",
+            "value": 15
+          }
+        ]
+      }
     ],
     "12": [
-      { "id": "panda_eau", "name": "Ivresse", "description": "+15 Dommages Eau.", "effects": [{ "stat": "dommagesEau", "value": 15 }] },
-      { "id": "panda_poussee", "name": "Lancer", "description": "+30 Dommages de poussée.", "effects": [{ "stat": "dommagesPoussee", "value": 30 }] }
+      {
+        "id": "panda_eau",
+        "name": "Ivresse",
+        "description": "+15 Dommages Eau.",
+        "effects": [
+          {
+            "stat": "dommagesEau",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "id": "panda_poussee",
+        "name": "Lancer",
+        "description": "+30 Dommages de poussée.",
+        "effects": [
+          {
+            "stat": "dommagesPoussee",
+            "value": 30
+          }
+        ]
+      }
     ],
     "13": [
-      { "id": "roub_feu", "name": "Artificier", "description": "+15 Dommages Feu.", "effects": [{ "stat": "dommagesFeu", "value": 15 }] },
-      { "id": "roub_poussee", "name": "Détonation", "description": "+30 Dommages de poussée.", "effects": [{ "stat": "dommagesPoussee", "value": 30 }] }
+      {
+        "id": "roub_feu",
+        "name": "Artificier",
+        "description": "+15 Dommages Feu.",
+        "effects": [
+          {
+            "stat": "dommagesFeu",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "id": "roub_poussee",
+        "name": "Détonation",
+        "description": "+30 Dommages de poussée.",
+        "effects": [
+          {
+            "stat": "dommagesPoussee",
+            "value": 30
+          }
+        ]
+      }
     ],
     "14": [
-      { "id": "zobal_bouclier", "name": "Masque", "description": "+5 % de résistance à tous les éléments.", "effects": [{ "stat": "resTerre", "value": 5 }, { "stat": "resFeu", "value": 5 }, { "stat": "resEau", "value": 5 }, { "stat": "resAir", "value": 5 }, { "stat": "resNeutre", "value": 5 }] },
-      { "id": "zobal_air", "name": "Danse", "description": "+15 Dommages Air.", "effects": [{ "stat": "dommagesAir", "value": 15 }] }
+      {
+        "id": "zobal_bouclier",
+        "name": "Masque",
+        "description": "+5 % de résistance à tous les éléments.",
+        "effects": [
+          {
+            "stat": "resTerre",
+            "value": 5
+          },
+          {
+            "stat": "resFeu",
+            "value": 5
+          },
+          {
+            "stat": "resEau",
+            "value": 5
+          },
+          {
+            "stat": "resAir",
+            "value": 5
+          },
+          {
+            "stat": "resNeutre",
+            "value": 5
+          }
+        ]
+      },
+      {
+        "id": "zobal_air",
+        "name": "Danse",
+        "description": "+15 Dommages Air.",
+        "effects": [
+          {
+            "stat": "dommagesAir",
+            "value": 15
+          }
+        ]
+      }
     ],
     "15": [
-      { "id": "steam_invoc", "name": "Ingénieur", "description": "+1 Invocation.", "effects": [{ "stat": "invocations", "value": 1 }] },
-      { "id": "steam_eau", "name": "Vapeur", "description": "+15 Dommages Eau.", "effects": [{ "stat": "dommagesEau", "value": 15 }] }
+      {
+        "id": "steam_invoc",
+        "name": "Ingénieur",
+        "description": "+1 Invocation.",
+        "effects": [
+          {
+            "stat": "invocations",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "steam_eau",
+        "name": "Vapeur",
+        "description": "+15 Dommages Eau.",
+        "effects": [
+          {
+            "stat": "dommagesEau",
+            "value": 15
+          }
+        ]
+      }
     ],
     "16": [
-      { "id": "elio_po", "name": "Portail lointain", "description": "+1 Portée.", "effects": [{ "stat": "po", "value": 1 }] },
-      { "id": "elio_dommages", "name": "Wakfu", "description": "+8 Dommages.", "effects": [{ "stat": "dommages", "value": 8 }] }
+      {
+        "id": "elio_po",
+        "name": "Portail lointain",
+        "description": "+1 Portée.",
+        "effects": [
+          {
+            "stat": "po",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "elio_dommages",
+        "name": "Wakfu",
+        "description": "+8 Dommages.",
+        "effects": [
+          {
+            "stat": "dommages",
+            "value": 8
+          }
+        ]
+      }
     ],
     "17": [
-      { "id": "hupper_puissance", "name": "Runes", "description": "+40 Puissance.", "effects": [{ "stat": "puissance", "value": 40 }] },
-      { "id": "hupper_crit", "name": "Surcharge", "description": "+5 % Coups critiques.", "effects": [{ "stat": "critique", "value": 5 }] }
+      {
+        "id": "hupper_puissance",
+        "name": "Runes",
+        "description": "+40 Puissance.",
+        "effects": [
+          {
+            "stat": "puissance",
+            "value": 40
+          }
+        ]
+      },
+      {
+        "id": "hupper_crit",
+        "name": "Surcharge",
+        "description": "+5 % Coups critiques.",
+        "effects": [
+          {
+            "stat": "critique",
+            "value": 5
+          }
+        ]
+      }
     ],
     "18": [
-      { "id": "ougi_terre", "name": "Rage", "description": "+15 Dommages Terre.", "effects": [{ "stat": "dommagesTerre", "value": 15 }] },
-      { "id": "ougi_tacle", "name": "Crocs", "description": "+15 Tacle.", "effects": [{ "stat": "tacle", "value": 15 }] }
+      {
+        "id": "ougi_terre",
+        "name": "Rage",
+        "description": "+15 Dommages Terre.",
+        "effects": [
+          {
+            "stat": "dommagesTerre",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "id": "ougi_tacle",
+        "name": "Crocs",
+        "description": "+15 Tacle.",
+        "effects": [
+          {
+            "stat": "tacle",
+            "value": 15
+          }
+        ]
+      }
     ],
     "20": [
-      { "id": "forge_dommages", "name": "Lance trempée", "description": "+8 Dommages.", "effects": [{ "stat": "dommages", "value": 8 }] },
-      { "id": "forge_crit", "name": "Estoc", "description": "+20 Dommages critiques.", "effects": [{ "stat": "dommagesCritiques", "value": 20 }] }
+      {
+        "id": "forge_dommages",
+        "name": "Lance trempée",
+        "description": "+8 Dommages.",
+        "effects": [
+          {
+            "stat": "dommages",
+            "value": 8
+          }
+        ]
+      },
+      {
+        "id": "forge_crit",
+        "name": "Estoc",
+        "description": "+20 Dommages critiques.",
+        "effects": [
+          {
+            "stat": "dommagesCritiques",
+            "value": 20
+          }
+        ]
+      }
     ]
   },
   "accomplishments": [
-    { "id": "acc_pa", "name": "Accomplissement : Célérité", "description": "+1 PA.", "effects": [{ "stat": "pa", "value": 1 }] },
-    { "id": "acc_pm", "name": "Accomplissement : Foulée", "description": "+1 PM.", "effects": [{ "stat": "pm", "value": 1 }] },
-    { "id": "acc_po", "name": "Accomplissement : Vision", "description": "+1 Portée.", "effects": [{ "stat": "po", "value": 1 }] },
-    { "id": "acc_puissance", "name": "Accomplissement : Puissance", "description": "+60 Puissance.", "effects": [{ "stat": "puissance", "value": 60 }] },
-    { "id": "acc_vitalite", "name": "Accomplissement : Colosse", "description": "+400 Vitalité.", "effects": [{ "stat": "vitalite", "value": 400 }] },
-    { "id": "acc_invoc", "name": "Accomplissement : Légion", "description": "+1 Invocation.", "effects": [{ "stat": "invocations", "value": 1 }] },
-    { "id": "acc_crit", "name": "Accomplissement : Précision", "description": "+8 % Coups critiques.", "effects": [{ "stat": "critique", "value": 8 }] }
+    {
+      "id": "acc_pa",
+      "name": "Accomplissement : Célérité",
+      "description": "+1 PA.",
+      "effects": [
+        {
+          "stat": "pa",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "acc_pm",
+      "name": "Accomplissement : Foulée",
+      "description": "+1 PM.",
+      "effects": [
+        {
+          "stat": "pm",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "acc_po",
+      "name": "Accomplissement : Vision",
+      "description": "+1 Portée.",
+      "effects": [
+        {
+          "stat": "po",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "acc_puissance",
+      "name": "Accomplissement : Puissance",
+      "description": "+60 Puissance.",
+      "effects": [
+        {
+          "stat": "puissance",
+          "value": 60
+        }
+      ]
+    },
+    {
+      "id": "acc_vitalite",
+      "name": "Accomplissement : Colosse",
+      "description": "+400 Vitalité.",
+      "effects": [
+        {
+          "stat": "vitalite",
+          "value": 400
+        }
+      ]
+    },
+    {
+      "id": "acc_invoc",
+      "name": "Accomplissement : Légion",
+      "description": "+1 Invocation.",
+      "effects": [
+        {
+          "stat": "invocations",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "acc_crit",
+      "name": "Accomplissement : Précision",
+      "description": "+8 % Coups critiques.",
+      "effects": [
+        {
+          "stat": "critique",
+          "value": 8
+        }
+      ]
+    }
   ]
 }
