@@ -16,6 +16,9 @@ public sealed class GameTrafficConsoleCollection;
 [Collection("Game traffic console")]
 public sealed class GameTrafficTests
 {
+    // These tests read the live packet log, which is off by default for playing.
+    public GameTrafficTests() => Jondo.Unity.Server.ServerSettings.Current.TrafficLog = true;
+
     [Fact]
     public void Mapped_live_output_keeps_uid_fields_enums_and_nested_cases()
     {

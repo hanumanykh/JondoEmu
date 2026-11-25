@@ -262,6 +262,7 @@ namespace Jondo.Protocol
         /// </summary>
         private static void LogTrafficEnriched(string direction, string typeUrl, byte[] payload)
         {
+            if (!Jondo.Unity.Server.ServerSettings.Current.TrafficLog) return;
             string opcode = typeUrl.Replace("type.ankama.com/", "").Trim();
             int number = System.Threading.Interlocked.Increment(ref _packetCount);
 

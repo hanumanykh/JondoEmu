@@ -21,18 +21,6 @@
   ],
   "items": [
     {
-      "base": 2474,
-      "note": "Chapeau de l'aventurier (niveau 9), avec l'apparence de la Couronne de Tofu Royal",
-      "skinOf": 7921,
-      "effects": {
-        "vitalite": 60,
-        "agilite": 25,
-        "sagesse": 10,
-        "prospection": 15,
-        "pm": 1
-      }
-    },
-    {
       "id": "couronne-du-roi-tofu",
       "base": 2474,
       "note": "Copie unique : chapeau de l'aventurier, apparence Couronne de Tofu Royal, orienté force",

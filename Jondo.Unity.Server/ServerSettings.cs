@@ -134,6 +134,13 @@ namespace Jondo.Unity.Server
         public int SimulatedPlayersMax { get; set; } = 20;
 
         /// <summary>
+        /// Writes every packet to the console and to gameserver_traffic.log (decoded line + hex
+        /// dump). It is the protocol-extraction tool, and it costs: a format, a parse and two
+        /// synchronous writes per packet, hundreds of MB an hour. Off for playing.
+        /// </summary>
+        public bool TrafficLog { get; set; } = false;
+
+        /// <summary>
         /// The Cazacabezas, the head hunters (<see cref="Managers.HeadHunts"/>): orders on the other
         /// city's players, hunts while they are in the world, and chapeuvepés for their heads.
         /// </summary>

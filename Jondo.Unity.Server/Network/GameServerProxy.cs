@@ -221,7 +221,7 @@ namespace Jondo.Unity.Server.Network
 
         public static void LogTraffic(string direction, byte[] data, int length)
         {
-            if (!SeRegistraElTrafico) return;
+            if (!SeRegistraElTrafico || !ServerSettings.Current.TrafficLog) return;
 
             // The session token goes past here in the clear, in both directions, and this file is
             // kept for as long as the disk allows. Scrub masks the 32 hex characters it is made of
