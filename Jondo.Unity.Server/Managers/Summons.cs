@@ -331,7 +331,7 @@ namespace Jondo.Unity.Server.Managers
         public static readonly int[] AutonomousSummons = { 262, 1108 };
 
         /// <summary>Dominio de Invocaciones (18646) and the sub-cast that marks its summons (18648).</summary>
-        public const int SummonMastery = 18646, SummonMasteryMark = 18648;
+        public const int SummonMastery = 18646, SummonMasteryMark = 18648, SummonFreedom = 22312;
 
         /// <summary>«Invocación dominable», the state 18648 puts on the summons the spell can hand over.</summary>
         public const int DominableState = 2132;

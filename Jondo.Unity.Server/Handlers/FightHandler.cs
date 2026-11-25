@@ -943,7 +943,12 @@ namespace Jondo.Unity.Server.Handlers
                 var suyos = Managers.FightSpellLayout.ForFight(GameState.Breed, GameState.CharacterLevel,
                                                               SessionContext.Current.AccountId).Spells;
                 var propios = Managers.ClassPassives.ForFight(GameState.Breed, suyos, GameState.CharacterLevel);
-                playerFighter.MastersSummons = suyos.Any(s => s.Spell == Managers.Summons.SummonMastery);
+                // Maîtrise (18646) and its variant Liberté des Invocations (22312) both make the
+                // «maîtrisable» summons switchable: Maîtrise hands them over by default (its 2027
+                // row), Liberté lets them play on their own until it is cast. Only Maîtrise was
+                // looked for, so with Liberté selected every summon stayed the owner's to play.
+                playerFighter.MastersSummons = suyos.Any(s => s.Spell == Managers.Summons.SummonMastery
+                                                           || s.Spell == Managers.Summons.SummonFreedom);
                 int pasivo = Managers.ClassPassives.PassiveOf(GameState.Breed);
                 foreach (var (hechizo, grado) in propios)
                 {
