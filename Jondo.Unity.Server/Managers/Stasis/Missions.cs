@@ -428,6 +428,18 @@ namespace Jondo.Unity.Server.Managers
             world ??= World;
             var file = Current;
             bool changed = false;
+            // Missions drawn before the quest zones were filtered out (Rocher des Sacrifiés...), or
+            // whose title was written in Spanish, are drawn again: same step, a huntable zone.
+            if (world.Zones.Count > 0)
+            {
+                var huntable = world.Zones.Select(z => z.SubArea).ToHashSet();
+                foreach (var stale in profile.Slots.Where(kv => kv.Value.Zone > 0 && !kv.Value.Complete && !huntable.Contains(kv.Value.Zone))
+                                                   .Select(kv => kv.Key).ToList())
+                {
+                    profile.Slots.Remove(stale);
+                    changed = true;
+                }
+            }
             // A chapter where nothing resolves (no zone of its band in this world, eggs off) is
             // passed rather than left as a hole the Système never fills.
             for (int guard = 0; !profile.Slots.ContainsKey(ChapterSlot) && profile.Chapter < file.Chapters.Count && guard <= file.Chapters.Count; guard++)
