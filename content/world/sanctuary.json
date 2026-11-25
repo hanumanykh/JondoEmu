@@ -34,7 +34,7 @@
       { "item": 9688, "price": 4000 },
       { "item": 9689, "price": 8000 },
       { "item": 9690, "price": 15000 },
-      { "item": 536 }, { "item": 692 }, { "item": 539 }, { "item": 1738 }, { "item": 1737 }
+      { "item": 536, "price": 300 }, { "item": 692, "price": 600 }, { "item": 539, "price": 900 }, { "item": 1738, "price": 1500 }, { "item": 1737, "price": 2250 }
     ],
     "breedElements": {
       "1": "Intelligence", "2": "Intelligence", "3": "Chance", "4": "Agility", "5": "Intelligence",
