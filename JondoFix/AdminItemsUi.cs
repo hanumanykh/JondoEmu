@@ -682,6 +682,10 @@ namespace JondoFix
             label.style.minHeight = new StyleLength(StyleKeyword.Auto);
             label.style.maxHeight = new StyleLength(StyleKeyword.None);
             label.style.flexShrink = new StyleFloat(0f);
+            // Without a width the text is measured as one line and then drawn wrapped, spilling
+            // over what follows: give it the column's width so its height counts every line.
+            label.style.maxWidth = new StyleLength(new Length(100f, LengthUnit.Percent));
+            label.style.alignSelf = new StyleEnum<Align>(Align.Stretch);
             return label;
         }
 

@@ -163,6 +163,8 @@ namespace Jondo.Unity.Server.Managers
         public List<SpellDonRequirement> Requires { get; set; } = new();
         /// <summary>Made by SpellDonCatalogue from the spell's data rather than written in spell_dons.json.</summary>
         [JsonIgnore] public bool Generated { get; set; }
+        /// <summary>The spell's data the generated don was made from (the texts say what changes); null for a written one.</summary>
+        [JsonIgnore] public SpellFacts? Facts { get; set; }
     }
 
     /// <summary>

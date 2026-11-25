@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Jondo.Unity.Server.Network;
@@ -338,6 +339,10 @@ namespace Jondo.Unity.Server.Handlers
                 if (fightCells == null || fightCells.Count == 0) return null;
                 walkable = fightCells;
             }
+
+            // On the map's main floor when it is known: never in a pocket no border reaches.
+            var floor = MapManager.MainFloor(targetMapId);
+            if (floor.Count > 0 && walkable.Any(floor.Contains)) walkable = walkable.Where(floor.Contains).ToList();
 
             const int centreCell = 280;
             int centreRow = centreCell / 14;

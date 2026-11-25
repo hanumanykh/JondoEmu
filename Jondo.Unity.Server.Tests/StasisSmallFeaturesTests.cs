@@ -11,6 +11,7 @@ namespace Jondo.Unity.Server.Tests;
 /// The smaller Stasis pieces: the dungeon search bonus, «salle complète», the Recrue buff, the
 /// archmonster training zones' settings and the F9 window's tabs.
 /// </summary>
+[Collection("Farm settings")]
 public sealed class StasisSmallFeaturesTests : IDisposable
 {
     private readonly DateTime _now = new(2026, 11, 24, 12, 0, 0, DateTimeKind.Utc);

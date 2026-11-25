@@ -344,18 +344,96 @@ namespace Jondo.Unity.Server.Managers
             SpellDonCatalogue.Anticipation => "Anticipation", _ => "",
         };
 
+        /// <summary>A short name of what a don does, for the card's title: «Portée modifiable», «−1 PA».</summary>
+        internal static string ShortLabel(SpellDonDefinition don) => don.Kind switch
+        {
+            SpellDonCatalogue.Economie or ApCost => $"−{don.Value} PA",
+            SpellDonCatalogue.Cadence or Cooldown => $"−{don.Value} tour de relance",
+            SpellDonCatalogue.Enchainement or CastsPerTurn => $"+{don.Value} lancer par tour",
+            SpellDonCatalogue.Insistance => $"+{don.Value} lancer par cible",
+            SpellDonCatalogue.Precision or Critical => $"+{don.Value} % critique",
+            SpellDonCatalogue.Allonge or Range => $"+{don.Value} PO",
+            SpellDonCatalogue.Adaptabilite => "Portée modifiable",
+            SpellDonCatalogue.Clairvoyance => "Sans ligne de vue",
+            SpellDonCatalogue.Liberte => "Lancer libre",
+            SpellDonCatalogue.Persistance => $"+{don.Value} cumul",
+            SpellDonCatalogue.Anticipation => $"Relance initiale −{don.Value}",
+            Damage => $"+{don.Value} % dégâts",
+            Heal => $"+{don.Value} % soins",
+            _ => EffectText(don, don.Value),
+        };
+
+        private static string Turns(int n) => $"{n} tour{(n > 1 ? "s" : "")}";
+
+        /// <summary>
+        /// What the next rank changes on the spell, concretely, from its data and the ranks held:
+        /// «4 PA → 3 PA», «PO 1-5 → 1-6», «relance 3 → 2 tours». Null when the don has no data.
+        /// </summary>
+        internal static string? ChangeText(SpellDonDefinition don, int held)
+        {
+            if (don.Facts is not { } f) return null;
+            int v = don.Value, before = v * held, after = v * (held + 1);
+            bool boosted = (f.Flags & SpellLevelFlags.RangeCanBeBoosted) != 0;
+            string Po(int extra, bool modifiable) => $"PO {f.MinRange}-{f.MaxRange + extra}" + (modifiable ? " modifiable" : "");
+            return don.Kind switch
+            {
+                SpellDonCatalogue.Economie => $"{f.ApCost - Math.Min(1, before)} PA → {Math.Max(1, f.ApCost - Math.Min(1, after))} PA",
+                SpellDonCatalogue.Cadence => $"relance {f.Cooldown - before} → {Turns(Math.Max(0, f.Cooldown - after))}",
+                SpellDonCatalogue.Anticipation => $"relance initiale {f.InitialCooldown - before} → {Turns(Math.Max(0, f.InitialCooldown - after))}",
+                SpellDonCatalogue.Enchainement => $"{f.CastsPerTurn + before} → {f.CastsPerTurn + after} lancers par tour",
+                SpellDonCatalogue.Insistance => $"{f.CastsPerTarget + before} → {f.CastsPerTarget + after} lancers par cible",
+                SpellDonCatalogue.Precision => $"critique {f.Critical + before} % → {f.Critical + after} %",
+                SpellDonCatalogue.Allonge => $"{Po(before, boosted)} → {Po(after, boosted)}",
+                SpellDonCatalogue.Adaptabilite => $"{Po(0, false)} → {Po(0, true)}",
+                SpellDonCatalogue.Clairvoyance => "ligne de vue requise → sans ligne de vue",
+                SpellDonCatalogue.Liberte => ((f.Flags & SpellLevelFlags.CastInLine) != 0 ? "en ligne" : "en diagonale") + " → dans toutes les directions",
+                SpellDonCatalogue.Persistance => $"cumul max {f.MaxStack + before} → {f.MaxStack + after}",
+                _ => null,
+            };
+        }
+
         /// <summary>A spell don card's name and description, as the window and the commands show it.</summary>
         internal static (string Name, string Description) Describe(SpellDonDefinition don, ProgressionProfile profile)
         {
             int rank = Dons.RankOf(profile, don.Id);
             int max = Math.Max(1, don.MaxRank);
+            int next = Math.Min(max, rank + 1);
+            string name = $"{don.SpellName} — {ShortLabel(don)}" + (max > 1 ? $" ({next}/{max})" : "");
+            string change = ChangeText(don, rank)
+                            ?? EffectText(don, don.Value) + (rank > 0 ? $" (actuellement {EffectText(don, don.Value * rank)})" : "");
             string label = KindLabel(don.Kind);
-            string name = $"{don.SpellName} : " + (label.Length > 0 ? $"{label} ({EffectText(don, don.Value)})" : EffectText(don, don.Value))
-                          + (max > 1 ? $" (rang {rank}/{max})" : "");
-            string description = rank > 0
-                ? $"Améliore le sort {don.SpellName} : {EffectText(don, don.Value)} par rang (actuellement {EffectText(don, don.Value * rank)})."
-                : $"Améliore le sort {don.SpellName} : {EffectText(don, don.Value)}" + (max > 1 ? $" par rang, jusqu'à {max} rangs." : ".");
+            string description = $"{change}. " + (label.Length > 0 ? $"{label}, amélioration" : "Amélioration") + $" du sort {don.SpellName}"
+                                 + (max > 1 ? $", rang {next} sur {max}." : ".");
             return (name, description);
+        }
+
+        /// <summary>
+        /// A spell point's offer: <paramref name="count"/> dons drawn by their impact
+        /// (<see cref="SpellDonCatalogue.ImpactOf"/>): one of a kind and one per spell while other
+        /// choices remain, never three of one kind unless nothing else is left.
+        /// </summary>
+        internal static List<SpellDonDefinition> DrawOffer(IReadOnlyList<SpellDonDefinition> takeable, int count, Random dice)
+        {
+            var pool = takeable.ToList();
+            var picked = new List<SpellDonDefinition>();
+            while (picked.Count < count && pool.Count > 0)
+            {
+                bool Fits(SpellDonDefinition d, bool strict)
+                    => picked.Count(p => p.Kind == d.Kind) < (strict ? 1 : 2) && (!strict || picked.All(p => p.Spell != d.Spell));
+                var choices = pool.Where(d => Fits(d, true)).ToList();
+                if (choices.Count == 0) choices = pool.Where(d => Fits(d, false)).ToList();
+                if (choices.Count == 0) choices = pool;
+                double total = choices.Sum(SpellDonCatalogue.ImpactOf), roll = dice.NextDouble() * total;
+                var chosen = choices[^1];
+                foreach (var d in choices)
+                {
+                    roll -= SpellDonCatalogue.ImpactOf(d);
+                    if (roll <= 0) { chosen = d; break; }
+                }
+                picked.Add(chosen);
+                pool.Remove(chosen);
+            }
+            return picked;
         }
     }
 }

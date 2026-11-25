@@ -522,7 +522,7 @@ namespace Jondo.Unity.Server.Managers
                     var spellDons = SpellDons.Takeable(profile, content, breed, level);
                     if (spellDons.Count > 0)
                     {
-                        cards.AddRange(spellDons.OrderBy(_ => dice.Next()).Take(count).Select(s => s.Id));
+                        cards.AddRange(SpellDons.DrawOffer(spellDons, count, dice).Select(s => s.Id));
                         return new DonOffer { Level = level, Kind = kind, Cards = cards };
                     }
                     cards.Add(d.SpellCard.Id);

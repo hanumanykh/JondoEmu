@@ -74,7 +74,8 @@ namespace Jondo.Unity.Server.Managers.Economy
             int plain = facts.Monsters.Sum(m => JondoCoin.RewardFor(m.Level));
             long curve = Orbes.ForFighter(characterLevel, facts.Monsters, facts.Archmonster, facts.Tide);
             int coins = (int)Math.Min(int.MaxValue / 2, JondoCoin.FromKamas(curve, roundUp: false));
-            return Math.Max(plain, coins);
+            double factor = Math.Max(0.1, Orbes.Current.CoinGainFactor);
+            return (int)Math.Min(int.MaxValue / 2, Math.Round(Math.Max(plain, coins) * factor));
         }
 
         /// <summary>

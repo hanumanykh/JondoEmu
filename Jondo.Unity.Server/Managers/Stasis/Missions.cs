@@ -458,10 +458,15 @@ namespace Jondo.Unity.Server.Managers
                 var taken = profile.Slots.Values.Where(m => m.Slot != slot && m.Slot != ChapterSlot).Select(m => m.Source).ToHashSet();
                 // An empty slot with no track to give stays empty without counting as a change.
                 if (profile.Slots.Remove(slot)) changed = true;
-                var track = PickTrack(profile.CharacterId, level, batch, i, taken);
-                if (track == null) continue;
-                var first = StartTrackStep(track, slot, batch, 0, profile.CharacterId, level, hasAchievement, world);
-                if (first != null) { profile.Slots[slot] = first; changed = true; }
+                // A track none of whose missions resolves here is passed for the next fitting one,
+                // so a second Fill does not land on another track once the other slot is taken.
+                for (var track = PickTrack(profile.CharacterId, level, batch, i, taken); track != null;
+                     track = PickTrack(profile.CharacterId, level, batch, i, taken))
+                {
+                    var first = StartTrackStep(track, slot, batch, 0, profile.CharacterId, level, hasAchievement, world);
+                    if (first != null) { profile.Slots[slot] = first; changed = true; break; }
+                    taken.Add(track.Id);
+                }
             }
             return changed;
         }
@@ -722,7 +727,9 @@ namespace Jondo.Unity.Server.Managers
                     // Hunting zones only: a subarea whose monsters include a quest monster or a
                     // boss (Rocher des Sacrifiés and the like) is a quest or story place, not a farm.
                     foreach (var (subArea, roster) in Economy.Zones.Rosters)
-                        if (roster.Count > 0 && roster.All(IsHuntable)) list.Add((subArea, Economy.Zones.LevelOf(roster)));
+                        // ...and one a GO lands in: an outdoor map of its own on the main world map.
+                        if (roster.Count > 0 && roster.All(IsHuntable) && GoDestination.Reachable(subArea))
+                            list.Add((subArea, Economy.Zones.LevelOf(roster)));
                     return _zones = list;
                 }
             }

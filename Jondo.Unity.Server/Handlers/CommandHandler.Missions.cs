@@ -174,11 +174,7 @@ namespace Jondo.Unity.Server.Handlers
             var maps = new List<long>();
             if (mission.Kind == Missions.KindDungeon && DungeonManager.Get((int)mission.Target) is { } dungeon && dungeon.EntranceMapId > 0)
                 maps.Add(dungeon.EntranceMapId);
-            if (mission.Zone > 0)
-            {
-                maps.AddRange(Interactives.Waypoints.Where(w => w.Activated && w.SubAreaId == mission.Zone).Select(w => w.MapId));
-                maps.AddRange(DatabaseManager.MapsOfSubArea(mission.Zone).Take(30));
-            }
+            if (mission.Zone > 0) maps.AddRange(GoDestination.Of(mission.Zone).Take(30));
             if (maps.Count == 0) return "nulle-part";
             foreach (long map in maps.Distinct())
             {

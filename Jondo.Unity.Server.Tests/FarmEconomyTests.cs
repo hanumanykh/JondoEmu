@@ -6,11 +6,17 @@ using Xunit;
 
 namespace Jondo.Unity.Server.Tests;
 
+/// <summary>The classes that replace Farm.Current (a static): run one after the other.</summary>
+[CollectionDefinition("Farm settings")]
+public sealed class FarmSettingsCollection { }
+
+
 /// <summary>
 /// The Stasis-like economy (Managers.Economy): the Orbes formula, the zone gauge's thresholds and
 /// 72-hour reset, the tide schedule and the zone counter's buffs -- on the defaults, not on
 /// content/economy, so a tuned file does not break them.
 /// </summary>
+[Collection("Farm settings")]
 public sealed class FarmEconomyTests : IDisposable
 {
     private DateTime _now = new(2026, 11, 24, 12, 0, 0, DateTimeKind.Utc);

@@ -192,10 +192,8 @@ namespace Jondo.Unity.Server.Handlers
             if (DungeonManager.OfRoom(state.MapId) != null) return "Impossible depuis un donjon.";
             var phase = Tides.Now;
             if (!phase.Active || !Tides.ZonesOf(phase.Cycle).Values.Contains(subArea)) return "Cette zone n'est pas sous la Marée.";
-            var maps = new List<long>();
-            maps.AddRange(Interactives.Waypoints.Where(w => w.Activated && w.SubAreaId == subArea).Select(w => w.MapId));
-            maps.AddRange(DatabaseManager.MapsOfSubArea(subArea).Take(30));
-            foreach (long map in maps.Distinct())
+            var maps = GoDestination.Of(subArea).Take(30).ToList();
+            foreach (long map in maps)
             {
                 if (map == state.MapId) return "Vous y êtes.";
                 if (await WorldMoveHandler.TeleportAsync(session.Stream, map) != null) return $"En route vers {Tides.SafeName(subArea)}.";

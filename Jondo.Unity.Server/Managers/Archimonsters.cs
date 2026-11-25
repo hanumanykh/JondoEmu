@@ -68,6 +68,9 @@ namespace Jondo.Unity.Server.Managers
         public static bool IsTrainingZone(int subAreaId)
             => subAreaId > 0 && Economy.Farm.Current.Archmonsters.TrainingSubAreas.Contains(subAreaId);
 
+        /// <summary>The share of a training zone's groups that keep an archmonster.</summary>
+        internal static int TrainingGroupPercent { get; set; } = 15;
+
         private static bool IsTrainingMap(long mapId) => IsTrainingZone(MapManager.GetMapInfo(mapId)?.SubAreaId ?? 0);
 
         /// <summary>A training zone's time away: uniform between its minimum and maximum, in minutes.</summary>
@@ -143,7 +146,9 @@ namespace Jondo.Unity.Server.Managers
                     int rare = ids[i];
                     if (!_ordinary.TryGetValue(rare, out int ordinary)) continue;
 
-                    if (kept == 0 && training)
+                    // One group in TrainingGroupPercent keeps its archmonster, not every group: with
+                    // all of them the training zones were full of archmonsters on every map.
+                    if (kept == 0 && training && Random.Shared.Next(100) < TrainingGroupPercent)
                     {
                         kept = rare;
                         continue;

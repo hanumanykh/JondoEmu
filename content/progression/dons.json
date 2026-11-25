@@ -22,7 +22,7 @@
     275,
     300
   ],
-  "rerollKamasPerLevel": 1000,
+  "rerollKamasPerLevel": 60,
   "startingLevel": 1,
   "recentWindow": 10,
   "rarity": {
@@ -82,9 +82,9 @@
     "id": "carac",
     "name": "Caractéristique au choix",
     "description": "+{0} dans la caractéristique de votre choix.",
-    "amount": 3,
-    "amountRare": 4,
-    "amountLegendaire": 6,
+    "amount": 5,
+    "amountRare": 8,
+    "amountLegendaire": 12,
     "firstChance": 0.9,
     "stats": [
       "force",
@@ -98,11 +98,11 @@
   "spellCard": {
     "id": "sort",
     "name": "Point de sort",
-    "description": "Dofus 3 n'a pas de points de sort : +6 Puissance à la place.",
+    "description": "Dofus 3 n'a pas de points de sort : +15 Puissance à la place.",
     "effects": [
       {
         "stat": "puissance",
-        "value": 6
+        "value": 15
       }
     ]
   },
@@ -114,9 +114,9 @@
       "effects": [
         {
           "stat": "vitalite",
-          "value": 20,
-          "rare": 30,
-          "legendaire": 40
+          "value": 40,
+          "rare": 70,
+          "legendaire": 120
         }
       ]
     },
@@ -127,9 +127,9 @@
       "effects": [
         {
           "stat": "puissance",
-          "value": 4,
-          "rare": 6,
-          "legendaire": 8
+          "value": 8,
+          "rare": 14,
+          "legendaire": 24
         }
       ]
     },
@@ -140,9 +140,9 @@
       "effects": [
         {
           "stat": "dommages",
-          "value": 1,
-          "rare": 2,
-          "legendaire": 3
+          "value": 2,
+          "rare": 4,
+          "legendaire": 6
         }
       ]
     },
@@ -153,9 +153,9 @@
       "effects": [
         {
           "stat": "dommagesCritiques",
-          "value": 3,
-          "rare": 4,
-          "legendaire": 6
+          "value": 6,
+          "rare": 11,
+          "legendaire": 18
         }
       ]
     },
@@ -166,9 +166,9 @@
       "effects": [
         {
           "stat": "initiative",
-          "value": 60,
-          "rare": 90,
-          "legendaire": 120
+          "value": 120,
+          "rare": 210,
+          "legendaire": 360
         }
       ]
     },
@@ -179,9 +179,9 @@
       "effects": [
         {
           "stat": "prospection",
-          "value": 3,
-          "rare": 4,
-          "legendaire": 6
+          "value": 6,
+          "rare": 11,
+          "legendaire": 18
         }
       ]
     },
@@ -192,9 +192,9 @@
       "effects": [
         {
           "stat": "sagesse",
-          "value": 4,
-          "rare": 6,
-          "legendaire": 8
+          "value": 8,
+          "rare": 14,
+          "legendaire": 24
         }
       ]
     },
@@ -205,9 +205,9 @@
       "effects": [
         {
           "stat": "pods",
-          "value": 60,
-          "rare": 90,
-          "legendaire": 120
+          "value": 120,
+          "rare": 210,
+          "legendaire": 360
         }
       ]
     },
@@ -218,9 +218,9 @@
       "effects": [
         {
           "stat": "soins",
-          "value": 1,
-          "rare": 2,
-          "legendaire": 3
+          "value": 2,
+          "rare": 4,
+          "legendaire": 6
         }
       ]
     },
@@ -231,9 +231,9 @@
       "effects": [
         {
           "stat": "tacle",
-          "value": 1,
-          "rare": 2,
-          "legendaire": 3
+          "value": 2,
+          "rare": 4,
+          "legendaire": 6
         }
       ]
     },
@@ -244,9 +244,9 @@
       "effects": [
         {
           "stat": "fuite",
-          "value": 1,
-          "rare": 2,
-          "legendaire": 3
+          "value": 2,
+          "rare": 4,
+          "legendaire": 6
         }
       ]
     },
@@ -259,13 +259,13 @@
           "stat": "resTerre",
           "value": 1,
           "rare": 2,
-          "legendaire": 3
+          "legendaire": 4
         },
         {
           "stat": "resFeu",
           "value": 1,
           "rare": 2,
-          "legendaire": 3
+          "legendaire": 4
         }
       ]
     },
@@ -278,13 +278,13 @@
           "stat": "resEau",
           "value": 1,
           "rare": 2,
-          "legendaire": 3
+          "legendaire": 4
         },
         {
           "stat": "resAir",
           "value": 1,
           "rare": 2,
-          "legendaire": 3
+          "legendaire": 4
         }
       ]
     },
@@ -295,9 +295,9 @@
       "effects": [
         {
           "stat": "dommagesPoussee",
-          "value": 3,
-          "rare": 5,
-          "legendaire": 8
+          "value": 6,
+          "rare": 11,
+          "legendaire": 18
         }
       ]
     }
@@ -310,9 +310,9 @@
       "effects": [
         {
           "stat": "sagesse",
-          "value": 3,
-          "rare": 4,
-          "legendaire": 6
+          "value": 5,
+          "rare": 8,
+          "legendaire": 10
         }
       ]
     },
@@ -323,9 +323,9 @@
       "effects": [
         {
           "stat": "prospection",
-          "value": 4,
-          "rare": 6,
-          "legendaire": 8
+          "value": 6,
+          "rare": 9,
+          "legendaire": 12
         }
       ]
     },
@@ -336,9 +336,9 @@
       "effects": [
         {
           "stat": "vitesse",
-          "value": 3,
-          "rare": 4,
-          "legendaire": 6
+          "value": 5,
+          "rare": 8,
+          "legendaire": 10
         }
       ]
     },
@@ -349,9 +349,9 @@
       "effects": [
         {
           "stat": "animation",
-          "value": 4,
-          "rare": 6,
-          "legendaire": 8
+          "value": 6,
+          "rare": 9,
+          "legendaire": 12
         }
       ]
     },
@@ -362,15 +362,15 @@
       "effects": [
         {
           "stat": "sagesse",
-          "value": 1,
-          "rare": 2,
-          "legendaire": 3
-        },
-        {
-          "stat": "prospection",
           "value": 2,
           "rare": 3,
           "legendaire": 4
+        },
+        {
+          "stat": "prospection",
+          "value": 3,
+          "rare": 5,
+          "legendaire": 6
         }
       ]
     },
@@ -381,15 +381,15 @@
       "effects": [
         {
           "stat": "vitesse",
-          "value": 1,
-          "rare": 2,
-          "legendaire": 3
-        },
-        {
-          "stat": "animation",
           "value": 2,
           "rare": 3,
           "legendaire": 4
+        },
+        {
+          "stat": "animation",
+          "value": 3,
+          "rare": 5,
+          "legendaire": 6
         }
       ]
     },
@@ -402,9 +402,9 @@
       "effects": [
         {
           "stat": "pods",
-          "value": 50,
-          "rare": 50,
-          "legendaire": 50
+          "value": 75,
+          "rare": 113,
+          "legendaire": 150
         }
       ]
     },
@@ -417,9 +417,9 @@
       "effects": [
         {
           "stat": "initiative",
-          "value": 40,
-          "rare": 40,
-          "legendaire": 40
+          "value": 60,
+          "rare": 90,
+          "legendaire": 120
         }
       ]
     },
@@ -432,9 +432,9 @@
       "effects": [
         {
           "stat": "soins",
-          "value": 1,
-          "rare": 1,
-          "legendaire": 1
+          "value": 2,
+          "rare": 3,
+          "legendaire": 4
         }
       ]
     }

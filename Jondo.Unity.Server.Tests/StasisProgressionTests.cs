@@ -43,6 +43,12 @@ public sealed class StasisProgressionTests
     /// <summary>The content and the memory store installed before any test of the class runs.</summary>
     public StasisProgressionTests() => Assert.NotNull(Content);
 
+    /// <summary>A card's effect value at a rarity, read from dons.json (the numbers are tuned there).</summary>
+    private static long V(string card, string stat, int rarity = Dons.Commun)
+        => Content.CardOf(card)!.Effects.Single(e => e.Stat == stat).ValueAt(rarity);
+
+    private static int Carac(int rarity = Dons.Commun) => Dons.CaracAmount(new ProgressionProfile(), Content, rarity);
+
     private static ProgressionProfile NewProfile() => new() { CharacterId = Interlocked.Increment(ref _nextId) };
 
     [Theory]
@@ -97,13 +103,14 @@ public sealed class StasisProgressionTests
         p.Pending.Clear();
         p.Pending.Add(new DonOffer { Level = 2, Kind = Dons.KindLevel, Cards = { "carac", "vitalite" }, Rarities = { Dons.Legendaire, Dons.Rare } });
         Assert.Equal("ok", Dons.Pick(p, Content, 1, "force", out var kept));
-        Assert.Equal((Dons.Legendaire, 6), (kept!.Rarity, kept.Amount));
+        Assert.Equal((Dons.Legendaire, Carac(Dons.Legendaire)), (kept!.Rarity, kept.Amount));
+        Assert.True(V("vitalite", "vitalite", Dons.Rare) > V("vitalite", "vitalite"));
         p.Pending.Add(new DonOffer { Level = 3, Kind = Dons.KindLevel, Cards = { "carac", "vitalite" }, Rarities = { Dons.Commun, Dons.Rare } });
         Assert.Equal("ok", Dons.Pick(p, Content, 2, null, out _));
         var bonuses = Dons.BonusesOf(p, Content);
-        Assert.Equal(6, bonuses[Stat.Strength]);
-        Assert.Equal(30, bonuses[Stat.Vitality]);
-        Assert.Equal("+30 Vitalité", Dons.Describe("vitalite", p, Content, Dons.Rare).Description);
+        Assert.Equal(Carac(Dons.Legendaire), bonuses[Stat.Strength]);
+        Assert.Equal(V("vitalite", "vitalite", Dons.Rare), bonuses[Stat.Vitality]);
+        Assert.Equal($"+{V("vitalite", "vitalite", Dons.Rare)} Vitalité", Dons.Describe("vitalite", p, Content, Dons.Rare).Description);
 
         // Stored as "id@rarity", read back the same; an old row without rarity is Commun.
         var (cards, rarities) = DonOffer.Parse(new DonOffer { Cards = { "carac", "pods" }, Rarities = { 2, 0 } }.Stored());
@@ -167,16 +174,16 @@ public sealed class StasisProgressionTests
     }
 
     [Theory]
-    [InlineData(Dons.Commun, 20)]
-    [InlineData(Dons.Rare, 30)]
-    [InlineData(Dons.Legendaire, 40)]
-    public void A_picked_card_gives_its_rarity_value_in_the_bonuses(int rarity, long vitality)
+    [InlineData(Dons.Commun)]
+    [InlineData(Dons.Rare)]
+    [InlineData(Dons.Legendaire)]
+    public void A_picked_card_gives_its_rarity_value_in_the_bonuses(int rarity)
     {
         var p = NewProfile();
         p.Pending.Add(new DonOffer { Level = 2, Kind = Dons.KindLevel, Cards = { "vitalite", "carac" }, Rarities = { rarity, Dons.Commun } });
         Assert.Equal("ok", Dons.Pick(p, Content, 1, null, out var kept));
         Assert.Equal(rarity, kept!.Rarity);
-        Assert.Equal(vitality, Dons.BonusesOf(p, Content)[Stat.Vitality]);
+        Assert.Equal(V("vitalite", "vitalite", rarity), Dons.BonusesOf(p, Content)[Stat.Vitality]);
     }
 
     [Fact]
@@ -245,8 +252,8 @@ public sealed class StasisProgressionTests
         var p = NewProfile();
         p.Dons.Add(new ChosenDon { Level = 5, Card = "aventure_vitesse", Rarity = Dons.Legendaire });
         p.Dons.Add(new ChosenDon { Level = 10, Card = "aventure_elan", Rarity = Dons.Commun });
-        Assert.Equal(7, Dons.PercentOf(p, Content, Dons.SpeedPercentStat));
-        Assert.Equal(2, Dons.PercentOf(p, Content, Dons.AnimationPercentStat));
+        Assert.Equal(V("aventure_vitesse", "vitesse", Dons.Legendaire) + V("aventure_elan", "vitesse"), Dons.PercentOf(p, Content, Dons.SpeedPercentStat));
+        Assert.Equal(V("aventure_elan", "animation"), Dons.PercentOf(p, Content, Dons.AnimationPercentStat));
         Assert.Empty(Dons.BonusesOf(p, Content).Keys.Where(k => k < 0));
 
         Assert.Equal(("stat", Stat.Vitality), (Dons.IconOf("vitalite", Content).Kind, Dons.IconOf("vitalite", Content).Id));
@@ -294,8 +301,8 @@ public sealed class StasisProgressionTests
         Assert.Equal("ok", Dons.Pick(p, Content, 2, null, out _));
 
         var bonuses = Dons.BonusesOf(p, Content);
-        Assert.Equal(3, bonuses[Stat.Agility]);
-        Assert.Equal(20, bonuses[Stat.Vitality]);
+        Assert.Equal(Carac(), bonuses[Stat.Agility]);
+        Assert.Equal(V("vitalite", "vitalite"), bonuses[Stat.Vitality]);
         Assert.Equal("aucune-offre", Dons.Pick(p, Content, 1, null, out _));
     }
 
@@ -314,11 +321,11 @@ public sealed class StasisProgressionTests
         }
         Assert.Equal(2, Dons.RankOf(p, "aventure_decouverte"));
         var bonuses = Dons.BonusesOf(p, Content);
-        // Découverte: +1 Sag +2 PP (Commun), +3 Sag +4 PP (Légendaire).
-        Assert.Equal(4, bonuses[Stat.Wisdom]);
-        Assert.Equal(6, bonuses[Stat.Prospecting]);
+        // Découverte taken Commun then Légendaire: both values add up.
+        Assert.Equal(V("aventure_decouverte", "sagesse") + V("aventure_decouverte", "sagesse", Dons.Legendaire), bonuses[Stat.Wisdom]);
+        Assert.Equal(V("aventure_decouverte", "prospection") + V("aventure_decouverte", "prospection", Dons.Legendaire), bonuses[Stat.Prospecting]);
         // aventure_pods is retired: no longer offered, still counted.
-        Assert.Equal(50, bonuses[Stat.Pods]);
+        Assert.Equal(V("aventure_pods", "pods"), bonuses[Stat.Pods]);
         Assert.DoesNotContain("aventure_pods", Dons.Draw(p, Content, 8, 20, Dons.KindAdventure).Cards);
         Assert.Equal(1.0, Dons.ExperienceFactor(p, 10, Content), 6);
     }
@@ -328,12 +335,14 @@ public sealed class StasisProgressionTests
     {
         var p = NewProfile();
         Dons.QueueOffers(p, Content, 8, 1, 2);
-        long kamas = 1_500;
+        long cost = Content.Dons.RerollKamasPerLevel * 2;
+        Assert.True(cost > 0);
+        long kamas = cost - 1;
         Assert.Equal("kamas", Dons.Reroll(p, Content, 8, ref kamas, out _));
         kamas = 10_000;
         Assert.Equal("ok", Dons.Reroll(p, Content, 8, ref kamas, out long paid));
-        Assert.Equal(2_000, paid);
-        Assert.Equal(8_000, kamas);
+        Assert.Equal(cost, paid);
+        Assert.Equal(10_000 - cost, kamas);
         Assert.True(p.Pending[0].Rerolled);
         Assert.Equal("deja-relancee", Dons.Reroll(p, Content, 8, ref kamas, out _));
 

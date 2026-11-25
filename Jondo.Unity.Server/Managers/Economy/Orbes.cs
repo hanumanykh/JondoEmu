@@ -68,6 +68,8 @@ namespace Jondo.Unity.Server.Managers.Economy
             public bool PayInCoins { get; set; } = true;
             /// <summary>How many kamas of the curve one Jondo Coin stands for, in coin mode.</summary>
             public double KamasPerCoin { get; set; } = 150;
+            /// <summary>Multiplies what fights pay in coins without touching prices (which use KamasPerCoin).</summary>
+            public double CoinGainFactor { get; set; } = 2.5;
         }
 
         private static Settings? _settings;

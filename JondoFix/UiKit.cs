@@ -471,6 +471,9 @@ namespace JondoFix
                         child.style.whiteSpace = new StyleEnum<WhiteSpace>(WhiteSpace.Normal);
                         child.style.height = new StyleLength(StyleKeyword.Auto);
                         child.style.minHeight = new StyleLength(StyleKeyword.Auto);
+                        child.style.maxWidth = new StyleLength(new Length(100f, LengthUnit.Percent));
+                        if (child.parent != null && child.parent.resolvedStyle.flexDirection == FlexDirection.Column)
+                            child.style.alignSelf = new StyleEnum<Align>(Align.Stretch);
                     }
                     Unsqueeze(child, depth + 1);
                 }

@@ -13,7 +13,7 @@ namespace Jondo.Unity.Server.Managers
     internal sealed record SpellFacts(
         int Spell, int Breed, string Name, int Level,
         int ApCost, int CastsPerTurn, int CastsPerTarget, int Cooldown, int InitialCooldown,
-        int Critical, int MinRange, int MaxRange, int Flags, int MaxStack);
+        int Critical, int MinRange, int MaxRange, int Flags, int MaxStack, bool Damages = false, bool Summons = false);
 
     /// <summary>
     /// spell_dons_overrides.json: how the Stasis-like spell upgrades are generated from each spell's
@@ -141,7 +141,7 @@ namespace Jondo.Unity.Server.Managers
                 var don = new SpellDonDefinition
                 {
                     Id = id, Spell = f.Spell, SpellName = name, Kind = kind, Value = rule.Value,
-                    Level = Math.Max(1, f.Level), Generated = true,
+                    Level = Math.Max(1, f.Level), Generated = true, Facts = f,
                 };
                 // Insistance's last rank asks for one point of Enchaînement, when the spell has one.
                 if (kind == Insistance && levels.Count > 1 && Applies(Enchainement, f) && !o.Disable.Contains($"{f.Spell}:{Enchainement}"))
@@ -213,10 +213,16 @@ namespace Jondo.Unity.Server.Managers
                             var l = Handlers.FightHandler.LimitesDeGrado(spell, grade);
                             if (l.LevelId == 0) continue;
                             int stack = 0;
+                            bool damages = false, summons = false;
                             foreach (var e in SpellEffects.De(spell, grade))
+                            {
                                 if (e.Duration != 0 && e.MaxStack >= 1) stack = Math.Max(stack, e.MaxStack);
+                                damages |= IsDamageEffect(e.EffectId);
+                                summons |= e.EffectId is 180 or 181 or 405 or 1008 or 1011;
+                            }
                             facts.Add(new SpellFacts(spell, breed, name, learnt, l.Cost, l.PorTurno, l.PorObjetivo,
-                                l.Intervalo, l.EsperaInicial, l.CriticoPropio, l.AlcanceMinimo, l.AlcanceMaximo, l.Flags, stack));
+                                l.Intervalo, l.EsperaInicial, l.CriticoPropio, l.AlcanceMinimo, l.AlcanceMaximo, l.Flags, stack,
+                                damages, summons));
                         }
             }
             catch (Exception ex)
@@ -224,6 +230,38 @@ namespace Jondo.Unity.Server.Managers
                 Console.WriteLine($"[SpellDons] The spell upgrade catalogue could not be generated: {ex.Message}");
             }
             return facts;
+        }
+
+        /// <summary>A damage line: the elemental damages and steals (91-100), the percent-of-life ones (1067-1071...).</summary>
+        internal static bool IsDamageEffect(int effect) => effect is >= 91 and <= 100 or 82 or 1012 or 1013 or 1014 or 1015 or 1016
+                                                          or >= 1067 and <= 1071 or 1223;
+
+        // --- How much an upgrade is worth -------------------------------------------------
+
+        /// <summary>
+        /// What an upgrade weighs in a spell point's draw: the kind's own worth (one PA or a turn of
+        /// cooldown off changes a rotation, a modifiable range on a summon does not), times the
+        /// spell's: a damage spell counts more, a summon less, a spell learnt late more.
+        /// </summary>
+        internal static double ImpactOf(SpellDonDefinition don)
+        {
+            string kind = LegacyEquivalent.GetValueOrDefault(don.Kind, don.Kind);
+            double weight = kind switch
+            {
+                Economie => 10, Cadence => 8, Enchainement => 8, Precision => 6, Allonge => 6,
+                SpellDons.Damage => 6, SpellDons.Heal => 5,
+                Insistance => 4, Clairvoyance => 4, Liberte => 3, Anticipation => 3, Persistance => 3, Adaptabilite => 2,
+                _ => 3,
+            };
+            if (don.Facts is not { } f) return weight * 1.2;   // a hand-written don: chosen by hand, a good one
+            if (kind == Cadence && f.Cooldown >= 4) weight += 2;           // 4 turns -> 3 is a big step
+            if (kind == Economie && f.ApCost <= 2) weight -= 4;            // 2 PA -> 1: rarely the limit
+            if (kind == Adaptabilite && f.MaxRange <= 2) weight = 0.5;     // a melee spell's range
+            if (kind == Allonge && f.MaxRange <= 1) weight = 1;
+            double spell = 1.0 + Math.Min(200, f.Level) / 200.0;
+            if (f.Damages) spell *= 1.6;
+            if (f.Summons && !f.Damages) spell *= kind is Cadence or Economie or Anticipation ? 0.8 : 0.35;
+            return Math.Max(0.1, weight * spell);
         }
 
         private static Dictionary<int, string> ReadNames()

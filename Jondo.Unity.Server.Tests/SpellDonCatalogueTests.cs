@@ -118,7 +118,8 @@ public sealed class SpellDonCatalogueTests
         var allonge = list.Single(d => d.Kind == SpellDonCatalogue.Allonge);
         Assert.Equal((3, 1, 115), (allonge.Value, allonge.MaxRank, allonge.RankLevels[0]));
         Assert.Contains(list, d => d.Id == "extra-1" && d.RankLevels.Count == 2);
-        Assert.Contains("Allonge", SpellDons.Describe(allonge, Profile()).Name);
+        Assert.Equal("Pression — +3 PO", SpellDons.Describe(allonge, Profile()).Name);
+        Assert.Contains("Allonge", SpellDons.Describe(allonge, Profile()).Description);
 
         // The whole generator off: nothing generated, the extras stay.
         var off = ContentWith(new[] { FullSpell() }, new SpellDonOverridesFile { Enabled = false });
@@ -169,5 +170,67 @@ public sealed class SpellDonCatalogueTests
         Assert.Equal(1, SpellDons.ExtraStackOf(new Buff { Quien = fighter.Id, HechizoOrigen = Full }));   // Persistance
         Assert.Equal(0, SpellDons.ExtraStackOf(new Buff { Quien = fighter.Id, HechizoOrigen = Plain }));
         Assert.Null(SpellModifiers.OnTheWire(SpellDons.LineFree));                  // never sent as a hnd
+    }
+
+    private const int Summon = 990_010, Strike = 990_011;
+
+    private static SpellFacts SummonSpell => new(Summon, Breed, "Invocation de Bouftou", 1, ApCost: 3, CastsPerTurn: 1, CastsPerTarget: 0,
+        Cooldown: 0, InitialCooldown: 0, Critical: 0, MinRange: 1, MaxRange: 2, Flags: 0, MaxStack: 0, Summons: true);
+
+    private static SpellFacts StrikeSpell => new(Strike, Breed, "Crocs du Piranya", 150, ApCost: 4, CastsPerTurn: 2, CastsPerTarget: 0,
+        Cooldown: 3, InitialCooldown: 0, Critical: 10, MinRange: 1, MaxRange: 5, Flags: SpellLevelFlags.CastTestLos, MaxStack: 0, Damages: true);
+
+    [Fact]
+    public void Impactful_upgrades_of_damage_spells_outweigh_trivial_ones_on_summons()
+    {
+        var o = new SpellDonOverridesFile();
+        var strike = SpellDonCatalogue.Generate(StrikeSpell, o);
+        var summon = SpellDonCatalogue.Generate(SummonSpell, o);
+        double Of(List<SpellDonDefinition> l, string kind) => SpellDonCatalogue.ImpactOf(l.Single(d => d.Kind == kind));
+        Assert.True(Of(strike, SpellDonCatalogue.Economie) > Of(strike, SpellDonCatalogue.Adaptabilite) * 3);
+        Assert.True(Of(strike, SpellDonCatalogue.Adaptabilite) > Of(summon, SpellDonCatalogue.Adaptabilite) * 3);
+        Assert.True(Of(strike, SpellDonCatalogue.Cadence) > Of(summon, SpellDonCatalogue.Enchainement));
+    }
+
+    [Fact]
+    public void Card_names_are_short_and_say_what_changes()
+    {
+        var list = SpellDonCatalogue.Generate(StrikeSpell, new SpellDonOverridesFile());
+        SpellDonDefinition K(string kind) => list.Single(d => d.Kind == kind);
+        var (name, description) = SpellDons.Describe(K(SpellDonCatalogue.Adaptabilite), Profile());
+        Assert.Equal("Crocs du Piranya — Portée modifiable", name);
+        Assert.StartsWith("PO 1-5 → PO 1-5 modifiable.", description);
+        Assert.StartsWith("4 PA → 3 PA", SpellDons.Describe(K(SpellDonCatalogue.Economie), Profile()).Description);
+        Assert.StartsWith("relance 3 → 2 tours", SpellDons.Describe(K(SpellDonCatalogue.Cadence), Profile()).Description);
+        Assert.StartsWith("2 → 3 lancers par tour", SpellDons.Describe(K(SpellDonCatalogue.Enchainement), Profile()).Description);
+        // The next rank counts the ones held.
+        var allonge = K(SpellDonCatalogue.Allonge);
+        var (n2, d2) = SpellDons.Describe(allonge, Profile(allonge.Id));
+        Assert.Equal("Crocs du Piranya — +1 PO (2/3)", n2);
+        Assert.StartsWith("PO 1-6 → PO 1-7", d2);
+        Assert.StartsWith("critique 10 % → 20 %", SpellDons.Describe(K(SpellDonCatalogue.Precision), Profile()).Description);
+    }
+
+    [Fact]
+    public void An_offer_is_drawn_by_impact_and_never_holds_three_of_a_kind()
+    {
+        var o = new SpellDonOverridesFile();
+        var pool = SpellDonCatalogue.Generate(StrikeSpell, o).Concat(SpellDonCatalogue.Generate(SummonSpell, o)).ToList();
+        var dice = new System.Random(7);
+        int strong = 0, summonTrivial = 0;
+        for (int i = 0; i < 2000; i++)
+        {
+            var offer = SpellDons.DrawOffer(pool, 3, dice);
+            Assert.Equal(3, offer.Count);
+            Assert.Equal(3, offer.Select(d => d.Id).Distinct().Count());
+            Assert.True(offer.GroupBy(d => d.Kind).Max(g => g.Count()) <= 2);
+            strong += offer.Count(d => d.Spell == Strike && d.Kind is SpellDonCatalogue.Economie or SpellDonCatalogue.Cadence);
+            summonTrivial += offer.Count(d => d.Spell == Summon && d.Kind == SpellDonCatalogue.Adaptabilite);
+        }
+        Assert.True(strong > summonTrivial * 5, $"strong {strong}, trivial {summonTrivial}");
+
+        // Only one kind left: it still fills the offer.
+        var same = Enumerable.Range(0, 4).Select(i => new SpellDonDefinition { Id = "x" + i, Spell = i, Kind = SpellDonCatalogue.Precision, Value = 10 }).ToList();
+        Assert.Equal(3, SpellDons.DrawOffer(same, 3, dice).Count);
     }
 }

@@ -215,6 +215,7 @@ namespace JondoFix
                 body.style.paddingTop = new StyleLength(12f);
                 body.style.paddingBottom = new StyleLength(14f);
                 Fill(body, root, offer);
+                UiKit.Unsqueeze(body);
                 window.Add(body);
 
                 layer.Add(window);
@@ -342,7 +343,7 @@ namespace JondoFix
             box.Add(name);
 
             string effect = Text(card, "effect");
-            if (Int(card, "spell") > 0 && effect.Length > 0)
+            if (Int(card, "spell") > 0 && effect.Length > 0 && Text(card, "name").IndexOf(effect, StringComparison.OrdinalIgnoreCase) < 0)
             {
                 var e = AdminItemsUi.Label(effect, true);
                 e.style.color = new StyleColor(new UnityEngine.Color(0.55f, 0.9f, 0.55f, 1f));

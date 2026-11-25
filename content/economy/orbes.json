@@ -21,5 +21,6 @@
   "OverLevelPenaltyPerLevel": 0.01,
   "OverLevelFloor": 0.25,
   "PayInCoins": true,
-  "KamasPerCoin": 150
+  "KamasPerCoin": 150,
+  "CoinGainFactor": 2.5
 }

@@ -52,8 +52,9 @@ namespace Jondo.Unity.Server.Managers
             (Rarity.Equipment, 25.0),
         };
 
-        public const int FewestItems = 2;
-        public const int MostItems = 5;
+        // One item a successful roll: at 2-5 per monster a fight of four rained equipment.
+        public const int FewestItems = 1;
+        public const int MostItems = 1;
         public const int LevelWindow = 10;
         public const int DofusLevelWindow = 20;
 
