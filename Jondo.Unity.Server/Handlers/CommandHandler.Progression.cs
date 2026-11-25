@@ -199,17 +199,28 @@ namespace Jondo.Unity.Server.Handlers
             return result;
         }
 
-        /// <summary>Buys a research's next rank.</summary>
+        /// <summary>
+        /// Buys a research's next rank; «refund:&lt;id&gt;» gives back an ordinary research's
+        /// ranks (out of a fight), «element:&lt;terre|feu|eau|air&gt;» chooses the Bi-élément's
+        /// element -- the same route serves the three, so the window needs no new one.
+        /// </summary>
         internal static async Task<string> BuyResearchAsync(GameSession session, string id)
         {
             var profile = ProgressionStore.Of(session.CharacterId);
+            id = (id ?? "").Trim();
             string result;
+            if (id.StartsWith("refund:", StringComparison.OrdinalIgnoreCase) && session.State.IsInFight) return "combat";
             lock (profile.Gate)
             {
-                result = Ascension.BuyResearch(profile, ProgressionContent.Current, id);
+                if (id.StartsWith("refund:", StringComparison.OrdinalIgnoreCase))
+                    result = Ascension.RefundResearch(profile, ProgressionContent.Current, id.Substring(7), out _);
+                else if (id.StartsWith("element:", StringComparison.OrdinalIgnoreCase))
+                    result = Ascension.ChooseSecondElement(profile, id.Substring(8));
+                else
+                    result = Ascension.BuyResearch(profile, ProgressionContent.Current, id);
                 if (result == "ok") ProgressionStore.Save(profile);
             }
-            // A stat research (Fortune, Tempo) changes the sheet at once.
+            // A stat research (Action, Résonance, Ténacité...) changes the sheet at once.
             if (result == "ok") await RefreshAfterDonAsync(session);
             return result;
         }
@@ -284,9 +295,12 @@ namespace Jondo.Unity.Server.Handlers
             {
                 var offer = profile.Pending.FirstOrDefault();
                 bool freeReroll = Dons.RerollsLeft(profile, content) > 0;
+                // The class passive offer has its own two free rerolls (spec §10), never paid.
+                bool passiveOffer = offer?.Kind == Dons.KindPassive;
+                int passiveRerolls = passiveOffer ? Dons.PassiveRerollsLeft(profile, offer!, content) : 0;
                 string? cannotAscend = Ascension.CannotAscend(profile, state.CharacterLevel, content);
                 string? cannotEvolve = Ascension.CannotEvolve(profile, state.CharacterLevel, content);
-                int catchUp = (profile.Ascensions > 0 || profile.Evolved) && state.CharacterLevel < profile.BestLevel
+                double catchUp = (profile.Ascensions > 0 || profile.Evolved) && state.CharacterLevel < Ascension.CatchUpCeiling(profile, content)
                     ? Ascension.CatchUpMultiplier(profile, content) : 1;
                 return new
                 {
@@ -314,10 +328,12 @@ namespace Jondo.Unity.Server.Handlers
                         kind = offer.Kind,
                         kindLabel = Dons.KindLabel(offer.Kind),
                         rerolled = offer.Rerolled,
-                        rerollable = Dons.IsRerollable(offer.Kind),
-                        canReroll = !offer.Rerolled && Dons.IsRerollable(offer.Kind),
-                        freeReroll,
-                        rerollCost = freeReroll ? 0 : OrbePrice(Dons.RerollCost(Dons.RealLevel(offer.Level), content)),
+                        rerollable = passiveOffer || Dons.IsRerollable(offer.Kind),
+                        canReroll = passiveOffer ? passiveRerolls > 0 : !offer.Rerolled && Dons.IsRerollable(offer.Kind),
+                        freeReroll = passiveOffer || freeReroll,
+                        rerollCost = passiveOffer || freeReroll ? 0 : OrbePrice(Dons.RerollCost(Dons.RealLevel(offer.Level), content)),
+                        // Only on a passive offer: its free rerolls left (the window's «Relancer (gratuit, n restantes)»).
+                        passiveRerollsLeft = passiveOffer ? passiveRerolls : -1,
                         cards = offer.Cards.Select((card, i) =>
                         {
                             int rarity = offer.RarityAt(i);
@@ -343,6 +359,9 @@ namespace Jondo.Unity.Server.Handlers
                                 iconGlyph = icon.Glyph,
                                 characteristic = Dons.IsCharacteristicCard(card, content),
                                 spell = spellDon?.Spell ?? 0,
+                                // The spell's own icon id (Spells.IconId), for the card to draw without a lookup.
+                                spellIcon = spellDon == null ? 0 : DreamSpells.IconOf(spellDon.Spell),
+                                upgrade = spellDon == null ? "" : SpellDons.KindLabel(spellDon.Kind),
                                 spellName = spellDon?.SpellName ?? "",
                                 effect = spellDon == null ? "" : SpellDons.EffectText(spellDon, spellDon.Value),
                                 rank = spellDon == null ? 0 : Dons.RankOf(profile, spellDon.Id),
@@ -357,7 +376,7 @@ namespace Jondo.Unity.Server.Handlers
                         families = SpellDons.PointsPerFamily(profile, content).Count,
                         maxFamilies = SpellDons.FamiliesAllowed(state.CharacterLevel, content),
                         perFamily = SpellDons.PointsPerFamilyAllowed(state.CharacterLevel, content),
-                        owned = OwnedSpellDons(profile, content).Select(o => new { spellName = o.Don.SpellName, effect = o.Effect, rank = o.Rank, maxRank = o.Don.MaxRank }).ToList(),
+                        owned = OwnedSpellDons(profile, content).Select(o => new { spellName = o.Don.SpellName, effect = o.Effect, rank = o.Rank, maxRank = o.Don.MaxRank, spell = o.Don.Spell, spellIcon = DreamSpells.IconOf(o.Don.Spell), upgrade = SpellDons.KindLabel(o.Don.Kind) }).ToList(),
                     },
                     characteristics = content.Dons.CharacteristicCard.Stats
                         .Select(s => new
@@ -369,14 +388,32 @@ namespace Jondo.Unity.Server.Handlers
                         }).ToList(),
                     bonuses = Dons.BonusesOf(profile, content).OrderBy(kv => kv.Key)
                         .Select(kv => new { stat = Dons.StatName(kv.Key), value = kv.Value }).ToList(),
-                    research = content.Research.Select(r => new
+                    research = content.Research.Select(r =>
                     {
-                        id = r.Id,
-                        name = r.Name,
-                        description = r.Description,
-                        rank = profile.RankOf(r.Id),
-                        max = r.MaxRank,
-                        cost = Ascension.NextCost(profile, r),
+                        int rank = Ascension.RankOf(profile, r);
+                        int second = r.Kind == "biElement"
+                            ? Ascension.SecondElement(profile, content, Dons.BonusesOf(profile, content), out _) : -1;
+                        return new
+                        {
+                            id = r.Id,
+                            name = r.Name,
+                            description = r.Description,
+                            branch = r.Branch,
+                            icon = r.Icon,
+                            kind = r.Kind,
+                            rank,
+                            max = r.MaxRank,
+                            cost = Ascension.NextCost(profile, r),
+                            costs = r.Costs,
+                            // What the rank held gives, and what the next would.
+                            effectNow = Ascension.EffectText(r, rank, content),
+                            effectNext = rank < r.MaxRank ? Ascension.EffectText(r, rank + 1, content) : "",
+                            permanent = r.Permanent || r.Kind == "evolution",
+                            refund = r.Permanent || r.Kind == "evolution" ? 0 : Ascension.SpentOn(profile, r),
+                            // The Bi-élément's second element, chosen or automatic ("" without the research).
+                            element = second >= 0 ? Ascension.Elements[second].Key : "",
+                            elementChosen = r.Kind == "biElement" && profile.RankOf(Ascension.BiElementChoiceKey) > 0,
+                        };
                     }).ToList(),
                     ascension = new
                     {
@@ -428,7 +465,9 @@ namespace Jondo.Unity.Server.Handlers
                     string rarity = rated ? $" [{Dons.RarityLabel(offer.RarityAt(i))}]" : "";
                     text.Append($"\n{i + 1}. {name}{rarity} — {description}");
                 }
-                string reroll = offer.Rerolled || !Dons.IsRerollable(offer.Kind) ? "relance indisponible"
+                string reroll = offer.Kind == Dons.KindPassive
+                    ? (Dons.PassiveRerollsLeft(profile, offer, content) is int left && left > 0 ? $"relance gratuite, {left} restante(s)" : "plus de relance")
+                    : offer.Rerolled || !Dons.IsRerollable(offer.Kind) ? "relance indisponible"
                     : Dons.RerollsLeft(profile, content) > 0 ? "relance gratuite disponible"
                     : $"relance : {OrbePrice(Dons.RerollCost(Dons.RealLevel(offer.Level), content))} {OrbeLabel}";
                 text.Append($"\n.don <n> [caractéristique] pour choisir, .don relance ({reroll}), .don refonte <de> <vers> ({Dons.RepicksLeft(profile, content)} restante(s)).");
@@ -509,7 +548,19 @@ namespace Jondo.Unity.Server.Handlers
         {
             var content = ProgressionContent.Current;
             var profile = ProgressionStore.Of(session.CharacterId);
-            string id = (rest ?? "").Trim();
+            var words = (rest ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            string id = words.Length == 0 ? "" : words[0];
+            string done = "Recherche achetée. ";
+            if (words.Length >= 2 && words[0].ToLowerInvariant() is "rembourser" or "refund")
+            {
+                id = "refund:" + words[1];
+                done = "Recherche remboursée. ";
+            }
+            else if (words.Length >= 2 && words[0].ToLowerInvariant() is "element" or "élément")
+            {
+                id = "element:" + words[1];
+                done = "Élément du Bi-élément choisi. ";
+            }
             if (id.Length > 0)
             {
                 string r = await BuyResearchAsync(session, id);
@@ -518,15 +569,19 @@ namespace Jondo.Unity.Server.Handlers
             var text = new StringBuilder();
             lock (profile.Gate)
             {
-                text.Append(id.Length > 0 ? "Recherche achetée. " : "");
+                text.Append(id.Length > 0 ? done : "");
                 text.Append($"Recherches ({profile.Eclats} Éclats) :");
+                string branch = "";
                 foreach (var r in content.Research)
                 {
+                    if (r.Branch != branch) text.Append($"\n[{branch = r.Branch}]");
+                    int rank = Ascension.RankOf(profile, r);
                     long cost = Ascension.NextCost(profile, r);
-                    text.Append($"\n{r.Id} — {r.Name} {profile.RankOf(r.Id)}/{r.MaxRank} : {r.Description}" +
-                                (cost >= 0 ? $" ({cost} Éclats)" : " (max)"));
+                    string now = rank > 0 ? $" — actuel : {Ascension.EffectText(r, rank, content)}" : "";
+                    string next = cost >= 0 ? $" — suivant : {Ascension.EffectText(r, rank + 1, content)} ({cost} Éclats)" : " (max)";
+                    text.Append($"\n{r.Id} — {r.Name} {rank}/{r.MaxRank}{(r.Permanent ? " [permanente]" : "")}{now}{next}");
                 }
-                text.Append("\n.recherche <id> pour acheter le rang suivant.");
+                text.Append("\n.recherche <id> pour acheter le rang suivant, .recherche rembourser <id> (hors combat), .recherche element <terre|feu|eau|air>.");
             }
             return text.ToString();
         }

@@ -6170,6 +6170,8 @@ namespace Jondo.Unity.Server.Managers
                                                 receivedMultiplier);
                 // The caster's spell dons' "+X % de soins" on this spell (SpellDons).
                 points = SpellDons.WithHeal(quienLanza, hechizo, points);
+                // And the Stasis class passives' "+X % de soins" (Handlers/FightStasisPassives.cs).
+                points = Jondo.Unity.Server.Handlers.FightHandler.StasisPassiveHeal(combate, quienLanza, points);
                 return ApplyHealing(combate, quienLanza, sobre, hechizo, grado, efecto,
                                     ronda, points);
             }

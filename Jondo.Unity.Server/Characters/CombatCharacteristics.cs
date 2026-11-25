@@ -10,6 +10,7 @@ public sealed class CombatCharacteristics
     private readonly int level, strength, intelligence, chance, agility, vitality;
     private readonly IReadOnlyDictionary<int, long> equipment, alterations;
     private readonly int apCap, mpCap;
+    private readonly int lifePercent;
 
     internal CombatCharacteristics(GameSession session)
     {
@@ -24,6 +25,8 @@ public sealed class CombatCharacteristics
         foreach (var (id, value) in Dons.BonusesOf(state.CharacterId))
             temporary[id] = temporary.GetValueOrDefault(id) + value;
         alterations = temporary;
+        // The Endurance research: a percent of the max life (Managers/Stasis/Ascension.cs).
+        lifePercent = Ascension.LifePercent(state.CharacterId);
         apCap = ServerSettings.Current.MaxActionPoints;
         mpCap = ServerSettings.Current.MaxMovementPoints;
     }
@@ -32,7 +35,10 @@ public sealed class CombatCharacteristics
         => checked((int)(equipment.GetValueOrDefault(statId) + alterations.GetValueOrDefault(statId)));
 
     public int GetPlayerMaxHp()
-        => checked(CharacteristicRules.BaseLifeForLevel(level) + vitality + GetEquipBonus(Stat.Vitality));
+    {
+        int life = checked(CharacteristicRules.BaseLifeForLevel(level) + vitality + GetEquipBonus(Stat.Vitality));
+        return lifePercent == 0 ? life : checked((int)((long)life * (100 + lifePercent) / 100));
+    }
 
     public int PlayerInnateAp() => CharacteristicRules.InnateAp(level);
     public int GetPlayerMaxAp()

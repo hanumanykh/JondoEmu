@@ -80,7 +80,8 @@ namespace Jondo.Unity.Server.Handlers
         /// </remarks>
         internal static int ReachBeforeModifiers(Fighter caster, int spell, int levelMax, int flags, int round)
         {
-            bool boostable = (flags & Managers.SpellLevelFlags.RangeCanBeBoosted) != 0;
+            bool boostable = (flags & Managers.SpellLevelFlags.RangeCanBeBoosted) != 0
+                             || spell != 0 && caster.AllSpellsModifier(spell, Jondo.Unity.World.Fights.SpellAspect.RangeModifiable) != 0;
             return levelMax
                  + (boostable ? caster.Range + caster.Buffs.De(AlcanceCaracteristica, round) : 0)
                  + caster.Buffs.DelHechizo(spell, Jondo.Unity.World.Fights.SpellAspect.AlcanceMaximo, round);

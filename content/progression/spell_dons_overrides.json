@@ -1,0 +1,49 @@
+// Les améliorations de sorts « à la Stasis », générées au démarrage depuis les données réelles de
+// chaque sort de classe (base ET variante ; les deux partagent les points de leur famille) :
+// Managers/Stasis/SpellDonCatalogue.cs. Une amélioration n'est proposée que si elle change quelque chose :
+//   economie      -1 PA                     si le sort coûte 2 PA ou plus
+//   enchainement  +1 lancer par tour         si le sort a un maximum de lancers par tour
+//   insistance    +1 lancer par cible        si le sort a un maximum par cible (rang max : enchainement 1 requis)
+//   precision     +10 % de critique / point  si le sort peut faire un coup critique
+//   allonge       +1 PO / point              si le sort a une portée (3e rang seulement si PO max >= lastRankFromRange)
+//   adaptabilite  portée modifiable          si la PO du sort n'est pas déjà modifiable
+//   clairvoyance  sans ligne de vue          si le sort teste la ligne de vue
+//   liberte       sans contrainte ligne/diag si le sort se lance en ligne ou en diagonale
+//   persistance   +1 cumul                   si un effet du sort a un cumul max >= 1
+//   cadence       -1 tour de relance         si la relance est de 2 tours ou plus
+//   anticipation  -1 tour de relance initiale si le sort a une relance initiale
+// "rankLevels" : le niveau où chaque rang s'ouvre (leur nombre = rang max) ; jamais avant le niveau
+// où le sort s'apprend. Les plafonds par famille (1/2/3/4/5 points aux niveaux 10/70/90/110/130), les
+// 5 familles et les 14 points restent ceux de spell_dons.json.
+// Corrections à la main :
+//   "spellNames"  : { "id du sort": "nom français" } (sinon le nom de spell_dons.json, sinon celui de la base)
+//   "disable"     : ids générés ("s8-13106-adaptabilite"), sorts entiers ("13106") ou "sort:kind" ("13106:liberte")
+//   "patches"     : par id généré ou "sort:kind" : value, rankLevels, level, requires [{ atRank, kind, rank }]
+//   "extra"       : par classe, des dons écrits tels quels (même forme que spell_dons.json)
+// Les ids générés sont "s{classe}-{sort}-{kind}" : stables, ne pas les renommer (les persos les gardent).
+{
+  "enabled": true,
+  "retireLegacyOverlaps": true,
+  "kinds": {
+    "economie":     { "value": 1,  "rankLevels": [1] },
+    "enchainement": { "value": 1,  "rankLevels": [1, 70] },
+    "insistance":   { "value": 1,  "rankLevels": [1, 90] },
+    "precision":    { "value": 10, "rankLevels": [1, 70, 90] },
+    "allonge":      { "value": 1,  "rankLevels": [1, 70, 90], "lastRankFromRange": 5 },
+    "adaptabilite": { "value": 1,  "rankLevels": [1] },
+    "clairvoyance": { "value": 1,  "rankLevels": [1] },
+    "liberte":      { "value": 1,  "rankLevels": [1] },
+    "persistance":  { "value": 1,  "rankLevels": [1] },
+    "cadence":      { "value": 1,  "rankLevels": [1] },
+    "anticipation": { "value": 1,  "rankLevels": [1] }
+  },
+  "spellNames": {},
+  "disable": [],
+  "patches": {
+    // Eniripsa — Mot Tapageur : Allonge jusqu'à 3 points (wiki).
+    "25858:allonge": { "rankLevels": [1, 70, 90] },
+    // Eniripsa — Mot Vampirique : Insistance 2 si Enchaînement 1 (wiki ; c'est aussi la règle par défaut).
+    "25870:insistance": { "requires": [ { "atRank": 2, "kind": "enchainement", "rank": 1 } ] }
+  },
+  "extra": {}
+}

@@ -242,8 +242,7 @@ namespace JondoFix
         {
             string text = $"Niveau {Int(root, "level")} (record {Int(root, "best")}) · {Long(root, "eclats")} Éclats · " +
                           $"{Int(root, "ascensions")} Ascension(s)" + (root.GetProperty("evolved").GetBoolean() ? " · évolué" : "");
-            int catchUp = Int(root, "catchUp");
-            if (catchUp > 1) text += $" · rattrapage x{catchUp}";
+            if (Dbl(root, "catchUp") > 1) text += $" · rattrapage x{Times(root, "catchUp")}";
             // The Orbes held: Jondo Coins on a coin server (older servers send no "coins").
             if (root.TryGetProperty("coins", out _)) text += $" · {Long(root, "coins")} {Text(root, "coinLabel")}";
             var label = AdminItemsUi.Label(text, true);
@@ -501,7 +500,7 @@ namespace JondoFix
             _page.Add(Title("Ascension"));
             _page.Add(Hint($"Dès le niveau {Int(asc, "minLevel")} : retour au niveau 1 (expérience, caractéristiques et sorts de niveau 1), " +
                            $"objets et kamas conservés, dons perdus. Rapporte {Long(asc, "eclats")} Éclats maintenant, puis expérience " +
-                           $"x{Int(asc, "catchUp")} jusqu'à votre record."));
+                           $"x{Times(asc, "catchUp")} jusqu'à votre record."));
             Rebirth(asc, "ascension", "Faire l'Ascension", "stasis/ascend");
 
             var evo = root.GetProperty("evolution");
@@ -755,6 +754,10 @@ namespace JondoFix
         private static string Text(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
         private static int Int(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
         private static long Long(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
+        /// <summary>A number that may have decimals (the catch-up multiplier, x2,25 with Rattrapage).</summary>
+        private static double Dbl(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
+        /// <summary>A multiplier as the window writes it: «2», «2,25».</summary>
+        private static string Times(JsonElement e, string name) => Dbl(e, name).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
 
         // ─── Talking to the server ───────────────────────────────────────────────────────
 

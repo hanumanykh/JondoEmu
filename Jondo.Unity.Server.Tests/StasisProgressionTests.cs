@@ -78,7 +78,10 @@ public sealed class StasisProgressionTests
         // of the breed's, for the Iop his own) and the don «Pension» (a mount egg, one species of three).
         Assert.Equal(3, Dons.QueueOffers(p, Content, 8, 49, 50));
         Assert.Equal(new[] { 50, Dons.PassiveLevelOffset + 50, Dons.PensionLevelOffset + 50 }, p.Pending.Where(o => Dons.RealLevel(o.Level) == 50).Select(o => o.Level));
-        Assert.Equal(new[] { "iop_terre", "iop_puissance" }, p.Pending.Single(o => o.Kind == Dons.KindPassive).Cards);
+        // Three passives drawn among the nineteen classes (StasisPassivesTests has the rules).
+        var passives = p.Pending.Single(o => o.Kind == Dons.KindPassive).Cards;
+        Assert.Equal(3, passives.Count);
+        Assert.All(passives, c => Assert.True(Dons.IsPassiveCard(c, Content)));
         Assert.Equal(new[] { "pension_monture_1", "pension_monture_2", "pension_monture_3" }, p.Pending.Single(o => o.Kind == Dons.KindPension).Cards);
     }
 
@@ -212,9 +215,9 @@ public sealed class StasisProgressionTests
     {
         var p = NewProfile();
         // An older level-70 character: the passive kept at level 50 by the previous rules.
-        p.Dons.Add(new ChosenDon { Level = 50, Card = "iop_terre" });
+        p.Dons.Add(new ChosenDon { Level = 50, Card = "passif_iop" });
         int changed = Dons.EnsureOffers(p, Content, 8, 70, level => level == 60);
-        Assert.Equal(Dons.PassiveLevelOffset + 50, p.Dons.Single(d => d.Card == "iop_terre").Level);
+        Assert.Equal(Dons.PassiveLevelOffset + 50, p.Dons.Single(d => d.Card == "passif_iop").Level);
         Assert.Contains(p.Pending, o => o.Level == 1 && o.Kind == Dons.KindStart);
         Assert.Contains(p.Pending, o => o.Level == Dons.PensionLevelOffset + 20 && o.Kind == Dons.KindPension);
         Assert.Contains(p.Pending, o => o.Level == Dons.PensionLevelOffset + 50);
@@ -247,7 +250,7 @@ public sealed class StasisProgressionTests
         Assert.Empty(Dons.BonusesOf(p, Content).Keys.Where(k => k < 0));
 
         Assert.Equal(("stat", Stat.Vitality), (Dons.IconOf("vitalite", Content).Kind, Dons.IconOf("vitalite", Content).Id));
-        Assert.Equal("class", Dons.IconOf("iop_terre", Content).Kind);
+        Assert.Equal("class", Dons.IconOf("passif_iop", Content).Kind);
         Assert.Equal(("item", 2074), (Dons.IconOf("pension_familier_2074", Content).Kind, Dons.IconOf("pension_familier_2074", Content).Id));
         Assert.Equal("glyph", Dons.IconOf("aventure_vitesse", Content).Kind);
         foreach (var card in Content.Dons.Level.Concat(Content.Dons.Adventure).Concat(Content.Dons.Accomplishments))
@@ -358,19 +361,144 @@ public sealed class StasisProgressionTests
 
     [Theory]
     [InlineData(49, 0)]
-    [InlineData(50, 10)]
-    [InlineData(100, 40)]
-    [InlineData(200, 160)]
-    [InlineData(300, 360)]
-    public void Eclats_follow_the_content_formula(int level, long eclats)
+    [InlineData(50, 1)]
+    [InlineData(100, 20)]
+    [InlineData(125, 42)]
+    [InlineData(150, 64)]
+    [InlineData(200, 150)]
+    [InlineData(225, 400)]
+    [InlineData(250, 700)]
+    [InlineData(275, 1050)]
+    [InlineData(300, 1450)]
+    [InlineData(320, 1450)]
+    public void Eclats_follow_the_wiki_table(int level, long eclats)
         => Assert.Equal(eclats, Ascension.EclatsFor(level, NewProfile(), Content));
 
     [Fact]
-    public void Moisson_adds_its_percent_of_eclats()
+    public void The_first_research_tree_is_refunded_once_and_fortune_is_kept()
     {
         var p = NewProfile();
-        p.Research["moisson"] = 2;
-        Assert.Equal(432, Ascension.EclatsFor(300, p, Content));
+        p.Research["moisson"] = 2;       // 80 + 160, gone
+        p.Research["rattrapage"] = 2;    // 40 + 80, new prices
+        p.Research["tempo"] = 1;         // 50, new meaning
+        p.Research["fortune"] = 3;       // same research, kept
+        p.Research["memoire_route"] = 1; // same research, kept
+        Assert.True(Ascension.MigrateResearch(p));
+        Assert.Equal(410, p.Eclats);
+        Assert.Equal(0, p.RankOf("moisson"));
+        Assert.Equal(0, p.RankOf("rattrapage"));
+        Assert.Equal(0, p.RankOf("tempo"));
+        Assert.Equal(3, p.RankOf("fortune"));
+        Assert.Equal(1, p.RankOf("memoire_route"));
+        // Once only: a rank bought afterwards at the new price is not refunded again.
+        p.Research["rattrapage"] = 1;
+        Assert.False(Ascension.MigrateResearch(p));
+        Assert.Equal(410, p.Eclats);
+        Assert.Equal(1, p.RankOf("rattrapage"));
+    }
+
+    [Fact]
+    public void The_research_tree_is_the_wikis()
+    {
+        Assert.Equal(20, Content.Research.Count);
+        Assert.Equal(new[] { "Préparation", "Savoir", "Puissance" }, Content.Research.Select(r => r.Branch).Distinct());
+        void Costs(string id, params long[] costs) => Assert.Equal(costs, Content.ResearchOf(id)!.Costs);
+        Costs("rattrapage", 20, 40, 60);
+        Costs("elan", 30, 50);
+        Costs("pas_leger", 10, 20, 30);
+        Costs("tempo", 10, 20, 30);
+        Costs("memoire_route", 40);
+        Costs("relance", 40, 80);
+        Costs("fortune", 30, 50, 70);
+        Costs("quatrieme_carte", 100);
+        Costs("seconde_refonte", 50);
+        Costs("metamorphose", 500);
+        Costs("polyvalence", 500, 500, 500);
+        Costs("dons_duo", 60, 60, 60);
+        Costs("bi_element", 1000);
+        Costs("resonance", 20, 30, 40, 50, 60);
+        Costs("endurance", 20, 30, 40);
+        Costs("tenacite", 20, 30, 40);
+        Costs("action", 150);
+        Costs("cadence", 500);
+        Costs("ciblage", 400);
+        Costs("evolution", 1000);
+        Assert.All(new[] { "metamorphose", "polyvalence", "evolution" }, id => Assert.True(Content.ResearchOf(id)!.Permanent));
+        Assert.Equal("+8 % PV max", Ascension.EffectText(Content.ResearchOf("endurance")!, 2, Content));
+        Assert.Equal("XP de rattrapage x2,25", Ascension.EffectText(Content.ResearchOf("rattrapage")!, 1, Content));
+    }
+
+    [Fact]
+    public void Power_research_adds_to_the_bonuses()
+    {
+        var p = NewProfile();
+        p.Dons.Add(new ChosenDon { Level = 2, Card = "carac", Stat = Stat.Intelligence, Amount = 100 });
+        p.Dons.Add(new ChosenDon { Level = 3, Card = "carac", Stat = Stat.Agility, Amount = 10 });
+        p.Research["action"] = 1;
+        p.Research["tenacite"] = 3;
+        p.Research["resonance"] = 5;
+        var b = Dons.BonusesOf(p, Content);
+        Assert.Equal(1, b[Stat.ActionPoints]);
+        Assert.Equal(3, b[Dons.StatIds["resFeu"]]);
+        Assert.Equal(3, b[Dons.StatIds["resNeutre"]]);
+        Assert.Equal(110, b[Stat.Intelligence]);  // +10 %
+        Assert.Equal(11, b[Stat.Agility]);
+
+        // Bi-élément: the second element (the next strongest, Air, or the one chosen) gets 60 % of the main's.
+        p.Research["resonance"] = 0;
+        p.Research["bi_element"] = 1;
+        b = Dons.BonusesOf(p, Content);
+        Assert.Equal(100, b[Stat.Intelligence]);
+        Assert.Equal(70, b[Stat.Agility]);
+        Assert.Equal("ok", Ascension.ChooseSecondElement(p, "eau"));
+        b = Dons.BonusesOf(p, Content);
+        Assert.Equal(60, b[Stat.Chance]);
+        Assert.Equal(10, b[Stat.Agility]);
+        Assert.Equal(Ascension.UnknownElement, Ascension.ChooseSecondElement(p, "lumiere"));
+    }
+
+    [Fact]
+    public void Speed_life_and_casts_research_reach_their_hooks()
+    {
+        long id = Interlocked.Increment(ref _nextId);
+        var p = ProgressionStore.Of(id);
+        long speed = Dons.SpeedPercent(id), animation = Dons.AnimationPercent(id);
+        p.Research["pas_leger"] = 3;
+        p.Research["tempo"] = 2;
+        p.Research["endurance"] = 3;
+        p.Research["cadence"] = 1;
+        p.Research["ciblage"] = 1;
+        Assert.Equal(speed + 15, Dons.SpeedPercent(id));
+        Assert.Equal(animation + 10, Dons.AnimationPercent(id));
+        Assert.Equal(12, Ascension.LifePercent(id));
+
+        var fighter = new Jondo.Unity.World.Fights.Fighter { Id = 1 };
+        Ascension.ApplyResearchTo(fighter, id);
+        Assert.Equal(1, fighter.EverySpell[Jondo.Unity.World.Fights.SpellAspect.CastsPerTurnUp]);
+        Assert.Equal(1, fighter.EverySpell[Jondo.Unity.World.Fights.SpellAspect.CastsPerTargetUp]);
+    }
+
+    [Fact]
+    public void Ordinary_research_is_refunded_in_full_and_permanent_research_is_not()
+    {
+        var p = NewProfile();
+        p.Eclats = 2_000;
+        Assert.Equal("ok", Ascension.BuyResearch(p, Content, "endurance"));
+        Assert.Equal("ok", Ascension.BuyResearch(p, Content, "endurance"));
+        Assert.Equal("ok", Ascension.BuyResearch(p, Content, "metamorphose"));
+        Assert.Equal(1_450, p.Eclats);
+        Assert.Equal("ok", Ascension.RefundResearch(p, Content, "endurance", out long back));
+        Assert.Equal(50, back);
+        Assert.Equal(1_500, p.Eclats);
+        Assert.Equal(0, p.RankOf("endurance"));
+        Assert.Equal(Ascension.NothingToRefund, Ascension.RefundResearch(p, Content, "endurance", out _));
+        Assert.Equal(Ascension.PermanentResearch, Ascension.RefundResearch(p, Content, "metamorphose", out _));
+        Assert.True(Ascension.CanMetamorphose(p, Content));
+        // The Évolution is not bought here: it is the Ascension tab's, and its rank is the evolved flag.
+        Assert.Equal(Ascension.EvolutionHere, Ascension.BuyResearch(p, Content, "evolution"));
+        Assert.Equal(0, Ascension.RankOf(p, Content.ResearchOf("evolution")!));
+        p.Evolved = true;
+        Assert.Equal(-1, Ascension.NextCost(p, Content.ResearchOf("evolution")!));
     }
 
     [Fact]
@@ -380,14 +508,14 @@ public sealed class StasisProgressionTests
         var state = new SessionState { CharacterId = p.CharacterId, CharacterLevel = 120, StatStrength = 300, ScrolledStrength = 101, Kamas = 5 };
         p.Dons.Add(new ChosenDon { Level = 2, Card = "carac", Stat = Stat.Strength, Amount = 3 });
         p.Pending.Add(new DonOffer { Level = 3, Kind = Dons.KindLevel, Cards = { "pods" } });
-        p.Research["tempo"] = 1;
+        p.Research["action"] = 1;
 
         Assert.Equal("niveau", Ascension.CannotAscend(p, 49, Content));
         Assert.Null(Ascension.CannotAscend(p, 120, Content));
         var outcome = Ascension.Ascend(state, p, Content);
 
-        Assert.Equal((120, 1, 57L), (outcome.FromLevel, outcome.ToLevel, outcome.Eclats));
-        Assert.Equal(57, p.Eclats);
+        Assert.Equal((120, 1, 37L), (outcome.FromLevel, outcome.ToLevel, outcome.Eclats));
+        Assert.Equal(37, p.Eclats);
         Assert.Equal(1, p.Ascensions);
         Assert.Equal(120, p.BestLevel);
         Assert.Empty(p.Dons);
@@ -396,12 +524,12 @@ public sealed class StasisProgressionTests
         Assert.Equal(101, state.ScrolledStrength);
         Assert.Equal(5, state.Kamas);
         Assert.Equal(CharacteristicRules.TotalCapitalForLevel(1), state.CharacterRemainingPoints);
-        // The research stays: Tempo still adds its initiative.
-        Assert.Equal(150, Dons.BonusesOf(p, Content)[Stat.Initiative]);
+        // The research stays: Action still adds its PA.
+        Assert.Equal(1, Dons.BonusesOf(p, Content)[Stat.ActionPoints]);
     }
 
     [Fact]
-    public void Catch_up_doubles_experience_until_the_best_level_and_rattrapage_raises_it_to_nine()
+    public void Catch_up_doubles_experience_until_the_best_level_and_rattrapage_and_elan_raise_it()
     {
         var p = NewProfile();
         Assert.Equal(1.0, Dons.ExperienceFactor(p, 10, Content));
@@ -409,8 +537,14 @@ public sealed class StasisProgressionTests
         p.BestLevel = 100;
         Assert.Equal(2.0, Dons.ExperienceFactor(p, 10, Content));
         Assert.Equal(1.0, Dons.ExperienceFactor(p, 100, Content));
-        p.Research["rattrapage"] = 7;
-        Assert.Equal(9.0, Dons.ExperienceFactor(p, 99, Content));
+        p.Research["rattrapage"] = 1;
+        Assert.Equal(2.25, Dons.ExperienceFactor(p, 99, Content));
+        p.Research["rattrapage"] = 3;
+        Assert.Equal(3.0, Dons.ExperienceFactor(p, 99, Content));
+        // Élan: the catch-up runs 20 levels past the best one.
+        p.Research["elan"] = 2;
+        Assert.Equal(3.0, Dons.ExperienceFactor(p, 119, Content));
+        Assert.Equal(1.0, Dons.ExperienceFactor(p, 120, Content));
     }
 
     [Fact]
@@ -438,12 +572,13 @@ public sealed class StasisProgressionTests
         Assert.Equal("eclats", Ascension.BuyResearch(p, Content, "quatrieme_carte"));
         p.Eclats = 600;
         Assert.Equal("ok", Ascension.BuyResearch(p, Content, "quatrieme_carte"));
-        Assert.Equal(100, p.Eclats);
+        Assert.Equal(500, p.Eclats);
         Assert.Equal("rang-max", Ascension.BuyResearch(p, Content, "quatrieme_carte"));
         Assert.Equal("recherche-inconnue", Ascension.BuyResearch(p, Content, "nope"));
         Assert.Equal("ok", Ascension.BuyResearch(p, Content, "rattrapage"));
-        Assert.Equal(80, Ascension.NextCost(p, Content.ResearchOf("rattrapage")!));
-        Assert.Equal(3, Ascension.CatchUpMultiplier(p, Content));
+        Assert.Equal(480, p.Eclats);
+        Assert.Equal(40, Ascension.NextCost(p, Content.ResearchOf("rattrapage")!));
+        Assert.Equal(2.25, Ascension.CatchUpMultiplier(p, Content));
     }
 
     [Fact]
@@ -465,6 +600,9 @@ public sealed class StasisProgressionTests
             Ascension.TierDungeonsDone = before;
         }
         Assert.Null(Ascension.CannotEvolve(p, 300, Content));
+        p.Pending.Add(new DonOffer { Level = 300, Kind = Dons.KindLevel, Cards = { "pods" } });
+        Assert.Equal(Ascension.PendingDons, Ascension.CannotEvolve(p, 300, Content));
+        p.Pending.Clear();
 
         p.Dons.Add(new ChosenDon { Level = 150, Card = "pods" });
         p.Dons.Add(new ChosenDon { Level = 200, Card = "aventure_pods" });
@@ -473,7 +611,9 @@ public sealed class StasisProgressionTests
 
         Assert.Equal((300, 200, 2), (outcome.FromLevel, outcome.ToLevel, outcome.DonsKept));
         Assert.True(p.Evolved);
-        Assert.Equal(200, p.Eclats);
+        // 1000 spent, an Ascension 300's 1450 paid.
+        Assert.Equal(1_650, p.Eclats);
+        Assert.Equal(450, outcome.Eclats);
         Assert.DoesNotContain(p.Dons, d => d.Level > 200);
         Assert.Equal(0, state.StatVitality);
         Assert.Equal("evolue", Ascension.CannotAscend(p, 250, Content));

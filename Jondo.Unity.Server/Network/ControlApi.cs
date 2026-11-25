@@ -102,6 +102,7 @@ namespace Jondo.Unity.Server.Network
                     case Prefijo + "stasis/panel": return ConSesion(cuerpo, cuenta => Panel(cuerpo, cuenta));
                     case Prefijo + "stasis/act": return ConSesion(cuerpo, cuenta => PanelAct(cuerpo, cuenta));
                     case Prefijo + "stasis/speed": return ConSesion(cuerpo, WalkSpeed);
+                    case Prefijo + "stasis/hud": return ConSesion(cuerpo, cuenta => HudState(cuerpo, cuenta));
                     case Prefijo + "pension/state": return ConSesion(cuerpo, PensionState);
                     case Prefijo + "pension/do": return ConSesion(cuerpo, cuenta => PensionDo(cuerpo, cuenta));
                     // The Système's missions, the same window's «Missions» tab: ControlApiMissions.cs.

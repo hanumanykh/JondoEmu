@@ -28,6 +28,8 @@ namespace Jondo.Unity.Server.Managers
         internal AscensionFile Ascension { get; init; } = new();
         /// <summary>The spell dons of every class (spell_dons.json), see <see cref="SpellDons"/>.</summary>
         internal SpellDonsFile SpellDons { get; init; } = new();
+        /// <summary>How the spell upgrades are generated from the spells' data, and the hand corrections (spell_dons_overrides.json).</summary>
+        internal SpellDonOverridesFile SpellDonOverrides { get; init; } = new();
 
         private static ProgressionContent? _current;
         private static readonly object _loadLock = new();
@@ -74,6 +76,7 @@ namespace Jondo.Unity.Server.Managers
                 Research = Read("research.json", new ResearchFile()).Research,
                 Ascension = Read("ascension.json", new AscensionFile()),
                 SpellDons = Read("spell_dons.json", new SpellDonsFile()),
+                SpellDonOverrides = Read("spell_dons_overrides.json", new SpellDonOverridesFile()),
             };
         }
 
@@ -135,6 +138,10 @@ namespace Jondo.Unity.Server.Managers
         public Dictionary<string, int> PointsPerFamilyByLevel { get; set; } = new();
         /// <summary>By breed id as text.</summary>
         public Dictionary<string, List<SpellDonDefinition>> Classes { get; set; } = new();
+        /// <summary>The generated catalogue, built on first use (SpellDonCatalogue.Of).</summary>
+        [JsonIgnore] internal Dictionary<string, List<SpellDonDefinition>>? GeneratedCache { get; set; }
+        /// <summary>Where the generator reads the spells from; null: the world database. Tests set their own.</summary>
+        [JsonIgnore] internal Func<IReadOnlyList<SpellFacts>>? Facts { get; set; }
     }
 
     internal sealed class SpellDonDefinition
@@ -150,6 +157,12 @@ namespace Jondo.Unity.Server.Managers
         public int MaxRank { get; set; } = 1;
         /// <summary>The level the spell is first learnt at: no offer of it before.</summary>
         public int Level { get; set; } = 1;
+        /// <summary>The level each rank opens at (rank 1 first); empty: every rank at <see cref="Level"/>.</summary>
+        public List<int> RankLevels { get; set; } = new();
+        /// <summary>The other upgrades of the same spell a rank asks for (Insistance 2 needs Enchaînement 1).</summary>
+        public List<SpellDonRequirement> Requires { get; set; } = new();
+        /// <summary>Made by SpellDonCatalogue from the spell's data rather than written in spell_dons.json.</summary>
+        [JsonIgnore] public bool Generated { get; set; }
     }
 
     /// <summary>
@@ -187,7 +200,7 @@ namespace Jondo.Unity.Server.Managers
         public string Name { get; set; } = "Caractéristique au choix";
         public string Description { get; set; } = "+{0} dans la caractéristique de votre choix.";
         public int Amount { get; set; } = 3;
-        /// <summary>What a Rare / a Légendaire characteristic card gives (the Polyvalence research adds to each); null: <see cref="Amount"/>.</summary>
+        /// <summary>What a Rare / a Légendaire characteristic card gives (a research of kind caracAmount would add to each); null: <see cref="Amount"/>.</summary>
         public int? AmountRare { get; set; }
         public int? AmountLegendaire { get; set; }
         public double FirstChance { get; set; } = 0.9;
@@ -239,8 +252,26 @@ namespace Jondo.Unity.Server.Managers
         public string Kind { get; set; } = "";
         public string Stat { get; set; } = "";
         public int PerRank { get; set; }
+        /// <summary>The value at each rank (cumulative), when it is not rank x <see cref="PerRank"/>.</summary>
+        public List<double> Values { get; set; } = new();
+        /// <summary>Préparation / Savoir / Puissance: the tab's columns.</summary>
+        public string Branch { get; set; } = "";
+        /// <summary>The short glyph the window draws the card with.</summary>
+        public string Icon { get; set; } = "";
+        /// <summary>One rank's effect, {v} standing for <see cref="ValueAt"/>.</summary>
+        public string Effect { get; set; } = "";
+        /// <summary>Not refundable (Métamorphose, Polyvalence, Évolution).</summary>
+        public bool Permanent { get; set; }
         public List<long> Costs { get; set; } = new();
         [JsonIgnore] public int MaxRank => Costs.Count;
+
+        /// <summary>What the research gives at a rank: values[rank-1], or rank x perRank; 0 at rank 0.</summary>
+        public double ValueAt(int rank)
+        {
+            if (rank <= 0) return 0;
+            if (Values.Count > 0) return Values[Math.Min(rank, Values.Count) - 1];
+            return (double)Math.Min(rank, Math.Max(1, MaxRank)) * PerRank;
+        }
     }
 
     internal sealed class AscensionFile
@@ -249,7 +280,10 @@ namespace Jondo.Unity.Server.Managers
         public double EclatsBase { get; set; } = 10;
         public double EclatsReferenceLevel { get; set; } = 50;
         public double EclatsExponent { get; set; } = 2;
+        /// <summary>Level left -> Éclats (the wiki's table), linear between rows; empty: the formula above.</summary>
+        public Dictionary<int, double> EclatsByLevel { get; set; } = new();
         public int CatchUpBase { get; set; } = 2;
+        public double CatchUpMax { get; set; } = 9;
         public int EvolutionLevel { get; set; } = 300;
         public long EvolutionEclats { get; set; } = 1000;
         public int EvolutionReturnLevel { get; set; } = 200;

@@ -251,17 +251,21 @@ namespace JondoFix
             actions.style.marginTop = new StyleLength(14f);
             actions.style.justifyContent = new StyleEnum<Justify>(Justify.Center);
             actions.style.alignItems = new StyleEnum<Align>(Align.Center);
+            // A class passive offer (level 50): two free rerolls of three new passives, counted down.
+            int passiveRerolls = offer.TryGetProperty("passiveRerollsLeft", out var pr) && pr.ValueKind == JsonValueKind.Number ? pr.GetInt32() : -1;
             if (Bool(offer, "canReroll"))
             {
                 long cost = Long(offer, "rerollCost");
                 string coin = Text(root, "coinLabel");
                 if (coin.Length == 0) coin = "Jondo Coins";
-                string label = cost > 0 ? $"Relancer ({cost.ToString("N0", CultureInfo.InvariantCulture)} {coin})" : "Relancer (gratuit)";
+                string label = passiveRerolls >= 0 ? $"Relancer (gratuit, {passiveRerolls} restante{(passiveRerolls > 1 ? "s" : "")})"
+                    : cost > 0 ? $"Relancer ({cost.ToString("N0", CultureInfo.InvariantCulture)} {coin})" : "Relancer (gratuit)";
                 actions.Add(Button(label, false, Reroll));
             }
             else
             {
-                var note = AdminItemsUi.Label(Bool(offer, "rerolled") ? "Offre déjà relancée" : "Offre non relançable");
+                var note = AdminItemsUi.Label(passiveRerolls >= 0 ? "Plus de relance (9 passifs vus)"
+                    : Bool(offer, "rerolled") ? "Offre déjà relancée" : "Offre non relançable");
                 note.style.color = new StyleColor(new UnityEngine.Color(1f, 1f, 1f, 0.55f));
                 note.style.marginRight = new StyleLength(16f);
                 actions.Add(note);

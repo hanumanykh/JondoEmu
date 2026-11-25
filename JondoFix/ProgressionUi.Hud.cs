@@ -46,6 +46,9 @@ namespace JondoFix
                     quiet: true, failed: () => { _alertsAsked = false; _inWorld = false; });
             }
 
+            // The zone gauge bar and «Le Système» panels' poll and drag (ProgressionUi.HudPanels.cs).
+            HudPanelsTick(now);
+
             for (int i = _toasts.Count - 1; i >= 0; i--)
             {
                 if (_toasts[i].Until > now) continue;
@@ -57,6 +60,7 @@ namespace JondoFix
             _lastHudCheck = now;
             try
             {
+                HudPanelsPlace();
                 if (!_inWorld)
                 {
                     _hud?.RemoveFromHierarchy();

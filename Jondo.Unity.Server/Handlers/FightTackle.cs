@@ -239,6 +239,8 @@ namespace Jondo.Unity.Server.Handlers
 
             var statistics = StatisticsBehind(fight, mover);
             if (statistics != null) statistics.MovementPointsSpent += steps;
+            // The Stasis class passives that count the steps (Enutrof, FightStasisPassives).
+            StasisPassiveWalked(fight, mover, steps);
         }
 
         /// <summary>

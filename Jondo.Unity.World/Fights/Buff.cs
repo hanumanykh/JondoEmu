@@ -818,6 +818,12 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public static Func<int, int> UidDeLaPila { get; set; } = uid => uid;
 
+        /// <summary>
+        /// How many more equivalent rows a capped pile takes for this row: the server's spell
+        /// upgrades (Persistance, +1 cumul) by caster and spell. Zero by default.
+        /// </summary>
+        public static Func<Buff, int> PilaExtra { get; set; } = _ => 0;
+
         public Buff Poner(Buff embrujo, Func<int> siguienteNumero)
         {
             Relevados.Clear();
@@ -828,6 +834,7 @@ namespace Jondo.Unity.World.Fights
             if (embrujo.Dispellable == 0) embrujo.Dispellable = DispellableOfItsRow(embrujo);
 
             int tope = embrujo.MaxStacks;
+            if (tope >= 1) tope += Math.Max(0, PilaExtra(embrujo));
             if (embrujo.Apila && tope <= 1) tope = -1;
 
             if (tope >= 0)

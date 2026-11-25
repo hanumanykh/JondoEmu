@@ -149,8 +149,8 @@ namespace Jondo.Unity.Server.Managers
                 foreach (var effect in card.Effects)
                     if (StatIds.TryGetValue(effect.Stat, out int id)) Add(id, effect.ValueAt(don.Rarity));
             }
-            foreach (var research in content.Research.Where(r => r.Kind == "stat"))
-                if (StatIds.TryGetValue(research.Stat, out int id)) Add(id, (long)profile.RankOf(research.Id) * research.PerRank);
+            // The research: Action, Résonance, Bi-élément, Ténacité (Ascension.AddResearchBonuses).
+            Ascension.AddResearchBonuses(profile, content, total);
             return total;
         }
 
@@ -176,7 +176,8 @@ namespace Jondo.Unity.Server.Managers
         {
             if (characterId <= 0) return 0;
             var profile = ProgressionStore.Of(characterId);
-            lock (profile.Gate) return PercentOf(profile, ProgressionContent.Current, SpeedPercentStat);
+            lock (profile.Gate) return PercentOf(profile, ProgressionContent.Current, SpeedPercentStat)
+                                       + Ascension.ResearchSum(profile, ProgressionContent.Current, "speed"); // Pas léger
         }
 
         /// <summary>The animation speed percent the dons give (Vitesse d'animation, Élan): sent, not drawn by the client.</summary>
@@ -184,7 +185,8 @@ namespace Jondo.Unity.Server.Managers
         {
             if (characterId <= 0) return 0;
             var profile = ProgressionStore.Of(characterId);
-            lock (profile.Gate) return PercentOf(profile, ProgressionContent.Current, AnimationPercentStat);
+            lock (profile.Gate) return PercentOf(profile, ProgressionContent.Current, AnimationPercentStat)
+                                       + Ascension.ResearchSum(profile, ProgressionContent.Current, "animation"); // Tempo
         }
 
         // ─── The experience hook ────────────────────────────────────────────────────────
@@ -209,7 +211,7 @@ namespace Jondo.Unity.Server.Managers
         internal static double ExperienceFactor(ProgressionProfile profile, int level, ProgressionContent content)
         {
             double factor = 1.0;
-            if ((profile.Ascensions > 0 || profile.Evolved) && level < profile.BestLevel)
+            if ((profile.Ascensions > 0 || profile.Evolved) && level < Ascension.CatchUpCeiling(profile, content))
                 factor *= Ascension.CatchUpMultiplier(profile, content);
             factor *= 1.0 + DiscoveryPercent(profile, content) / 100.0;
             return factor;
@@ -328,6 +330,15 @@ namespace Jondo.Unity.Server.Managers
         internal static int Migrate(ProgressionProfile profile, ProgressionContent content)
         {
             int at = content.Dons.PassiveLevel, key = PassiveLevelOffset + at, moved = 0;
+            // The passives of before (stat cards, own class only) are gone from dons.json: a passive
+            // kept or offered that is no longer a passive card is dropped, and EnsureOffers queues
+            // the new offer (three among the nineteen classes).
+            if (at > 0 && content.Dons.Passives.Count > 0)
+            {
+                moved += profile.Dons.RemoveAll(d => d.Level == key && !IsPassiveCard(d.Card, content));
+                moved += profile.Pending.RemoveAll(o => o.Level == key && o.Cards.Any(c => !IsPassiveCard(c, content)));
+                if (moved > 0) return moved;
+            }
             if (at <= 0 || Has(profile, key)) return 0;
             foreach (var don in profile.Dons)
                 if (don.Level == at && IsPassiveCard(don.Card, content)) { don.Level = key; moved++; break; }
@@ -372,6 +383,53 @@ namespace Jondo.Unity.Server.Managers
             };
             return amount + Ascension.ResearchSum(profile, content, "caracAmount");
         }
+
+        /// <summary>How many passives an offer shows, and its free rerolls (three new each time: nine seen at most).</summary>
+        internal const int PassivesPerOffer = 3, PassiveFreeRerolls = 2;
+
+        /// <summary>The passive cards of every class, in the file's order.</summary>
+        internal static List<DonCard> AllPassives(ProgressionContent content)
+            => content.Dons.Passives.Where(p => int.TryParse(p.Key, out _))
+                      .SelectMany(p => p.Value).Where(c => !c.Retired).ToList();
+
+        /// <summary>
+        /// The order the passives of an Ascension cycle are shown in: all of them, shuffled once for
+        /// the character and the cycle. The offer is the first three, each reroll the next three,
+        /// so no passive is seen twice and the rerolls already spent are read off the offer itself.
+        /// </summary>
+        internal static List<string> PassiveOrder(ProgressionProfile profile, ProgressionContent content)
+        {
+            var ids = AllPassives(content).Select(c => c.Id).Distinct(StringComparer.OrdinalIgnoreCase)
+                                          .OrderBy(id => id, StringComparer.Ordinal).ToList();
+            var dice = new Random(unchecked((int)(profile.CharacterId * 1_000_003L + profile.Ascensions * 7_919L + 50)));
+            for (int i = ids.Count - 1; i > 0; i--)
+            {
+                int j = dice.Next(i + 1);
+                (ids[i], ids[j]) = (ids[j], ids[i]);
+            }
+            return ids;
+        }
+
+        /// <summary>The passive offer's free rerolls already spent (from where its cards stand in <see cref="PassiveOrder"/>).</summary>
+        internal static int PassiveRerollsUsed(ProgressionProfile profile, DonOffer offer, ProgressionContent content)
+        {
+            if (offer.Cards.Count == 0) return 0;
+            int at = PassiveOrder(profile, content).FindIndex(id => string.Equals(id, offer.Cards[0], StringComparison.OrdinalIgnoreCase));
+            return at < 0 ? 0 : at / PassivesPerOffer;
+        }
+
+        /// <summary>The passive offer's free rerolls left: two, while the shuffled list holds three more.</summary>
+        internal static int PassiveRerollsLeft(ProgressionProfile profile, DonOffer offer, ProgressionContent content)
+        {
+            int used = PassiveRerollsUsed(profile, offer, content);
+            int total = PassiveOrder(profile, content).Count;
+            int left = PassiveFreeRerolls - used;
+            while (left > 0 && (used + left) * PassivesPerOffer >= total) left--;
+            return Math.Max(0, left);
+        }
+
+        private static List<string> PassiveSlice(ProgressionProfile profile, ProgressionContent content, int reroll)
+            => PassiveOrder(profile, content).Skip(reroll * PassivesPerOffer).Take(PassivesPerOffer).ToList();
 
         internal static IReadOnlyList<DonCard> PassivesOf(int breed, ProgressionContent content)
             => content.Dons.Passives.TryGetValue(breed.ToString(), out var own) && own.Count > 0 ? own
@@ -445,8 +503,9 @@ namespace Jondo.Unity.Server.Managers
             switch (kind)
             {
                 case KindPassive:
-                    // All of them: a choice of two or three, and a reroll would change nothing.
-                    cards.AddRange(PassivesOf(breed, content).Select(c => c.Id));
+                    // Three among the nineteen classes, his own included (spec §10): the first
+                    // three of the cycle's shuffled list, the rerolls the next ones.
+                    cards.AddRange(PassiveSlice(profile, content, 0));
                     return new DonOffer { Level = level, Kind = kind, Cards = cards };
                 case KindPension:
                     if (PensionDonAt(level, content) is { } pension)
@@ -618,6 +677,16 @@ namespace Jondo.Unity.Server.Managers
             paid = 0;
             if (profile.Pending.Count == 0) return "aucune-offre";
             var offer = profile.Pending[0];
+            if (offer.Kind == KindPassive)
+            {
+                // Two free rerolls, three new passives each time, never paid (spec §10).
+                if (PassiveRerollsLeft(profile, offer, content) <= 0) return "passif-plus-de-relance";
+                int next = PassiveRerollsUsed(profile, offer, content) + 1;
+                offer.Cards = PassiveSlice(profile, content, next);
+                offer.Rarities.Clear();
+                offer.Rerolled = true;
+                return "ok";
+            }
             if (!IsRerollable(offer.Kind)) return "non-relancable";
             if (offer.Rerolled) return "deja-relancee";
             bool free = RerollsLeft(profile, content) > 0;
@@ -805,6 +874,7 @@ namespace Jondo.Unity.Server.Managers
             "carac-requise" => "Précisez la caractéristique : force, intelligence, chance, agilite, vitalite ou sagesse.",
             "sort-plafond" => "Ce don de sort n'est plus possible (points, familles ou rang au maximum).",
             "deja-relancee" => "Cette offre a déjà été relancée.",
+            "passif-plus-de-relance" => "Plus de relance gratuite pour ce passif (2 maximum).",
             "non-relancable" => "Cette offre ne se relance pas (offre de départ, passif, don Pension ou accomplissement).",
             "kamas" => "Pas assez d'Orbes (Jondo Coins) pour relancer.",
             "plus-de-refonte" => "Plus de refonte disponible pour ce cycle d'Ascension.",

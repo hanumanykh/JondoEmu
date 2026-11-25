@@ -7,10 +7,13 @@ namespace Jondo.Unity.Server.Managers
 {
     /// <summary>What a character's spell dons do to one of his spells, summed over the dons and their ranks.</summary>
     public readonly record struct SpellDonModifiers(
-        int DamagePercent, int HealPercent, int Critical, int Range, int Cooldown, int ApCost, int CastsPerTurn)
+        int DamagePercent, int HealPercent, int Critical, int Range, int Cooldown, int ApCost, int CastsPerTurn,
+        int CastsPerTarget = 0, bool RangeModifiable = false, bool NoLineOfSight = false, bool NoLineConstraint = false,
+        int ExtraStack = 0, int InitialDelay = 0)
     {
         public bool IsEmpty => DamagePercent == 0 && HealPercent == 0 && Critical == 0 && Range == 0
-                               && Cooldown == 0 && ApCost == 0 && CastsPerTurn == 0;
+                               && Cooldown == 0 && ApCost == 0 && CastsPerTurn == 0 && CastsPerTarget == 0
+                               && !RangeModifiable && !NoLineOfSight && !NoLineConstraint && ExtraStack == 0 && InitialDelay == 0;
     }
 
     /// <summary>
@@ -55,18 +58,41 @@ namespace Jondo.Unity.Server.Managers
         internal const string Damage = "degats", Heal = "soins", Critical = "critique", Range = "portee",
                               Cooldown = "relance", ApCost = "pa", CastsPerTurn = "lancers";
 
-        /// <summary>A class's spell dons, as the file lists them.</summary>
+        /// <summary>
+        /// The Stasis upgrades with no SpellAspect of the catalogue: kept on Fighter.OwnSpellModifiers
+        /// under numbers of our own (negative, so never sent as a hnd: SpellModifiers.OnTheWire knows
+        /// none of them), and read where the cast checks its lines, where the fight puts the initial
+        /// cooldowns and where a buff piles up.
+        /// </summary>
+        internal const SpellAspect LineFree = (SpellAspect)(-9001), ExtraStackAspect = (SpellAspect)(-9002),
+                                   InitialDelayDown = (SpellAspect)(-9003);
+
+        /// <summary>A class's spell dons: the hand-written ones of spell_dons.json, then the generated catalogue.</summary>
         internal static IReadOnlyList<SpellDonDefinition> ListOf(int breed, ProgressionContent content)
-            => content.SpellDons.Classes.TryGetValue(breed.ToString(), out var list) ? list : new List<SpellDonDefinition>();
+        {
+            string key = breed.ToString();
+            var legacy = content.SpellDons.Classes.TryGetValue(key, out var list) ? list : new List<SpellDonDefinition>();
+            var generated = SpellDonCatalogue.Of(content).TryGetValue(key, out var gen) ? gen : null;
+            if (generated == null || generated.Count == 0) return legacy;
+            return legacy.Concat(generated).ToList();
+        }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ProgressionContent, Dictionary<string, (SpellDonDefinition, int)>> _index = new();
 
         /// <summary>A spell don by its id, whatever the class, with the breed it belongs to; or null.</summary>
         internal static (SpellDonDefinition Don, int Breed)? DefinitionOf(string id, ProgressionContent content)
         {
-            foreach (var (breed, list) in content.SpellDons.Classes)
-                foreach (var don in list)
-                    if (string.Equals(don.Id, id, StringComparison.OrdinalIgnoreCase))
-                        return (don, int.TryParse(breed, out int b) ? b : 0);
-            return null;
+            if (string.IsNullOrEmpty(id)) return null;
+            var index = _index.GetValue(content, c =>
+            {
+                var map = new Dictionary<string, (SpellDonDefinition, int)>(StringComparer.OrdinalIgnoreCase);
+                foreach (var source in new[] { c.SpellDons.Classes, SpellDonCatalogue.Of(c) })
+                    foreach (var (breed, l) in source)
+                        foreach (var don in l)
+                            map.TryAdd(don.Id, (don, int.TryParse(breed, out int b) ? b : 0));
+                return map;
+            });
+            return index.TryGetValue(id, out var found) ? found : null;
         }
 
         internal static bool IsSpellDon(string id, ProgressionContent content) => DefinitionOf(id, content) != null;
@@ -92,19 +118,24 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (DefinitionOf(chosen.Card, content) is not { } found) continue;
                 var don = found.Don;
-                if (!sums.TryGetValue(don.Spell, out var s)) sums[don.Spell] = s = new int[7];
+                if (!sums.TryGetValue(don.Spell, out var s)) sums[don.Spell] = s = new int[13];
                 int slot = don.Kind switch
                 {
-                    Damage => 0, Heal => 1, Critical => 2, Range => 3, Cooldown => 4, ApCost => 5, CastsPerTurn => 6,
+                    Damage => 0, Heal => 1, Critical or SpellDonCatalogue.Precision => 2, Range or SpellDonCatalogue.Allonge => 3,
+                    Cooldown or SpellDonCatalogue.Cadence => 4, ApCost or SpellDonCatalogue.Economie => 5,
+                    CastsPerTurn or SpellDonCatalogue.Enchainement => 6, SpellDonCatalogue.Insistance => 7,
+                    SpellDonCatalogue.Adaptabilite => 8, SpellDonCatalogue.Clairvoyance => 9, SpellDonCatalogue.Liberte => 10,
+                    SpellDonCatalogue.Persistance => 11, SpellDonCatalogue.Anticipation => 12,
                     _ => -1,
                 };
-                if (slot >= 0) s[slot] += don.Value;
+                if (slot >= 0) s[slot] += slot is 8 or 9 or 10 ? 1 : don.Value;
             }
             // AP: never more than one off a spell, whatever the file says. The file only offers it
             // on spells that cost 4 or more at every grade, so the cast still costs 3; the cap keeps
             // a careless edit from making a spell free.
             return sums.ToDictionary(kv => kv.Key, kv => new SpellDonModifiers(
-                kv.Value[0], kv.Value[1], kv.Value[2], kv.Value[3], kv.Value[4], Math.Min(1, kv.Value[5]), kv.Value[6]));
+                kv.Value[0], kv.Value[1], kv.Value[2], kv.Value[3], kv.Value[4], Math.Min(1, kv.Value[5]), kv.Value[6],
+                kv.Value[7], kv.Value[8] > 0, kv.Value[9] > 0, kv.Value[10] > 0, kv.Value[11], kv.Value[12]));
         }
 
         /// <summary>
@@ -124,6 +155,10 @@ namespace Jondo.Unity.Server.Managers
 
         internal static void Put(Fighter fighter, IReadOnlyDictionary<int, SpellDonModifiers> all)
         {
+            // Persistance: the buff pile of a spell is capped in World (Buffs.Poner), which does not
+            // know the fighters; it asks this map, by caster and spell, through Buffs.PilaExtra.
+            Buffs.PilaExtra = ExtraStackOf;
+            foreach (var key in _extraStacks.Keys.Where(k => k.Fighter == fighter.Id).ToList()) _extraStacks.TryRemove(key, out _);
             foreach (var (spell, m) in all)
             {
                 void Aspect(SpellAspect aspect, int value)
@@ -135,10 +170,33 @@ namespace Jondo.Unity.Server.Managers
                 Aspect(SpellAspect.CastIntervalDown, m.Cooldown);
                 Aspect(SpellAspect.ApCostDown, m.ApCost);
                 Aspect(SpellAspect.CastsPerTurnUp, m.CastsPerTurn);
+                Aspect(SpellAspect.CastsPerTargetUp, m.CastsPerTarget);
+                Aspect(SpellAspect.RangeModifiable, m.RangeModifiable ? 1 : 0);
+                Aspect(SpellAspect.LineOfSightOff, m.NoLineOfSight ? 1 : 0);
+                Aspect(LineFree, m.NoLineConstraint ? 1 : 0);
+                Aspect(ExtraStackAspect, m.ExtraStack);
+                Aspect(InitialDelayDown, m.InitialDelay);
+                if (m.ExtraStack != 0) _extraStacks[(fighter.Id, spell)] = m.ExtraStack;
                 if (m.DamagePercent != 0) fighter.SpellDamagePercent[spell] = fighter.SpellDamagePercent.GetValueOrDefault(spell) + m.DamagePercent;
                 if (m.HealPercent != 0) fighter.SpellHealPercent[spell] = fighter.SpellHealPercent.GetValueOrDefault(spell) + m.HealPercent;
             }
         }
+
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(long Fighter, int Spell), int> _extraStacks = new();
+
+        /// <summary>How many more rows of a spell's buff its caster's Persistance lets pile up.</summary>
+        internal static int ExtraStackOf(Buff row)
+            => row == null || row.HechizoOrigen == 0 ? 0 : _extraStacks.GetValueOrDefault((row.Quien, row.HechizoOrigen));
+
+        /// <summary>The level's line flags, without CastInLine/CastInDiagonal when Liberté holds for the spell.</summary>
+        public static int LineFlags(Fighter caster, int spell, int flags)
+            => caster != null && spell != 0 && caster.AllSpellsModifier(spell, LineFree) > 0
+                ? flags & ~(SpellLevelFlags.CastInLine | SpellLevelFlags.CastInDiagonal)
+                : flags;
+
+        /// <summary>A spell's initial cooldown less its caster's Anticipation, never below zero.</summary>
+        public static int InitialCooldown(Fighter caster, int spell, int levelWait)
+            => caster == null || spell == 0 ? levelWait : Math.Max(0, levelWait - caster.AllSpellsModifier(spell, InitialDelayDown));
 
         /// <summary>
         /// A blow of one of the fighter's spells with his spell dons' percent on it, rounded as a
@@ -206,7 +264,12 @@ namespace Jondo.Unity.Server.Managers
         internal static bool CanTake(SpellDonDefinition don, ProgressionProfile profile, ProgressionContent content, int level)
         {
             if (don.Level > level) return false;
-            if (Dons.RankOf(profile, don.Id) >= Math.Max(1, don.MaxRank)) return false;
+            int held = Dons.RankOf(profile, don.Id);
+            if (held >= Math.Max(1, don.MaxRank)) return false;
+            int next = held + 1;
+            if (don.RankLevels.Count >= next && don.RankLevels[next - 1] > level) return false;
+            foreach (var need in don.Requires)
+                if (next >= need.AtRank && RankOfKind(profile, content, don.Spell, need.Kind) < need.Rank) return false;
             if (PointsSpent(profile, content) >= content.SpellDons.MaxPoints) return false;
             var families = PointsPerFamily(profile, content);
             int family = FamilyOf(don.Spell);
@@ -215,9 +278,34 @@ namespace Jondo.Unity.Server.Managers
             return inFamily + 1 <= PointsPerFamilyAllowed(level, content);
         }
 
+        /// <summary>The points the character holds of one kind of upgrade on one spell, legacy equivalents included.</summary>
+        internal static int RankOfKind(ProgressionProfile profile, ProgressionContent content, int spell, string kind)
+        {
+            int total = 0;
+            foreach (var chosen in profile.Dons)
+                if (DefinitionOf(chosen.Card, content) is { } f && f.Don.Spell == spell
+                    && (f.Don.Kind == kind || SpellDonCatalogue.LegacyEquivalent.GetValueOrDefault(f.Don.Kind) == kind))
+                    total++;
+            return total;
+        }
+
+        /// <summary>
+        /// Whether a don is still offered: a hand-written one whose kind the generated catalogue
+        /// covers on the same spell is retired from the offers (held, it still works).
+        /// </summary>
+        internal static bool IsOffered(SpellDonDefinition don, IReadOnlyList<SpellDonDefinition> classList, ProgressionContent content)
+        {
+            if (don.Generated || !content.SpellDonOverrides.RetireLegacyOverlaps) return true;
+            if (!SpellDonCatalogue.LegacyEquivalent.TryGetValue(don.Kind, out var kind)) return true;
+            return !classList.Any(d => d.Generated && d.Spell == don.Spell && d.Kind == kind);
+        }
+
         /// <summary>The class's spell dons that may still be taken at this level.</summary>
         internal static List<SpellDonDefinition> Takeable(ProgressionProfile profile, ProgressionContent content, int breed, int level)
-            => ListOf(breed, content).Where(d => CanTake(d, profile, content, level)).ToList();
+        {
+            var list = ListOf(breed, content);
+            return list.Where(d => IsOffered(d, list, content) && CanTake(d, profile, content, level)).ToList();
+        }
 
         // ─── Texts ──────────────────────────────────────────────────────────────────────
 
@@ -231,7 +319,29 @@ namespace Jondo.Unity.Server.Managers
             Cooldown => $"-{value} tour{(value > 1 ? "s" : "")} de relance",
             ApCost => $"-{value} PA",
             CastsPerTurn => $"+{value} lancer{(value > 1 ? "s" : "")} par tour",
+            SpellDonCatalogue.Economie => $"-{value} PA",
+            SpellDonCatalogue.Enchainement => $"+{value} lancer{(value > 1 ? "s" : "")} par tour",
+            SpellDonCatalogue.Insistance => $"+{value} lancer{(value > 1 ? "s" : "")} par cible",
+            SpellDonCatalogue.Precision => $"+{value} % de coups critiques",
+            SpellDonCatalogue.Allonge => $"+{value} PO",
+            SpellDonCatalogue.Adaptabilite => "portée modifiable",
+            SpellDonCatalogue.Clairvoyance => "lancer sans ligne de vue",
+            SpellDonCatalogue.Liberte => "lancer sans contrainte de ligne ni de diagonale",
+            SpellDonCatalogue.Persistance => $"+{value} cumul{(value > 1 ? "s" : "")}",
+            SpellDonCatalogue.Cadence => $"-{value} tour{(value > 1 ? "s" : "")} de relance",
+            SpellDonCatalogue.Anticipation => $"-{value} tour{(value > 1 ? "s" : "")} de relance initiale",
             _ => don.Kind,
+        };
+
+        /// <summary>The Stasis name of an upgrade kind («Précision»), or "" for the hand-written kinds.</summary>
+        internal static string KindLabel(string kind) => kind switch
+        {
+            SpellDonCatalogue.Economie => "Économie", SpellDonCatalogue.Enchainement => "Enchaînement",
+            SpellDonCatalogue.Insistance => "Insistance", SpellDonCatalogue.Precision => "Précision",
+            SpellDonCatalogue.Allonge => "Allonge", SpellDonCatalogue.Adaptabilite => "Adaptabilité",
+            SpellDonCatalogue.Clairvoyance => "Clairvoyance", SpellDonCatalogue.Liberte => "Liberté",
+            SpellDonCatalogue.Persistance => "Persistance", SpellDonCatalogue.Cadence => "Cadence",
+            SpellDonCatalogue.Anticipation => "Anticipation", _ => "",
         };
 
         /// <summary>A spell don card's name and description, as the window and the commands show it.</summary>
@@ -239,7 +349,9 @@ namespace Jondo.Unity.Server.Managers
         {
             int rank = Dons.RankOf(profile, don.Id);
             int max = Math.Max(1, don.MaxRank);
-            string name = $"{don.SpellName} : {EffectText(don, don.Value)}" + (max > 1 ? $" (rang {rank}/{max})" : "");
+            string label = KindLabel(don.Kind);
+            string name = $"{don.SpellName} : " + (label.Length > 0 ? $"{label} ({EffectText(don, don.Value)})" : EffectText(don, don.Value))
+                          + (max > 1 ? $" (rang {rank}/{max})" : "");
             string description = rank > 0
                 ? $"Améliore le sort {don.SpellName} : {EffectText(don, don.Value)} par rang (actuellement {EffectText(don, don.Value * rank)})."
                 : $"Améliore le sort {don.SpellName} : {EffectText(don, don.Value)}" + (max > 1 ? $" par rang, jusqu'à {max} rangs." : ".");

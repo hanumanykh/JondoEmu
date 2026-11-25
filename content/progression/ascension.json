@@ -1,10 +1,12 @@
 {
-  "_comment": "Ascension and Evolution (Managers/Stasis/Ascension.cs reads this). An Ascension, from minLevel, sends the character back to level 1 (experience 0, characteristics given back, spells as level 1; items and kamas kept), clears its dons and pays Éclats: floor(eclatsBase x (level / eclatsReferenceLevel) ^ eclatsExponent), plus the Moisson research. Until the best level ever reached, experience is multiplied by catchUpBase plus the Rattrapage research. An Evolution, at evolutionLevel with evolutionEclats Éclats (spent) and the tier dungeons done, returns the character to evolutionReturnLevel for good, evolved, keeping the dons of levels up to evolutionKeepDonsUpTo. An evolved character does not ascend any more.",
+  "_comment": "Ascension and Evolution (Managers/Stasis/Ascension.cs reads this). An Ascension, from minLevel, sends the character back to level 1 (experience 0, characteristics given back, spells as level 1; items and kamas kept), clears its dons and pays Éclats from eclatsByLevel (the Stasis wiki's table, level left -> Éclats, linear between two rows, the last row's above it; floor(eclatsBase x (level / eclatsReferenceLevel) ^ eclatsExponent) only when the table is empty). Until the best level ever reached, experience is multiplied by catchUpBase plus the Rattrapage research (capped at catchUpMax), and the Élan research raises that level. An Evolution, at evolutionLevel with evolutionEclats Éclats (spent, then paid the Éclats of an Ascension from its level), no don choice waiting and the tier dungeons done, returns the character to evolutionReturnLevel for good, evolved, keeping the dons of levels up to evolutionKeepDonsUpTo. An evolved character does not ascend any more.",
   "minLevel": 50,
   "eclatsBase": 10,
   "eclatsReferenceLevel": 50,
   "eclatsExponent": 2.0,
+  "eclatsByLevel": { "50": 1, "100": 20, "150": 64, "200": 150, "225": 400, "250": 700, "275": 1050, "300": 1450 },
   "catchUpBase": 2,
+  "catchUpMax": 9,
   "evolutionLevel": 300,
   "evolutionEclats": 1000,
   "evolutionReturnLevel": 200,

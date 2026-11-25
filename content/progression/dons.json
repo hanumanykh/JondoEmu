@@ -1,5 +1,5 @@
 {
-  "_comment": "Level-up dons after the Stasis server (docs/stasis-gameplay-spec.md §10; Managers/Stasis/Dons.cs reads this). One offer a level from startingLevel (1, the starting offer, given to new characters and to older ones lacking it) to lastDonLevel (200), first rule that matches: spellLevels -> a spell point (spell dons of the class, spell_dons.json; when none is left the spell card, the characteristic card and combat cards); a multiple of adventureEvery -> adventure dons; otherwise combat dons ('level'). Extra offers: passiveLevel -> the breed's class passives (all shown); pension[] -> a don «Pension», one egg chosen among choices (pet item ids, or Breeding species ids for 'monture'), put in the account's pension; accomplishmentLevels -> an accomplishment, past lastDonLevel too, each with a spell point. A standard offer (depart, niveau, aventure) shows cardsPerOffer cards (+1 with research quatrieme_carte): the first is the characteristic card at characteristicCard.firstChance (not for adventure), the last a don not among the last recentWindow kept. rarity: each card of the kinds listed draws Commun/Rare/Légendaire at these percents (research 'fortune' replaces them by rareByRank/legendaireByRank of its rank); after pityAfter offers in a row without a Légendaire the next has one. An effect's 'value' is the Commun value, 'rare' and 'legendaire' the others (missing: the rarity below's); the characteristic card has amount/amountRare/amountLegendaire. Ranks stack up to maxRank (33). Rerolls: one an offer (niveau, aventure, sort), cost rerollKamasPerLevel x level in kamas-equivalent (OrbePrice turns it into Orbes); starting offers, passives, Pension and accomplishments are not rerolled. Stats are the French names Dons.StatIds knows (force, vitalite, puissance, dommagesFeu, resTerre, ...); 'decouverte' is a percent of experience, 'vitesse' a percent of out-of-combat walk speed (JondoFix MovementSpeed via /api/stasis/speed), 'animation' a percent of animation speed (sent to the client, not drawn yet). 'retired' cards are no longer offered but still count for the characters who have them.",
+  "_comment": "Level-up dons after the Stasis server (docs/stasis-gameplay-spec.md §10; Managers/Stasis/Dons.cs reads this). One offer a level from startingLevel (1, the starting offer, given to new characters and to older ones lacking it) to lastDonLevel (200), first rule that matches: spellLevels -> a spell point (spell dons of the class, spell_dons.json; when none is left the spell card, the characteristic card and combat cards); a multiple of adventureEvery -> adventure dons; otherwise combat dons ('level'). Extra offers: passiveLevel -> the class passive offer: 3 passives among the 19 classes (one card per breed key, own class included), 2 free rerolls of 3 new ones (9 seen at most), never paid; the chosen one is armed at the start of PvM fights (Managers/Stasis/StasisPassives.cs: 'mechanic' names the rule, 'approximation' says where it differs from Stasis), kept through the Evolution; pension[] -> a don «Pension», one egg chosen among choices (pet item ids, or Breeding species ids for 'monture'), put in the account's pension; accomplishmentLevels -> an accomplishment, past lastDonLevel too, each with a spell point. A standard offer (depart, niveau, aventure) shows cardsPerOffer cards (+1 with research quatrieme_carte): the first is the characteristic card at characteristicCard.firstChance (not for adventure), the last a don not among the last recentWindow kept. rarity: each card of the kinds listed draws Commun/Rare/Légendaire at these percents (research 'fortune' replaces them by rareByRank/legendaireByRank of its rank); after pityAfter offers in a row without a Légendaire the next has one. An effect's 'value' is the Commun value, 'rare' and 'legendaire' the others (missing: the rarity below's); the characteristic card has amount/amountRare/amountLegendaire. Ranks stack up to maxRank (33). Rerolls: one an offer (niveau, aventure, sort), cost rerollKamasPerLevel x level in kamas-equivalent (OrbePrice turns it into Orbes); starting offers, Pension and accomplishments are not rerolled (passives: see above). Stats are the French names Dons.StatIds knows (force, vitalite, puissance, dommagesFeu, resTerre, ...); 'decouverte' is a percent of experience, 'vitesse' a percent of out-of-combat walk speed (JondoFix MovementSpeed via /api/stasis/speed), 'animation' a percent of animation speed (sent to the client, not drawn yet). 'retired' cards are no longer offered but still count for the characters who have them.",
   "lastDonLevel": 200,
   "cardsPerOffer": 3,
   "adventureEvery": 5,
@@ -440,516 +440,187 @@
     }
   ],
   "passives": {
-    "default": [
-      {
-        "id": "passif_puissance",
-        "name": "Polyvalent",
-        "description": "+25 Puissance.",
-        "effects": [
-          {
-            "stat": "puissance",
-            "value": 25
-          }
-        ]
-      },
-      {
-        "id": "passif_vitalite",
-        "name": "Endurant",
-        "description": "+150 Vitalité.",
-        "effects": [
-          {
-            "stat": "vitalite",
-            "value": 150
-          }
-        ]
-      }
-    ],
     "1": [
       {
-        "id": "feca_bouclier",
-        "name": "Rempart",
-        "description": "+5 % de résistance à tous les éléments.",
-        "effects": [
-          {
-            "stat": "resTerre",
-            "value": 5
-          },
-          {
-            "stat": "resFeu",
-            "value": 5
-          },
-          {
-            "stat": "resEau",
-            "value": 5
-          },
-          {
-            "stat": "resAir",
-            "value": 5
-          },
-          {
-            "stat": "resNeutre",
-            "value": 5
-          }
-        ]
-      },
-      {
-        "id": "feca_terre",
-        "name": "Glyphe tellurique",
-        "description": "+15 Dommages Terre.",
-        "effects": [
-          {
-            "stat": "dommagesTerre",
-            "value": 15
-          }
-        ]
+        "id": "passif_feca",
+        "name": "Féca — Rempart du Féca",
+        "description": "À la fin de votre tour, vous et vos alliés alignés avec vous recevez un bouclier de 50 % de vos PV max (1 tour).",
+        "mechanic": "feca",
+        "effects": [],
+        "approximation": "Bouclier = 50 % des PV max du porteur du passif (pas de l'allié)."
       }
     ],
     "2": [
       {
-        "id": "osa_invoc",
-        "name": "Meneur de meute",
-        "description": "+1 Invocation.",
-        "effects": [
-          {
-            "stat": "invocations",
-            "value": 1
-          }
-        ]
-      },
-      {
-        "id": "osa_feu",
-        "name": "Souffle du dragon",
-        "description": "+15 Dommages Feu.",
-        "effects": [
-          {
-            "stat": "dommagesFeu",
-            "value": 15
-          }
-        ]
+        "id": "passif_osamodas",
+        "name": "Osamodas — Appel de la meute",
+        "description": "Chaque invocation ou mort d'une de vos invocations : +5 % dégâts et soins finaux (2 t), 5 cumuls max par tour (25 %).",
+        "mechanic": "osamodas",
+        "effects": [],
+        "approximation": "Le « déclencheur » est lu comme la mort d'une de vos invocations."
       }
     ],
     "3": [
       {
-        "id": "enu_prospection",
-        "name": "Avidité",
-        "description": "+40 Prospection.",
-        "effects": [
-          {
-            "stat": "prospection",
-            "value": 40
-          }
-        ]
-      },
-      {
-        "id": "enu_eau",
-        "name": "Pelle lourde",
-        "description": "+15 Dommages Eau.",
-        "effects": [
-          {
-            "stat": "dommagesEau",
-            "value": 15
-          }
-        ]
+        "id": "passif_enutrof",
+        "name": "Enutrof — Pas du prospecteur",
+        "description": "+3 % dégâts finaux (2 t) par PM de déplacement (25 %/tour max). Vous gardez jusqu'à 6 PM inutilisés pour le tour suivant.",
+        "mechanic": "enutrof",
+        "effects": [],
+        "approximation": "Les PM gardés sont rendus en début de tour suivant."
       }
     ],
     "4": [
       {
-        "id": "sram_air",
-        "name": "Assassin",
-        "description": "+15 Dommages Air.",
-        "effects": [
-          {
-            "stat": "dommagesAir",
-            "value": 15
-          }
-        ]
-      },
-      {
-        "id": "sram_crit",
-        "name": "Lame cachée",
-        "description": "+20 Dommages critiques.",
-        "effects": [
-          {
-            "stat": "dommagesCritiques",
-            "value": 20
-          }
-        ]
+        "id": "passif_sram",
+        "name": "Sram — Ombre du tueur",
+        "description": "Achever un ennemi : +5 % dégâts (3 t) et invisibilité (1 t), rompue en attaquant.",
+        "mechanic": "sram",
+        "effects": []
       }
     ],
     "5": [
       {
-        "id": "xel_retrait",
-        "name": "Horloger",
-        "description": "+15 Retrait PA.",
-        "effects": [
-          {
-            "stat": "retraitPA",
-            "value": 15
-          }
-        ]
-      },
-      {
-        "id": "xel_feu",
-        "name": "Sablier ardent",
-        "description": "+15 Dommages Feu.",
-        "effects": [
-          {
-            "stat": "dommagesFeu",
-            "value": 15
-          }
-        ]
+        "id": "passif_xelor",
+        "name": "Xélor — Rouages du temps",
+        "description": "Tentative de retrait PA : +10 retrait PA (3 t) et +5 % dégâts (3 t, 25 %/tour). Chaque PA retiré : +1 PA (5 max par tour).",
+        "mechanic": "xelor",
+        "effects": [],
+        "approximation": "Le +1 PA est rendu immédiatement pendant le tour."
       }
     ],
     "6": [
       {
-        "id": "eca_crit",
-        "name": "Chanceux",
-        "description": "+5 % Coups critiques.",
-        "effects": [
-          {
-            "stat": "critique",
-            "value": 5
-          }
-        ]
-      },
-      {
-        "id": "eca_eau",
-        "name": "Pile ou face",
-        "description": "+15 Dommages Eau.",
-        "effects": [
-          {
-            "stat": "dommagesEau",
-            "value": 15
-          }
-        ]
+        "id": "passif_ecaflip",
+        "name": "Ecaflip — Roulette du destin",
+        "description": "Début de tour : roulette (2 t, 2 cumuls) parmi +25 % dégâts & +250 poussée / +50 % soins & +777 % CC / +25 % résistances / +5 PO & +5 invocations / +3 PA / +3 PM. Coup critique : +50 puissance (2 t, x2).",
+        "mechanic": "ecaflip",
+        "effects": [],
+        "approximation": "+25 % résistances appliqué à toutes les attaques (mêlée et distance)."
       }
     ],
     "7": [
       {
-        "id": "eni_soins",
-        "name": "Guérisseur",
-        "description": "+20 Soins.",
-        "effects": [
-          {
-            "stat": "soins",
-            "value": 20
-          }
-        ]
-      },
-      {
-        "id": "eni_feu",
-        "name": "Mot brûlant",
-        "description": "+15 Dommages Feu.",
-        "effects": [
-          {
-            "stat": "dommagesFeu",
-            "value": 15
-          }
-        ]
+        "id": "passif_eniripsa",
+        "name": "Eniripsa — Mots croisés",
+        "description": "Soigner : +3 % dégâts (2 t). Infliger des dégâts : +3 % soins (2 t).",
+        "mechanic": "eniripsa",
+        "effects": [],
+        "approximation": "Chaque cumul est plafonné à 30 % (le wiki ne donne pas de plafond)."
       }
     ],
     "8": [
       {
-        "id": "iop_terre",
-        "name": "Colère",
-        "description": "+15 Dommages Terre.",
-        "effects": [
-          {
-            "stat": "dommagesTerre",
-            "value": 15
-          }
-        ]
-      },
-      {
-        "id": "iop_puissance",
-        "name": "Tête brûlée",
-        "description": "+40 Puissance.",
-        "effects": [
-          {
-            "stat": "puissance",
-            "value": 40
-          }
-        ]
+        "id": "passif_iop",
+        "name": "Iop — Fougue",
+        "description": "Dégâts infligés à 2 PO ou moins : +5 % dégâts (2 t), 6 cumuls max par tour (30 %).",
+        "mechanic": "iop",
+        "effects": []
       }
     ],
     "9": [
       {
-        "id": "cra_po",
-        "name": "Oeil de lynx",
-        "description": "+1 Portée.",
-        "effects": [
-          {
-            "stat": "po",
-            "value": 1
-          }
-        ]
-      },
-      {
-        "id": "cra_air",
-        "name": "Flèche du vent",
-        "description": "+15 Dommages Air.",
-        "effects": [
-          {
-            "stat": "dommagesAir",
-            "value": 15
-          }
-        ]
+        "id": "passif_cra",
+        "name": "Crâ — Œil de faucon",
+        "description": "Début de tour : +5 % dégâts par ennemi en ligne de vue, +2 PO par ennemi hors de vue (1 t).",
+        "mechanic": "cra",
+        "effects": [],
+        "approximation": "La PO temporaire est une caractéristique serveur : l'aperçu de portée du client peut ne pas la montrer."
       }
     ],
     "10": [
       {
-        "id": "sadi_invoc",
-        "name": "Jardinier",
-        "description": "+1 Invocation.",
-        "effects": [
-          {
-            "stat": "invocations",
-            "value": 1
-          }
-        ]
-      },
-      {
-        "id": "sadi_terre",
-        "name": "Ronce",
-        "description": "+15 Dommages Terre.",
-        "effects": [
-          {
-            "stat": "dommagesTerre",
-            "value": 15
-          }
-        ]
+        "id": "passif_sadida",
+        "name": "Sadida — Racines entravantes",
+        "description": "Tentative de retrait PM : +10 retrait PM (3 t, 50 max), +5 % dégâts (2 t, 25 %/tour) ; chaque PM retiré rend 1 PM (4 max par tour) ; la cible subit +5 % dégâts (1 t).",
+        "mechanic": "sadida",
+        "effects": []
       }
     ],
     "11": [
       {
-        "id": "sacri_vita",
-        "name": "Sang chaud",
-        "description": "+250 Vitalité.",
-        "effects": [
-          {
-            "stat": "vitalite",
-            "value": 250
-          }
-        ]
-      },
-      {
-        "id": "sacri_feu",
-        "name": "Douleur partagée",
-        "description": "+15 Dommages Feu.",
-        "effects": [
-          {
-            "stat": "dommagesFeu",
-            "value": 15
-          }
-        ]
+        "id": "passif_sacrieur",
+        "name": "Sacrieur — Pacte de sang",
+        "description": "Chaque allié survit à sa première attaque mortelle : remonte à 50 % PV, +25 % dégâts (1 t) et invulnérable jusqu'à son prochain tour.",
+        "mechanic": "sacrieur",
+        "effects": [],
+        "approximation": "Une fois par allié et par combat (invocations exclues)."
       }
     ],
     "12": [
       {
-        "id": "panda_eau",
-        "name": "Ivresse",
-        "description": "+15 Dommages Eau.",
-        "effects": [
-          {
-            "stat": "dommagesEau",
-            "value": 15
-          }
-        ]
-      },
-      {
-        "id": "panda_poussee",
-        "name": "Lancer",
-        "description": "+30 Dommages de poussée.",
-        "effects": [
-          {
-            "stat": "dommagesPoussee",
-            "value": 30
-          }
-        ]
+        "id": "passif_pandawa",
+        "name": "Pandawa — Ivresse du combat",
+        "description": "Début de tour : +1 PA par ennemi au contact, +1 PM par ennemi à distance (4 max). Ressources inutilisées en fin de tour : +5 % dégâts par point (15 % PA / 15 % PM) et +2 % soins.",
+        "mechanic": "pandawa",
+        "effects": []
       }
     ],
     "13": [
       {
-        "id": "roub_feu",
-        "name": "Artificier",
-        "description": "+15 Dommages Feu.",
-        "effects": [
-          {
-            "stat": "dommagesFeu",
-            "value": 15
-          }
-        ]
-      },
-      {
-        "id": "roub_poussee",
-        "name": "Détonation",
-        "description": "+30 Dommages de poussée.",
-        "effects": [
-          {
-            "stat": "dommagesPoussee",
-            "value": 30
-          }
-        ]
+        "id": "passif_roublard",
+        "name": "Roublard — Mèche courte",
+        "description": "Cycle de 3 tours : +7 / +15 / +25 % dégâts ; au 3e tour, les ennemis à 2 PO ou moins subissent +50 % de vos dégâts.",
+        "mechanic": "roublard",
+        "effects": []
       }
     ],
     "14": [
       {
-        "id": "zobal_bouclier",
-        "name": "Masque",
-        "description": "+5 % de résistance à tous les éléments.",
-        "effects": [
-          {
-            "stat": "resTerre",
-            "value": 5
-          },
-          {
-            "stat": "resFeu",
-            "value": 5
-          },
-          {
-            "stat": "resEau",
-            "value": 5
-          },
-          {
-            "stat": "resAir",
-            "value": 5
-          },
-          {
-            "stat": "resNeutre",
-            "value": 5
-          }
-        ]
-      },
-      {
-        "id": "zobal_air",
-        "name": "Danse",
-        "description": "+15 Dommages Air.",
-        "effects": [
-          {
-            "stat": "dommagesAir",
-            "value": 15
-          }
-        ]
+        "id": "passif_zobal",
+        "name": "Zobal — Masques alternés",
+        "description": "Tours impairs : bouclier de 25 % PV max (1 t). Tours pairs : +25 % dégâts (1 t).",
+        "mechanic": "zobal",
+        "effects": []
       }
     ],
     "15": [
       {
-        "id": "steam_invoc",
-        "name": "Ingénieur",
-        "description": "+1 Invocation.",
-        "effects": [
-          {
-            "stat": "invocations",
-            "value": 1
-          }
-        ]
-      },
-      {
-        "id": "steam_eau",
-        "name": "Vapeur",
-        "description": "+15 Dommages Eau.",
-        "effects": [
-          {
-            "stat": "dommagesEau",
-            "value": 15
-          }
-        ]
+        "id": "passif_steamer",
+        "name": "Steamer — Pression hydraulique",
+        "description": "Attirer, pousser ou échanger : +5 % dégâts et +30 dommages de poussée (2 t), 30 %/tour max.",
+        "mechanic": "steamer",
+        "effects": [],
+        "approximation": "Les dégâts de collision passent par les poussées qui les provoquent."
       }
     ],
     "16": [
       {
-        "id": "elio_po",
-        "name": "Portail lointain",
-        "description": "+1 Portée.",
-        "effects": [
-          {
-            "stat": "po",
-            "value": 1
-          }
-        ]
-      },
-      {
-        "id": "elio_dommages",
-        "name": "Wakfu",
-        "description": "+8 Dommages.",
-        "effects": [
-          {
-            "stat": "dommages",
-            "value": 8
-          }
-        ]
+        "id": "passif_eliotrope",
+        "name": "Eliotrope — Portail protecteur",
+        "description": "Téléporter ou échanger un allié : bouclier de 10 % de ses PV (3 t, remplace le précédent) et +5 % dégâts (2 t, 30 %/tour).",
+        "mechanic": "eliotrope",
+        "effects": [],
+        "approximation": "Vous-même comptez comme allié."
       }
     ],
     "17": [
       {
-        "id": "hupper_puissance",
-        "name": "Runes",
-        "description": "+40 Puissance.",
-        "effects": [
-          {
-            "stat": "puissance",
-            "value": 40
-          }
-        ]
-      },
-      {
-        "id": "hupper_crit",
-        "name": "Surcharge",
-        "description": "+5 % Coups critiques.",
-        "effects": [
-          {
-            "stat": "critique",
-            "value": 5
-          }
-        ]
+        "id": "passif_huppermage",
+        "name": "Huppermage — Résonance élémentaire",
+        "description": "Sort élémentaire : +2 % de la caractéristique de votre meilleur élément (2 t, 8 % max). Coup subi : +2 % résistance à son élément (10 % max).",
+        "mechanic": "huppermage",
+        "effects": [],
+        "approximation": "Arrondi à l'inférieur, 1 point minimum ; la résistance dure 2 tours."
       }
     ],
     "18": [
       {
-        "id": "ougi_terre",
-        "name": "Rage",
-        "description": "+15 Dommages Terre.",
-        "effects": [
-          {
-            "stat": "dommagesTerre",
-            "value": 15
-          }
-        ]
-      },
-      {
-        "id": "ougi_tacle",
-        "name": "Crocs",
-        "description": "+15 Tacle.",
-        "effects": [
-          {
-            "stat": "tacle",
-            "value": 15
-          }
-        ]
+        "id": "passif_ouginak",
+        "name": "Ouginak — Instinct de chasse",
+        "description": "Début de tour : +1 PM et +5 % dégâts de mêlée par case qui vous sépare de l'ennemi le plus proche (1 t).",
+        "mechanic": "ouginak",
+        "effects": [],
+        "approximation": "6 cases comptées au plus."
       }
     ],
     "20": [
       {
-        "id": "forge_dommages",
-        "name": "Lance trempée",
-        "description": "+8 Dommages.",
-        "effects": [
-          {
-            "stat": "dommages",
-            "value": 8
-          }
-        ]
-      },
-      {
-        "id": "forge_crit",
-        "name": "Estoc",
-        "description": "+20 Dommages critiques.",
-        "effects": [
-          {
-            "stat": "dommagesCritiques",
-            "value": 20
-          }
-        ]
+        "id": "passif_forgelance",
+        "name": "Forgelance — Marque de la lance",
+        "description": "Invoquer : les ennemis autour de l'invocation subissent +10 % dégâts (1 t, 4 cumuls). À la mort de l'invocation : +3 % dégâts pour vous (3 t).",
+        "mechanic": "forgelance",
+        "effects": []
       }
     ]
   },

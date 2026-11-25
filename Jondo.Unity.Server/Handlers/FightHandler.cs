@@ -920,6 +920,11 @@ namespace Jondo.Unity.Server.Handlers
             // His spell dons (SpellDons): on his class's spells, so not while he fights as a monster.
             if (playerFighter.IncarnatedMonster == 0)
                 Managers.SpellDons.ApplyTo(playerFighter, GameState.CharacterId);
+            // His Stasis class passive (level 50), PvM only (Handlers/FightStasisPassives.cs).
+            StasisPassiveArm(fight, playerFighter, playerFighter.IncarnatedMonster == 0 ? GameState.CharacterId : 0);
+            // The Cadence and Ciblage research: +1 cast per turn / per target on the capped spells.
+            if (playerFighter.IncarnatedMonster == 0)
+                Managers.Ascension.ApplyResearchTo(playerFighter, GameState.CharacterId);
 
             // The attitudes his items give him: the six dofus and the trophies each give a
             // "spell" through their effect 1175, and those are the ones that do things at the start
@@ -3512,7 +3517,7 @@ namespace Jondo.Unity.Server.Handlers
                 foreach (var (hechizo, _) in spells)
                 {
                     // A monster he fights as at its spells' own grades (FightIncarnation).
-                    int espera = LimitesDelQueLanza(yoMismo, hechizo).EsperaInicial;
+                    int espera = Managers.SpellDons.InitialCooldown(yoMismo, hechizo, LimitesDelQueLanza(yoMismo, hechizo).EsperaInicial);
                     if (espera > 0) yoMismo.Recarga[hechizo] = espera;
                 }
             }
@@ -4217,6 +4222,8 @@ namespace Jondo.Unity.Server.Handlers
             await EngancheAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
             fighter.LeHanPegado = false;
             await NonPlayingSummonsAnswerAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
+            // The Stasis class passives' turn start (Handlers/FightStasisPassives.cs).
+            await StasisPassiveTurnStartAsync(stream, fight, fighter);
 
             // A poison can kill here, at the start of its victim's turn -- a JondoBot Sram's
             // Arsénico does. Nothing looked: the dead player was handed his turn and the fight
@@ -5830,7 +5837,7 @@ namespace Jondo.Unity.Server.Handlers
             // And along its lines, when its level asks for them (CastInLine, CastInDiagonal): the
             // client offers no other cell, but a jwh asking for one went through -- Rayo Oscuro,
             // Tañido and Congelación were cast off their line from any diagonal cell.
-            if (spell != 0 && !Managers.SpellLevelFlags.OnItsLines(limites.Flags, caster.CellId, cell))
+            if (spell != 0 && !Managers.SpellLevelFlags.OnItsLines(Managers.SpellDons.LineFlags(caster, spell, limites.Flags), caster.CellId, cell))
             {
                 Program.LogDebug($"[Fight] Spell {spell}: cell {cell} is off its lines from {caster.CellId}.");
                 return;
@@ -5970,6 +5977,7 @@ namespace Jondo.Unity.Server.Handlers
                 ConBonos(caster, CriticoCaracteristica, caster.CriticalBonus, fight.RoundNumber) +
                 Managers.SpellModifiers.Critical(caster, spell, fight.RoundNumber);
             bool critico = AlwaysCritical.ContainsKey(caster.Id) || TirarCritico(probabilidadCritico);
+            if (critico) StasisPassiveCritical(fight, caster);
             if (critico)
             {
                 Program.LogDebug($"[Fight] CRITICAL! with spell {spell} " +
@@ -7427,6 +7435,7 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task DispararLosDeUnaMuerteAsync(NetworkStream stream, FightInstance fight, Fighter muerto)
         {
+            StasisPassiveDeath(fight, muerto);
             foreach (var quien in TodosLosCombatientes(fight).ToList())
             {
                 if (quien == null || !quien.IsAlive) continue;
@@ -8745,6 +8754,8 @@ namespace Jondo.Unity.Server.Handlers
                     }
                     continue;
                 }
+                // The Stasis class passives read the outcome (removals, pushes, teleports, heals).
+                await StasisPassiveOutcomeAsync(stream, fight, quienLanza, c);
                 // Forgelance rows are prepared before their damage is applied. A preceding
                 // lethal hit invalidates later rows on that victim: its client sprite is gone.
                 // Remove a prepared buff too; death hooks targeting living fighters still run.
@@ -9387,6 +9398,7 @@ namespace Jondo.Unity.Server.Handlers
                     // of the rows it fires: Pacto Bestial sacrifices "sus invocaciones ... futuras".
                     if (nuevo != null) Disparo(invoca, Managers.EffectEngine.AlInvocar, nuevo);
                     if (nuevo != null) await DominioAlInvocarAsync(stream, fight, invoca, nuevo);
+                    if (nuevo != null) StasisPassiveSummoned(fight, invoca, nuevo);
                     continue;
                 }
 
@@ -11087,6 +11099,8 @@ namespace Jondo.Unity.Server.Handlers
 
             // And his spell dons' "+X % dégâts" on THIS spell (SpellDons), the same kind of last multiplier.
             damage = Managers.SpellDons.WithDamage(caster, spell, damage);
+            // And the Stasis class passives' % (Handlers/FightStasisPassives.cs), the same kind of last multiplier.
+            if (!fulmina) damage = StasisPassiveDamage(fight, caster, target, damage, elemento);
 
             // THE KINDS OF THIS BLOW, for the rows that name one: "D" any, "DM"/"DCAC" from
             // next door, "DR" from further away, "DTB"/"DTE" a turn's poison.
@@ -11227,6 +11241,10 @@ namespace Jondo.Unity.Server.Handlers
             // The blow that finishes him: what fires on his death goes first, with him still
             // standing. If that finished him on its own -- a Polvo bomb blowing itself up --
             // the death has been announced in there and this blow has nothing left to take.
+            // A Sacrieur's passive lets an ally live through his first mortal blow (FightStasisPassives).
+            if (!fulmina && aplicado > 0 && aplicado >= target.CurrentHP && !target.Muriendo
+                && await StasisPassiveSavesAsync(stream, fight, caster, target))
+                return;
             if (aplicado >= target.CurrentHP && !target.Muriendo)
             {
                 // What kind of blow kills him, for his death's own triggers: XD, XDS, XDR...
@@ -11429,6 +11447,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             await RefreshPortalsAsync(fight);
             if (killer == null || !killer.IsAlive || killer == dead) return;
+            await StasisPassiveKillAsync(stream, fight, killer, dead);
             var antes = fight.TriggeringAttacker;
             fight.TriggeringAttacker = dead;
             await DispararAsync(stream, fight, killer, Managers.EffectEngine.AlMatar);
@@ -13859,6 +13878,8 @@ namespace Jondo.Unity.Server.Handlers
 
             // A dimension dungeon's newcomer was invulnerable until this, its first turn, ended.
             await ArrivalShieldEndsAsync(fight, ending);
+            // The Stasis class passives' turn end (Handlers/FightStasisPassives.cs).
+            await StasisPassiveTurnEndAsync(stream, fight, ending);
 
             // A turn-end effect can be the one that empties a side -- a poison, a Tymobot that
             // was the last of its team -- and then there is no next turn to hand out.

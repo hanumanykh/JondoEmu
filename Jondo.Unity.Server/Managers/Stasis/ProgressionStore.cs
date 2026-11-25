@@ -114,7 +114,13 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        internal static ProgressionProfile Of(long characterId) => _cache.GetOrAdd(characterId, id => _backend.Load(id));
+        internal static ProgressionProfile Of(long characterId) => _cache.GetOrAdd(characterId, id =>
+        {
+            var profile = _backend.Load(id);
+            // The first research tree's ranks, refunded once (Ascension.MigrateResearch).
+            if (Ascension.MigrateResearch(profile)) _backend.Save(profile);
+            return profile;
+        });
 
         /// <summary>The profile only if it is cached or the character has one: for the hot paths (stats every fight).</summary>
         internal static ProgressionProfile? Peek(long characterId) => _cache.TryGetValue(characterId, out var p) ? p : null;

@@ -23,7 +23,6 @@ namespace JondoFix
         // ─── Small JSON readers ──────────────────────────────────────────────────────────
 
         private static bool Bool(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.True;
-        private static double Dbl(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
 
         private static bool Obj(JsonElement e, string name, out JsonElement inner)
         {
@@ -122,8 +121,7 @@ namespace JondoFix
             _topBar.Add(K.Badge($"{F(Long(root, "eclats"))} Éclats", K.Blue));
             _topBar.Add(K.Badge($"{Int(root, "ascensions")} Ascension(s)", K.Purple));
             if (root.TryGetProperty("evolved", out var ev) && ev.ValueKind == JsonValueKind.True) _topBar.Add(K.Badge("Évolué", K.Green));
-            int catchUp = Int(root, "catchUp");
-            if (catchUp > 1) _topBar.Add(K.Badge($"Rattrapage x{catchUp}", K.Green, false));
+            if (Dbl(root, "catchUp") > 1) _topBar.Add(K.Badge($"Rattrapage x{Times(root, "catchUp")}", K.Green, false));
             var spacer = new VisualElement();
             spacer.style.flexGrow = new StyleFloat(1f);
             _topBar.Add(spacer);
@@ -767,28 +765,112 @@ namespace JondoFix
         private static void ShowResearchKit(JsonElement root)
         {
             long eclats = Long(root, "eclats");
-            _page.Add(K.Section("Recherche", $"Payée en Éclats ({F(eclats)} disponibles), gardée à travers les Ascensions et l'Évolution."));
-            var grid = K.Grid();
+            _page.Add(K.Section("Recherche", $"{F(eclats)} Éclats disponibles. Les rangs se gardent à travers les Ascensions ; " +
+                                             "les rangs ordinaires se remboursent gratuitement hors combat, Métamorphose, Polyvalence et Évolution sont définitives."));
+            var branches = new List<string>();
             foreach (var research in Arr(root, "research"))
             {
-                int rank = Int(research, "rank"), max = Math.Max(1, Int(research, "max"));
-                long cost = Long(research, "cost");
-                bool maxed = cost < 0;
-                var card = K.Card(300f, maxed ? K.Green : (UnityEngine.Color?)null);
-                card.Add(K.CardHead(K.Glyph(Text(research, "name").Length > 0 ? Text(research, "name").Substring(0, 1) : "R", K.Blue),
-                    Text(research, "name"), $"Rang {rank}/{Int(research, "max")}", maxed ? K.Badge("Max", K.Green) : null));
-                card.Add(K.ProgressBar(rank / (float)max, $"{rank} / {Int(research, "max")}", maxed ? K.Green : K.Blue, 16f));
-                card.Add(K.Small(Text(research, "description"), UnityEngine.Color.white));
-                if (!maxed)
-                {
-                    string id = Text(research, "id");
-                    card.Add(K.Button($"Améliorer ({F(cost)} Éclats)", () =>
-                        Ask("stasis/research", new Dictionary<string, object> { ["id"] = id }, r => { Show(r); Say("Recherche achetée."); }), true,
-                        cost <= eclats ? null : $"Il vous manque {F(cost - eclats)} Éclats."));
-                }
-                grid.Add(card);
+                string b = Text(research, "branch");
+                if (!branches.Contains(b)) branches.Add(b);
             }
-            _page.Add(grid);
+            foreach (string branch in branches)
+            {
+                var tint = BranchColor(branch);
+                var head = K.Row(8f);
+                head.style.marginTop = new StyleLength(10f);
+                head.style.marginBottom = new StyleLength(4f);
+                head.Add(K.Badge(branch.Length > 0 ? branch : "Recherche", tint));
+                int owned = 0, total = 0;
+                foreach (var research in Arr(root, "research"))
+                    if (Text(research, "branch") == branch) { owned += Int(research, "rank"); total += Int(research, "max"); }
+                head.Add(K.Small($"{owned} / {total} rangs"));
+                _page.Add(head);
+
+                var grid = K.Grid();
+                foreach (var research in Arr(root, "research"))
+                    if (Text(research, "branch") == branch) grid.Add(ResearchCard(research, eclats, tint));
+                _page.Add(grid);
+            }
+        }
+
+        private static UnityEngine.Color BranchColor(string branch) => branch switch
+        {
+            "Préparation" => K.Blue,
+            "Savoir" => K.Purple,
+            "Puissance" => K.Red,
+            _ => K.Gold,
+        };
+
+        /// <summary>One research: its glyph, rank pips, what it gives now and next, and its buttons.</summary>
+        private static VisualElement ResearchCard(JsonElement research, long eclats, UnityEngine.Color tint)
+        {
+            string id = Text(research, "id"), kind = Text(research, "kind"), name = Text(research, "name");
+            int rank = Int(research, "rank"), max = Math.Max(1, Int(research, "max"));
+            long cost = Long(research, "cost");
+            bool maxed = cost < 0, permanent = Bool(research, "permanent");
+            string icon = Text(research, "icon");
+            if (icon.Length == 0) icon = name.Length > 0 ? name.Substring(0, 1) : "R";
+
+            var card = K.Card(260f, maxed ? K.Green : rank > 0 ? tint : (UnityEngine.Color?)null);
+            var badges = new List<VisualElement>();
+            if (maxed) badges.Add(K.Badge("Max", K.Green));
+            if (permanent) badges.Add(K.Badge("Définitive", K.Gold, false));
+            card.Add(K.CardHead(K.Glyph(icon, maxed ? K.Green : tint), name, $"Rang {rank}/{max}", badges.ToArray()));
+
+            // The ranks as pips, filled up to the one held.
+            var pips = K.Row(3f);
+            pips.style.marginTop = new StyleLength(4f);
+            pips.style.marginBottom = new StyleLength(4f);
+            for (int i = 0; i < max; i++)
+            {
+                var pip = new VisualElement();
+                pip.style.flexGrow = new StyleFloat(1f);
+                pip.style.height = new StyleLength(7f);
+                pip.style.backgroundColor = new StyleColor(i < rank ? (maxed ? K.Green : tint) : K.BarBack);
+                K.Round(pip, 3f);
+                pips.Add(pip);
+            }
+            card.Add(pips);
+
+            card.Add(K.Small(Text(research, "description"), UnityEngine.Color.white));
+            string now = Text(research, "effectNow"), next = Text(research, "effectNext");
+            if (now.Length > 0) card.Add(K.Small("Actuel : " + now, K.Green));
+            if (next.Length > 0) card.Add(K.Small((rank > 0 ? "Rang suivant : " : "Rang 1 : ") + next, K.Muted));
+
+            if (kind == "biElement" && rank > 0)
+            {
+                string element = Text(research, "element");
+                card.Add(K.Small($"2e élément : {element}{(Bool(research, "elementChosen") ? "" : " (automatique)")}", K.Gold));
+                var choice = K.Grid();
+                foreach (string e in new[] { "terre", "feu", "eau", "air" })
+                {
+                    string pick = e;
+                    choice.Add(K.Button(char.ToUpperInvariant(e[0]) + e.Substring(1), () =>
+                        Ask("stasis/research", new Dictionary<string, object> { ["id"] = "element:" + pick }, r => { Show(r); Say("Élément choisi."); }),
+                        e == element));
+                }
+                card.Add(choice);
+            }
+
+            var buttons = K.Grid();
+            buttons.style.marginTop = new StyleLength(6f);
+            if (kind == "evolution")
+            {
+                if (!maxed) buttons.Add(K.Button("Onglet Ascension", () => ShowTab("ascension"), false));
+            }
+            else if (!maxed)
+            {
+                buttons.Add(K.Button($"Acheter · {F(cost)} Éclats", () =>
+                    Ask("stasis/research", new Dictionary<string, object> { ["id"] = id }, r => { Show(r); Say($"{name} : rang {rank + 1} acquis."); }), true,
+                    cost <= eclats ? null : $"Il vous manque {F(cost - eclats)} Éclats."));
+            }
+            long refund = Long(research, "refund");
+            if (!permanent && rank > 0 && refund > 0)
+                buttons.Add(K.Button($"Rembourser (+{F(refund)})", () =>
+                    Ask("stasis/research", new Dictionary<string, object> { ["id"] = "refund:" + id }, r => { Show(r); Say($"{name} remboursée : +{F(refund)} Éclats."); }), false,
+                    (_state is JsonElement st && Bool(st, "fight")) ? "Impossible pendant un combat." : null));
+            card.Add(buttons);
+            return card;
         }
 
         // ─── Ascension et Évolution ──────────────────────────────────────────────────────
@@ -801,7 +883,7 @@ namespace JondoFix
                 var card = K.Card(440f, K.Purple);
                 card.Add(K.CardHead(K.Glyph("A", K.Purple), "Ascension", $"Dès le niveau {Int(asc, "minLevel")}"));
                 card.Add(K.Fact("Rapporte", $"{F(Long(asc, "eclats"))} Éclats maintenant", K.Blue));
-                card.Add(K.Fact("Ensuite", $"expérience x{Int(asc, "catchUp")} jusqu'à votre record", K.Green));
+                card.Add(K.Fact("Ensuite", $"expérience x{Times(asc, "catchUp")} jusqu'à votre record", K.Green));
                 card.Add(K.Fact("Conservé", "objets et kamas"));
                 card.Add(K.Fact("Perdu", "niveau (retour au 1), caractéristiques, dons", K.Red));
                 RebirthButtons(card, asc, "ascension", "Faire l'Ascension", "stasis/ascend");
