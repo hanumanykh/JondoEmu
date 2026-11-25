@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -233,6 +233,50 @@ namespace Jondo.Unity.Server.Managers
             return template != null && Fabrication.Eligible(template) && Bots.Outfitter.PieceOf(gid) != null;
         }
 
+        private static readonly ConcurrentDictionary<int, bool> _odd = new();
+
+        /// <summary>
+        /// Pieces a merchant should not sell although they have a recipe -- event, Temporis and
+        /// quest-only sets. The pool (Outfitter.Craftable) already drops templates with
+        /// «criterions» or a «craftFeasibleCriterion»; this also drops, from the template's Data:
+        /// a name containing «[!]» (the game's marker of unfinished / special items); a
+        /// «visibilityCriterion» or «craftVisibleCriterion» (a recipe only shown under a condition,
+        /// i.e. not learnable by everyone); «craftXpRatio» 0 (a recipe that teaches nothing: quest
+        /// and event crafts such as the Knut set); and m_flags without bit 2 (observed on non-tradeable crafts: set on
+        /// 994 of the 1040 craftable templates, missing on quest/event outputs). Unreadable: kept.
+        /// </summary>
+        internal static bool IsOddForMerchant(int gid) => _odd.GetOrAdd(gid, ReadOdd);
+
+        private static bool ReadOdd(int gid)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT t.Data, tr.Text FROM ItemTemplates t LEFT JOIN Translations tr " +
+                                      "ON tr.Key = CAST(json_extract(t.Data, '$.nameId') AS TEXT) WHERE t.Id = $gid LIMIT 1;";
+                command.Parameters.AddWithValue("$gid", gid);
+                using var reader = command.ExecuteReader();
+                if (!reader.Read() || reader.IsDBNull(0)) return false;
+                string name = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                using var doc = JsonDocument.Parse(reader.GetString(0));
+                var root = doc.RootElement;
+                string Text(string key) => root.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+                long Number(string key, long fallback) => root.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number ? (long)v.GetDouble() : fallback;
+                if (name.Contains("[!]")) return true;
+                if (Text("visibilityCriterion").Length > 0 || Text("craftVisibleCriterion").Length > 0) return true;
+                if (Number("craftXpRatio", -1) == 0) return true;
+                long flags = Number("m_flags", -1);
+                bool tradeable = flags < 0 || (flags & 4) != 0;
+                return !tradeable;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         /// <summary>The band a level falls in: [1-20], [21-40]... with the configured width.</summary>
         public static (int Min, int Max) BandOf(int level)
         {
@@ -245,6 +289,7 @@ namespace Jondo.Unity.Server.Managers
         internal static List<Bots.Outfitter.Piece> Catalogue(IEnumerable<Bots.Outfitter.Piece> pool, int min, int max)
             => pool.Where(p => p.Level >= min && p.Level <= max)
                    .Where(p => Forgemagic.TemplateOf(p.Gid) is { } t && Fabrication.Eligible(t))
+                   .Where(p => !IsOddForMerchant(p.Gid))
                    .GroupBy(p => p.Gid).Select(g => g.First())
                    .OrderBy(p => p.Level).ThenBy(p => p.Gid).ToList();
 
@@ -268,7 +313,7 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>«Conseillé»: the planner's outfit of a level and element out of a pool, slot by slot.</summary>
         internal static List<Bots.Outfitter.Piece> Recommended(int level, Bots.Outfitter.Element element, IEnumerable<Bots.Outfitter.Piece> pool)
-            => Bots.Outfitter.Best(level, element, pool.Where(p => Forgemagic.TemplateOf(p.Gid) is { } t && Fabrication.Eligible(t)))
+            => Bots.Outfitter.Best(level, element, pool.Where(p => Forgemagic.TemplateOf(p.Gid) is { } t && Fabrication.Eligible(t) && !IsOddForMerchant(p.Gid)))
                    .Slots.OrderBy(s => s.Key).Select(s => s.Value).ToList();
 
         /// <summary>A plain piece as the Merchant sells it: each rolled line between its middle and its max.</summary>

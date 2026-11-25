@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -144,6 +144,10 @@ namespace Jondo.Unity.Server.Managers.Economy
                     item = ZoneGauge.Add(state, zone.Level, gain, zone.Equipment, now);
                 }
                 FarmProfiles.Save(profile);
+                int threshold = ZoneGauge.Threshold(zone.Level, state.Completions);
+                FightRecaps.NoteGauge(characterId, fight.FightId, item != 0
+                    ? $"+{gain} : pleine, {CommandHandler.ItemName(item)} reçu"
+                    : $"+{gain} ({Math.Min(state.Progress, threshold)}/{threshold})" + (state.Progress >= threshold ? " pleine" : ""));
                 if (item != 0) await DeliverAsync(stream, item);
                 else if (state.Progress >= ZoneGauge.Threshold(zone.Level, state.Completions))
                     await TellAsync(stream, "Votre jauge de zone est pleine : choisissez une cible avec .jauge cible <objet>.");

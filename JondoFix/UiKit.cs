@@ -449,5 +449,36 @@ namespace JondoFix
             row.Add(v);
             return row;
         }
-    }
+    
+        /// <summary>
+        /// Makes a drawn page lay out like a document: nothing in its columns is squeezed below its
+        /// own height (the cause of texts drawn over each other), and every text wraps and grows
+        /// with its lines. Run once on the page after each draw.
+        /// </summary>
+        internal static void Unsqueeze(VisualElement root, int depth = 0)
+        {
+            if (root == null || depth > 40) return;
+            try
+            {
+                int count = root.childCount;
+                for (int i = 0; i < count; i++)
+                {
+                    var child = root.ElementAt(i);
+                    if (child == null) continue;
+                    child.style.flexShrink = new StyleFloat(0f);
+                    if (child.TryCast<TextElement>() != null)
+                    {
+                        child.style.whiteSpace = new StyleEnum<WhiteSpace>(WhiteSpace.Normal);
+                        child.style.height = new StyleLength(StyleKeyword.Auto);
+                        child.style.minHeight = new StyleLength(StyleKeyword.Auto);
+                    }
+                    Unsqueeze(child, depth + 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (depth == 0) MelonLogger.Warning($"[JondoFix] UiKit.Unsqueeze: {ex.Message}");
+            }
+        }
+}
 }

@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Il2CppCore.UILogic.Components;
+using Il2CppCore.UILogic.Components.Figma;
 using UnityEngine.UIElements;
 using K = JondoFix.UiKit;
 
@@ -468,6 +469,62 @@ namespace JondoFix
                 _page.Add(line);
             }
             if (tiers.Count == 0) _page.Add(K.Small("Aucun palier n'est configuré sur ce serveur."));
+            ShowKeyShop(v, unit);
+        }
+
+        // ─── Clés de donjon (server: TiersView «keys», bought with .marchand cle <id> / .cle <id>) ───
+
+        private static string _keyFilter = "";
+
+        private static void ShowKeyShop(JsonElement v, string unit)
+        {
+            var keys = Arr(v, "keys");
+            bool inCoins = Bool(v, "keysInCoins");
+            _page.Add(K.Section("Clés de donjon", "Achetez la clé de n'importe quel donjon de votre niveau, d'où que vous soyez."));
+            var bar = K.Row();
+            bar.style.alignItems = new StyleEnum<Align>(Align.Center);
+            var search = new TextInput();
+            search.placeholderText = "Rechercher un donjon…";
+            search.text = _keyFilter;
+            search.style.width = new StyleLength(320f);
+            search.style.marginRight = new StyleLength(8f);
+            bar.Add(search);
+            bar.Add(K.Button("Filtrer", () => { _keyFilter = (search.text ?? "").Trim(); Redraw(); }, false));
+            if (_keyFilter.Length > 0) bar.Add(K.Button("Tout voir", () => { _keyFilter = ""; Redraw(); }, false));
+            _page.Add(bar);
+
+            string wanted = Fold(_keyFilter);
+            var grid = K.Grid();
+            int shown = 0;
+            foreach (var d in keys)
+            {
+                string name = Text(d, "name");
+                if (wanted.Length > 0 && !Fold(name + " " + Text(d, "keyName")).Contains(wanted)) continue;
+                if (++shown > 60) break;
+                string id = Int(d, "id").ToString(CultureInfo.InvariantCulture);
+                long price = Long(d, "price");
+                var card = K.Card(260f);
+                card.Add(K.CardHead(K.ItemIcon(Int(d, "keyItem"), 40f), name, $"Niv. {Int(d, "minLevel")}+ · {Text(d, "keyName")}"));
+                card.Add(K.Small($"{F(price)} {(inCoins ? unit : "kamas")}"));
+                card.Add(K.Button("Acheter", () =>
+                {
+                    if (inCoins) HubThenPanel(".marchand", "cle " + id);
+                    else PanelDo(".cle", id);
+                }, true, Bool(d, "canBuy") ? null : "Fonds insuffisants."));
+                grid.Add(card);
+            }
+            _page.Add(grid);
+            if (shown == 0) _page.Add(K.Small(keys.Count == 0 ? "Aucun donjon à clé à votre niveau." : "Aucun donjon ne correspond."));
+            else if (shown > 60) _page.Add(K.Small("Plus de 60 résultats : affinez la recherche."));
+        }
+
+        private static string Fold(string text)
+        {
+            var normalized = (text ?? "").ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder(normalized.Length);
+            foreach (char c in normalized)
+                if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark) sb.Append(c);
+            return sb.ToString();
         }
 
         // ─── Événements ──────────────────────────────────────────────────────────────────

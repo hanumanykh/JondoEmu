@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -131,7 +131,10 @@ namespace JondoFix
                     var root = doc.RootElement;
                     bool fight = root.TryGetProperty("fight", out var f) && f.ValueKind == JsonValueKind.True;
                     int percent = root.TryGetProperty("percent", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetInt32() : 0;
-                    _factor = fight ? 1f : 1f + Math.Clamp(percent, 0, 100) / 100f;
+                    float factor = fight ? 1f : 1f + Math.Clamp(percent, 0, 100) / 100f;
+                    // Logged when it changes, so the bonus can be confirmed in MelonLoader's log.
+                    if (factor != _factor) _log?.Msg($"[Movement] Walk factor x{factor:0.00} ({(fight ? "in a fight" : $"+{percent} % out of combat")}).");
+                    _factor = factor;
                 }
                 catch
                 {

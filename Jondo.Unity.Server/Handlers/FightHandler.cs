@@ -13300,6 +13300,11 @@ namespace Jondo.Unity.Server.Handlers
             if (kamas > 0) GameState.Kamas += kamas;
             if (xpGained > 0 || kamas > 0 || loot.Count > 0) DatabaseManager.SaveCurrentCharacter();
             // The zone gauge takes the fight's monsters, and pays its target when full (Managers.Economy).
+            // The end-of-fight recap JondoFix toasts (Managers.Economy.FightRecaps), filled by the three below.
+            if (won && suyo != null && fight.Reglas.ReparteBotin && !fight.Reglas.PagaElKoliseo && !Managers.Dreams.IsDreamMap(fight.RoleplayMapId))
+                Managers.Economy.FightRecaps.Begin(GameState.CharacterId, fight,
+                    Managers.JondoCoin.IsOrbe ? (loot.TryGetValue(Managers.JondoCoin.TemplateId, out int recapCoins) ? recapCoins : 0) : kamas,
+                    CommandHandler.OrbeLabel);
             if (won && suyo != null) await Managers.Economy.FarmEconomy.AfterWonFightAsync(stream, fight);
             // The Pension: study room experience, worn animal bonus, egg crate and card pack drops (CommandHandler.Pension.cs).
             if (won && suyo != null) await CommandHandler.AfterWonFightPensionAsync(stream, fight, xpGained);

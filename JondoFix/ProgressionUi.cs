@@ -235,6 +235,7 @@ namespace JondoFix
                 case var panel when IsPanelTab(panel): ShowPanelKit(); break;
                 default: ShowOffer(root); break;
             }
+            UiKit.Unsqueeze(_page);
         }
 
         private static VisualElement Summary(JsonElement root)

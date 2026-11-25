@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -218,8 +218,10 @@ namespace Jondo.Unity.Server.Handlers
                     if (credited != dungeon || DungeonManager.NextRoom(dungeon, fight.RoleplayMapId) == 0 || fight.RoleplayMapId == dungeon.LastRoom)
                         dungeonDone = credited.Id;
                 }
+                Dictionary<string, long> before;
                 lock (profile.Gate)
                 {
+                    before = profile.Slots.ToDictionary(kv => kv.Key, kv => kv.Value.Progress, StringComparer.OrdinalIgnoreCase);
                     done.AddRange(Missions.Record(profile, Missions.KindFights, subArea, 1));
                     foreach (var group in Managers.Economy.FarmEconomy.Beaten(fight).GroupBy(m => m.MonsterId))
                         done.AddRange(Missions.Record(profile, Missions.KindKills, group.Key, group.Count()));
@@ -227,6 +229,12 @@ namespace Jondo.Unity.Server.Handlers
                     if (dungeonDone != 0) done.AddRange(Missions.Record(profile, Missions.KindDungeon, dungeonDone, 1));
                 }
                 MissionStore.Save(profile);
+                // The end-of-fight recap (Managers.Economy.FightRecaps): the missions this fight moved.
+                lock (profile.Gate)
+                    foreach (var (slot, m) in profile.Slots)
+                        if (m.Kind != Missions.KindDone && m.Progress != (before.TryGetValue(slot, out long was) ? was : -1))
+                            Managers.Economy.FightRecaps.NoteMission(session.CharacterId, fight.FightId,
+                                $"{m.Title} : {Math.Min(m.Progress, m.Need):N0}/{m.Need:N0}" + (m.Complete ? " ✓" : ""));
                 foreach (var mission in done.Distinct())
                     await session.SendAsync(ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildNotice(
                         $"Mission accomplie : {mission.Title}. Récupérez-la avec .recuperer ou dans la fenêtre Progression (F9).")));

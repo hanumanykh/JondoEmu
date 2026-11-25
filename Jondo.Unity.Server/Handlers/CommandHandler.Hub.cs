@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -105,7 +105,7 @@ namespace Jondo.Unity.Server.Handlers
                 return RecommendedText(state, tail);
             if (word is "consommables" or "conso")
                 return "Consommables : " + string.Join(", ", Sanctuary.Current.Merchant.Consumables
-                    .Select(c => $"{NameOfItem(c.Item)} ({OrbePrice(StasisMerchant.PriceOf(c.Item)):N0})")) + $" {OrbeLabel}.";
+                    .Select(c => $"{NameOfItem(c.Item)} ({MerchantPrice(c.Item):N0})")) + $" {OrbeLabel}.";
             if (word is "cle" or "clé")
                 return await BuyKeyInOrbesAsync(session, tail);
             if (word == "acheter")
@@ -143,9 +143,9 @@ namespace Jondo.Unity.Server.Handlers
         {
             var pieces = RecommendedFor(state, element);
             if (pieces.Count == 0) return "Rien à conseiller pour votre niveau.";
-            long total = pieces.Sum(p => OrbePrice(StasisMerchant.PriceOf(p.Gid)));
+            long total = pieces.Sum(p => MerchantPrice(p.Gid));
             return $"Conseillé (niveau {state.CharacterLevel}, {StasisMerchant.ElementOf(state.Breed, element)}) : " +
-                   string.Join(", ", pieces.Select(p => $"{NameOfItem(p.Gid)} niv. {p.Level} ({OrbePrice(StasisMerchant.PriceOf(p.Gid)):N0})")) +
+                   string.Join(", ", pieces.Select(p => $"{NameOfItem(p.Gid)} niv. {p.Level} ({MerchantPrice(p.Gid):N0})")) +
                    $". Total {total:N0} {OrbeLabel} — « .marchand acheter conseil » prend tout.";
         }
 
@@ -157,7 +157,7 @@ namespace Jondo.Unity.Server.Handlers
             int limit = Math.Max(1, Sanctuary.Current.Merchant.CatalogueLimit);
             var shown = pieces.OrderByDescending(p => p.Level).Take(limit);
             return $"Catalogue {min}-{max} ({pieces.Count} pièces" + (pieces.Count > limit ? $", les {limit} plus hautes" : "") + ") : " +
-                   string.Join(", ", shown.Select(p => $"{NameOfItem(p.Gid)} [{p.Gid}] niv. {p.Level} ({OrbePrice(StasisMerchant.PriceOf(p.Gid)):N0})")) +
+                   string.Join(", ", shown.Select(p => $"{NameOfItem(p.Gid)} [{p.Gid}] niv. {p.Level} ({MerchantPrice(p.Gid):N0})")) +
                    $" {OrbeLabel}.";
         }
 
@@ -166,7 +166,7 @@ namespace Jondo.Unity.Server.Handlers
             int gid = FindSoldItem(query);
             if (gid == 0) return $"Le Marchand ne vend pas « {query} ».";
             quantity = Math.Clamp(quantity, 1, StasisMerchant.IsConsumable(gid) ? 100 : 10);
-            long unit = OrbePrice(StasisMerchant.PriceOf(gid));
+            long unit = MerchantPrice(gid);
             long cost = unit * quantity;
             if (OrbesHeld() < cost) return $"{quantity} x {NameOfItem(gid)} coûte {cost:N0} {OrbeLabel} ; vous en avez {OrbesHeld():N0}.";
             var stream = session.Stream!;
@@ -180,6 +180,12 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         // ─── The Merchant's shop window ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// One unit's price at the Merchant, in Jondo Coins: the ONE price the window shows, the
+        /// chat quotes and the purchase charges (never under 1, so a window never shows 1 and charges 0).
+        /// </summary>
+        internal static long MerchantPrice(int gid) => Math.Max(1, OrbePrice(StasisMerchant.PriceOf(gid)));
 
         /// <summary>Whether this NPC on this map is the Sanctuary's Merchant selling in Jondo Coins.</summary>
         internal static bool IsCoinMerchant(int template, long mapId)
@@ -197,16 +203,18 @@ namespace Jondo.Unity.Server.Handlers
                 return Sanctuary.Current.Merchant.Consumables.Where(c => c.Item > 0).Select(c => c.Item).Distinct().ToList();
             if (role == "conseille")
                 return RecommendedFor(state, "").Select(p => p.Gid).Distinct().ToList();
+            // «marchand» (Soukawa): the pieces recommended for him first, then his band's catalogue.
             var (min, max) = StasisMerchant.BandOf(state.CharacterLevel);
-            return StasisMerchant.Catalogue(Outfitter.Craftable.Value, min, max)
-                                 .OrderBy(p => p.Level).Select(p => p.Gid).Distinct().ToList();
+            return RecommendedFor(state, "").Select(p => p.Gid)
+                       .Concat(StasisMerchant.Catalogue(Outfitter.Craftable.Value, min, max).OrderBy(p => p.Level).Select(p => p.Gid))
+                       .Distinct().ToList();
         }
 
         /// <summary>The window's prices: each item at the Merchant's price in Jondo Coins, the coin as the currency.</summary>
         internal static TokenShops.Shop MerchantWindowPricing(IEnumerable<int> gids)
         {
             var shop = new TokenShops.Shop { TokenGid = JondoCoin.TemplateId };
-            foreach (int gid in gids) shop.Prices[gid] = Math.Max(1, OrbePrice(StasisMerchant.PriceOf(gid)));
+            foreach (int gid in gids) shop.Prices[gid] = MerchantPrice(gid);
             return shop;
         }
 
@@ -227,7 +235,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             var pieces = RecommendedFor(session.State, "");
             if (pieces.Count == 0) return "Rien à conseiller pour votre niveau.";
-            long total = pieces.Sum(p => OrbePrice(StasisMerchant.PriceOf(p.Gid)));
+            long total = pieces.Sum(p => MerchantPrice(p.Gid));
             if (OrbesHeld() < total) return $"Le stuff conseillé coûte {total:N0} {OrbeLabel} ; vous en avez {OrbesHeld():N0}.";
             var stream = session.Stream!;
             if (!await PayOrbesAsync(stream, -total)) return "Le paiement a échoué ; rien n'a été acheté.";
@@ -236,7 +244,7 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var piece in pieces)
             {
                 if (await GiveSoldAsync(stream, piece.Gid, 1) == 1) bought++;
-                else refund += OrbePrice(StasisMerchant.PriceOf(piece.Gid));
+                else refund += MerchantPrice(piece.Gid);
             }
             if (refund > 0) await PayOrbesAsync(stream, refund);
             await RefreshPodsAsync(stream);
@@ -368,7 +376,7 @@ namespace Jondo.Unity.Server.Handlers
             string base_ = quote.BaseOwned
                 ? "objet de base non stasifié : ✓"
                 : "objet de base non stasifié : ✗" + (StasisMerchant.SellsEquipment(gid)
-                    ? $" (au Marchand : {OrbePrice(StasisMerchant.PriceOf(gid)):N0} {OrbeLabel}, « .marchand acheter {gid} »)" : "");
+                    ? $" (au Marchand : {MerchantPrice(gid):N0} {OrbeLabel}, « .marchand acheter {gid} »)" : "");
             var lines = quote.Lines.Select(l => $"{NameOfItem(l.Item)} {Math.Min(l.Have, l.Need)}/{l.Need}" + (l.Missing > 0 ? " ✗" : ""));
             return base_ + " ; " + string.Join(", ", lines) + $" ; coût {quote.Cost:N0} {OrbeLabel} (vous : {quote.Orbes:N0}).";
         }
@@ -515,12 +523,12 @@ namespace Jondo.Unity.Server.Handlers
                 sanctuary = Sanctuary.Current.Name,
                 recommended = RecommendedFor(state, "").Select(p => new
                 {
-                    gid = p.Gid, name = NameOfItem(p.Gid), level = p.Level, price = OrbePrice(StasisMerchant.PriceOf(p.Gid)),
+                    gid = p.Gid, name = NameOfItem(p.Gid), level = p.Level, price = MerchantPrice(p.Gid),
                 }).ToList(),
                 // The Marchand's consumables, for the window's grid (bought with «.marchand acheter <gid>»).
                 consumables = Sanctuary.Current.Merchant.Consumables.Select(c => new
                 {
-                    gid = c.Item, name = NameOfItem(c.Item), price = OrbePrice(StasisMerchant.PriceOf(c.Item)),
+                    gid = c.Item, name = NameOfItem(c.Item), price = MerchantPrice(c.Item),
                 }).ToList(),
                 coinItem = JondoCoin.IsOrbe ? JondoCoin.TemplateId : 0,
                 recipes = QuoteList(8).Select(q => new

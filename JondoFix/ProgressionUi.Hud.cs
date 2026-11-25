@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using Il2CppCore.UILogic.Components;
 using MelonLoader;
 using UnityEngine.UIElements;
 using K = JondoFix.UiKit;
@@ -22,7 +23,9 @@ namespace JondoFix
     {
         private const float AlertEvery = 12f, ToastFor = 7f, HudCheckEvery = 2f;
 
-        private static VisualElement _hud, _hudCount, _toastBox;
+        private static VisualElement _hud, _hudCount, _toastBox, _hudSanctuary;
+        private static DofusLabel _hudSanctuaryLabel;
+        private static bool _hudInSanctuary, _hudTravelling;
         private static float _lastHudCheck = -100f, _lastAlerts = -100f;
         private static bool _alertsAsked, _inWorld;
         private static int _alertCount;
@@ -57,6 +60,7 @@ namespace JondoFix
                 if (!_inWorld)
                 {
                     _hud?.RemoveFromHierarchy();
+                    _hudSanctuary?.RemoveFromHierarchy();
                     return;
                 }
                 if (_hud == null || _hud.panel == null)
@@ -66,7 +70,13 @@ namespace JondoFix
                     if (_hud == null) _hud = BuildHud();
                     layer.Add(_hud);
                 }
+                if (_hudSanctuary != null && _hudSanctuary.panel == null)
+                {
+                    var layer = AdminItemsUi.FindLayer();
+                    if (layer != null) layer.Add(_hudSanctuary);
+                }
                 _hud.BringToFront();
+                _hudSanctuary?.BringToFront();
                 if (_toastBox != null && _toastBox.panel != null) _toastBox.BringToFront();
             }
             catch (Exception ex)
@@ -99,7 +109,47 @@ namespace JondoFix
             try { hud.AddManipulator(new Clickable(AdminItemsUi.Do(() => { if (_window != null) Close(); else Open(); })).Cast<IManipulator>()); }
             catch (Exception ex) { MelonLogger.Warning($"[JondoFix] Stasis HUD: the button takes no click: {ex.Message}"); }
             AdminItemsUi.KeepEvents(hud);
+
+            // The «Sanctuaire» / «Retour» button beside it: the SANCTUAIRE tab's own server
+            // action (/api/stasis/hub, .sanctuaire / .retour), no chat command typed.
+            _hudSanctuary = K.Row();
+            _hudSanctuary.name = "JondoSanctuaryHud";
+            _hudSanctuary.style.position = new StyleEnum<Position>(Position.Absolute);
+            _hudSanctuary.style.right = new StyleLength(14f);
+            _hudSanctuary.style.top = new StyleLength(196f);
+            K.Pad(_hudSanctuary, 10f, 6f);
+            _hudSanctuary.style.backgroundColor = new StyleColor(new UnityEngine.Color(0.08f, 0.07f, 0.05f, 0.92f));
+            K.Border(_hudSanctuary, 2f, K.Gold);
+            K.Round(_hudSanctuary, 10f);
+            _hudSanctuaryLabel = K.Text(_hudInSanctuary ? "Retour" : "Sanctuaire", true, 15f, K.Gold);
+            _hudSanctuaryLabel.style.whiteSpace = new StyleEnum<WhiteSpace>(WhiteSpace.NoWrap);
+            _hudSanctuary.Add(_hudSanctuaryLabel);
+            try { _hudSanctuary.AddManipulator(new Clickable(AdminItemsUi.Do(SanctuaryFromHud)).Cast<IManipulator>()); }
+            catch (Exception ex) { MelonLogger.Warning($"[JondoFix] Sanctuary HUD: the button takes no click: {ex.Message}"); }
+            AdminItemsUi.KeepEvents(_hudSanctuary);
             return hud;
+        }
+
+        private static void SanctuaryFromHud()
+        {
+            if (_hudTravelling) return;
+            _hudTravelling = true;
+            string command = _hudInSanctuary ? ".retour" : ".sanctuaire";
+            Ask("stasis/hub", new Dictionary<string, object> { ["command"] = command, ["args"] = "" }, r =>
+            {
+                _hudTravelling = false;
+                _hub = r;
+                _hudInSanctuary = Bool(r, "inSanctuary");
+                ShowSanctuaryLabel();
+                string text = Clean(Text(r, "text"));
+                if (text.Length > 0) Toast(text.Length > 160 ? text.Substring(0, 157) + "..." : text, "sanctuaire");
+                _lastAlerts = -100f;
+            }, quiet: true, failed: () => _hudTravelling = false);
+        }
+
+        private static void ShowSanctuaryLabel()
+        {
+            if (_hudSanctuaryLabel != null) _hudSanctuaryLabel.text = _hudInSanctuary ? "Retour" : "Sanctuaire";
         }
 
         private static void ShowHudCount()
@@ -134,10 +184,34 @@ namespace JondoFix
             _seenAlerts.RemoveWhere(k => !now.Contains(k));
             _alertCount = alerts.Count;
             ShowHudCount();
+
+            _hudInSanctuary = Bool(view, "inSanctuary");
+            ShowSanctuaryLabel();
+
+            // The end-of-fight recap (server: Managers/Economy/FightRecaps.cs), toasted once per fight.
+            if (Obj(view, "recap", out var recap))
+            {
+                string key = Text(recap, "key");
+                if (key.Length > 0 && _seenRecaps.Add(key))
+                {
+                    var lines = new List<string>();
+                    string gauge = Text(recap, "gauge");
+                    if (gauge.Length > 0) lines.Add("Jauge de zone : " + gauge);
+                    foreach (var m in Arr(recap, "missions")) lines.Add("Mission : " + m.GetString());
+                    var bonuses = new List<string>();
+                    foreach (var b in Arr(recap, "bonuses")) bonuses.Add(b.GetString());
+                    if (bonuses.Count > 0) lines.Add("Bonus actifs : " + string.Join(", ", bonuses));
+                    long coins = Long(recap, "coins");
+                    Toast($"Combat gagné : +{coins:N0} {Text(recap, "coinLabel")}", "jauge", lines, "✓", K.Green, ToastFor + 5f);
+                }
+            }
         }
 
+        private static readonly HashSet<string> _seenRecaps = new HashSet<string>();
+
         /// <summary>A toast at the right edge, under the button; a click opens the tab it is about.</summary>
-        private static void Toast(string text, string tab)
+        private static void Toast(string text, string tab, List<string> lines = null, string glyph = "!",
+                                  UnityEngine.Color? accent = null, float seconds = ToastFor)
         {
             if (string.IsNullOrEmpty(text)) return;
             try
@@ -168,10 +242,11 @@ namespace JondoFix
                 K.Border(toast, 1f, K.Gold);
                 toast.style.borderLeftWidth = new StyleFloat(4f);
                 K.Round(toast, 6f);
-                toast.Add(K.Glyph("!", K.Gold, 30f));
+                toast.Add(K.Glyph(glyph, accent ?? K.Gold, 30f));
                 var body = K.Fill();
                 body.style.marginLeft = new StyleLength(10f);
                 body.Add(K.Text(text, true, 15f, UnityEngine.Color.white));
+                if (lines != null) foreach (string line in lines) body.Add(K.Small(line));
                 body.Add(K.Small("Cliquez pour ouvrir"));
                 toast.Add(body);
                 string target = string.IsNullOrEmpty(tab) ? "dons" : tab;
@@ -187,7 +262,7 @@ namespace JondoFix
                 AdminItemsUi.KeepEvents(toast);
                 _toastBox.Add(toast);
                 _toastBox.BringToFront();
-                _toasts.Add((toast, UnityEngine.Time.unscaledTime + ToastFor));
+                _toasts.Add((toast, UnityEngine.Time.unscaledTime + seconds));
             }
             catch (Exception ex)
             {

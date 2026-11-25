@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -265,6 +265,21 @@ namespace Jondo.Unity.Server.Handlers
                 fullRoom = DungeonRules.FullRoom(me),
                 freeReset = DungeonKeyring.NextReset(now).ToString("dd/MM"),
                 tiers,
+                // «Clés de donjon»: every keyed dungeon his level allows, its key bought from
+                // anywhere in coins (.marchand cle <id>, BuyKeyInOrbesAsync: the same OrbePrice).
+                keys = DungeonManager.All.Values
+                    .Where(d => d.MinLevel <= state.CharacterLevel)
+                    .Select(d => (d, key: Tiers.KeyItem(d), price: Tiers.KeyPrice(d)))
+                    .Where(x => x.key != 0 && x.price >= 0)
+                    .GroupBy(x => x.d.Name).Select(g => g.OrderBy(x => x.d.Id).First())
+                    .OrderBy(x => x.d.MinLevel).ThenBy(x => x.d.Name)
+                    .Select(x => new
+                    {
+                        id = x.d.Id, name = x.d.Name, minLevel = x.d.MinLevel, keyItem = x.key, keyName = NameOfItem(x.key),
+                        price = JondoCoin.IsOrbe ? OrbePrice(x.price) : x.price,
+                        canBuy = JondoCoin.IsOrbe ? held >= OrbePrice(x.price) : state.Kamas >= x.price,
+                    }).ToList(),
+                keysInCoins = JondoCoin.IsOrbe,
             };
         }
 
@@ -500,7 +515,13 @@ namespace Jondo.Unity.Server.Handlers
             if (running != null) Add($"event:{running.Day}:{running.Def.Kind}", $"{running.Def.Name} en cours !", "event");
             if (Tides.Now.Active) Add($"maree:{Tides.Now.Cycle}", "Une Marée de Stasis est en cours !", "maree");
 
-            return new { coins = OrbesHeld(), coinLabel = OrbeLabel, coinItem = CoinItem, alerts };
+            // The HUD's «Sanctuaire» / «Retour» button and the end-of-fight recap toast (ProgressionUi.Hud.cs).
+            return new
+            {
+                coins = OrbesHeld(), coinLabel = OrbeLabel, coinItem = CoinItem, alerts,
+                inSanctuary = Sanctuary.IsSanctuary(session.State.MapId),
+                recap = Managers.Economy.FightRecaps.ViewOf(me),
+            };
         }
     }
 }

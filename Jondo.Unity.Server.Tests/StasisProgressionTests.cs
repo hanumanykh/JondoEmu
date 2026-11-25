@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -117,6 +117,63 @@ public sealed class StasisProgressionTests
         var offer = Dons.Draw(p, Content, 8, 2, Dons.KindLevel, new Random(1));
         Assert.Contains(Dons.Legendaire, offer.Rarities);
         Assert.Equal(0, p.NoLegendaryStreak);
+    }
+
+    [Fact]
+    public void Twenty_thousand_cards_draw_the_rarities_at_75_20_5()
+    {
+        // Pure per-card draw: the streak is reset before each offer so the pity never forces one.
+        var p = NewProfile();
+        var dice = new Random(12345);
+        int[] seen = new int[3];
+        int total = 0;
+        while (total < 20_000)
+        {
+            p.NoLegendaryStreak = 0;
+            var offer = Dons.Draw(p, Content, 8, 2, Dons.KindLevel, dice);
+            foreach (int r in offer.Rarities) { seen[r]++; total++; }
+        }
+        double commun = seen[0] / (double)total, rare = seen[1] / (double)total, legendary = seen[2] / (double)total;
+        Console.WriteLine($"[rarity] {total} cards: Commun {commun:P2}, Rare {rare:P2}, Légendaire {legendary:P2}");
+        Assert.InRange(commun, 0.74, 0.76);
+        Assert.InRange(rare, 0.19, 0.21);
+        Assert.InRange(legendary, 0.045, 0.055);
+
+        // With the pity active, a Légendaire offer comes at least every sixth offer.
+        var q = NewProfile();
+        int streak = 0, longest = 0;
+        for (int i = 0; i < 5_000; i++)
+        {
+            var offer = Dons.Draw(q, Content, 8, 2, Dons.KindLevel, dice);
+            streak = offer.Rarities.Contains(Dons.Legendaire) ? 0 : streak + 1;
+            longest = Math.Max(longest, streak);
+        }
+        Assert.True(longest <= 5, $"longest run without a Légendaire: {longest}");
+
+        // Fortune rank 3: 25 % Rare, 12 % Légendaire.
+        var f = NewProfile();
+        f.Research["fortune"] = 3;
+        seen = new int[3]; total = 0;
+        while (total < 20_000)
+        {
+            f.NoLegendaryStreak = 0;
+            foreach (int r in Dons.Draw(f, Content, 8, 2, Dons.KindLevel, dice).Rarities) { seen[r]++; total++; }
+        }
+        Assert.InRange(seen[1] / (double)total, 0.24, 0.26);
+        Assert.InRange(seen[2] / (double)total, 0.11, 0.13);
+    }
+
+    [Theory]
+    [InlineData(Dons.Commun, 20)]
+    [InlineData(Dons.Rare, 30)]
+    [InlineData(Dons.Legendaire, 40)]
+    public void A_picked_card_gives_its_rarity_value_in_the_bonuses(int rarity, long vitality)
+    {
+        var p = NewProfile();
+        p.Pending.Add(new DonOffer { Level = 2, Kind = Dons.KindLevel, Cards = { "vitalite", "carac" }, Rarities = { rarity, Dons.Commun } });
+        Assert.Equal("ok", Dons.Pick(p, Content, 1, null, out var kept));
+        Assert.Equal(rarity, kept!.Rarity);
+        Assert.Equal(vitality, Dons.BonusesOf(p, Content)[Stat.Vitality]);
     }
 
     [Fact]
