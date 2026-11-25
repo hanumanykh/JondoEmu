@@ -720,14 +720,28 @@ namespace JondoFix
             string unit = Text(v, "coinLabel");
             int coinItem = Int(v, "coinItem");
             var grid = K.Grid();
+            int readyCount = 0;
+            foreach (var p in pieces) if (Bool(p, "canFuse")) readyCount++;
+            if (readyCount > 0)
+                _page.Add(K.Badge($"{readyCount} fusion(s) prête(s)", K.Green));
+            pieces.Sort((a, b) => (Bool(b, "canFuse") ? 1 : 0).CompareTo(Bool(a, "canFuse") ? 1 : 0));
             foreach (var p in pieces)
             {
                 int gid = Int(p, "gid"), tier = Int(p, "tier");
                 string arg = gid.ToString(CultureInfo.InvariantCulture) + " S" + tier.ToString(CultureInfo.InvariantCulture);
                 string key = "forge:" + arg;
-                var card = K.Card(300f, tier >= 3 ? K.Purple : tier == 2 ? K.Blue : (UnityEngine.Color?)null);
-                card.Add(K.CardHead(K.ItemIcon(gid, 48f), Text(p, "name"), $"Niveau {Int(p, "level")} · {Int(p, "count")} exemplaire(s)",
-                    K.Badge(Text(p, "tierName"), tier >= 3 ? K.Purple : tier == 2 ? K.Blue : K.Gold)));
+                var tierColor = TierColor(tier);
+                int count = Int(p, "count"), need = Math.Max(1, Int(v, "fusionCount"));
+                bool ready = Bool(p, "canFuse");
+                var card = K.Card(300f, tierColor);
+                if (ready)
+                {
+                    card.style.backgroundColor = new StyleColor(K.Alpha(tierColor, 0.18f));
+                    K.Border(card, 2f, tierColor);
+                }
+                var counter = K.Badge(Long(p, "fuseCost") >= 0 ? $"{Math.Min(count, need)}/{need}" : "max", count >= need ? K.Green : K.Muted, count >= need);
+                card.Add(K.CardHead(K.ItemIcon(gid, 48f), Text(p, "name"), $"Niveau {Int(p, "level")} · {count} exemplaire(s)" + (ready ? " · fusion prête" : ""),
+                    K.Badge(Text(p, "tierName"), tierColor), counter));
                 if (_confirm == key + ":fuse" || _confirm == key + ":sell")
                 {
                     bool fuse = _confirm.EndsWith(":fuse", StringComparison.Ordinal);
@@ -750,7 +764,8 @@ namespace JondoFix
                     var buttons = K.Grid();
                     buttons.style.marginTop = new StyleLength(6f);
                     if (cost >= 0)
-                        buttons.Add(K.Button($"Fusionner → {Text(p, "fuseTo")}", () => { _confirm = key + ":fuse"; Redraw(); }, true,
+                        buttons.Add(K.Button($"Fusionner ({Math.Min(count, need)}/{need}) → {Text(p, "fuseTo")}",
+                            () => { if (Bool(p, "loseExos")) { _confirm = key + ":fuse"; Redraw(); } else PanelDo(".fusion", arg); }, true,
                             Bool(p, "canFuse") ? null : Text(p, "fuseWhy")));
                     buttons.Add(K.Button($"Vendre ({F(Long(p, "buyback"))})", () => { _confirm = key + ":sell"; Redraw(); }, false));
                     card.Add(buttons);

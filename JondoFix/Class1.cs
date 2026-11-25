@@ -634,6 +634,8 @@ namespace JondoFix
             LoggerInstance.Msg("[JondoFix] Late initialization starting...");
             PatchUnDiacriticalName();
             PatchNpcName();
+            try { ProgressionUi.InstallStasisFrames(LoggerInstance); }
+            catch (Exception ex) { LoggerInstance.Warning($"[JondoFix] Stasis frames not installed: {ex.Message}"); }
             try
             {
                 var harmony = new HarmonyLib.Harmony("com.jondo.fix.late");
